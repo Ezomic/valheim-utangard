@@ -28,6 +28,9 @@ namespace Wither
         private const string SecDiag = "Diagnostics";
 
         public static ConfigEntry<bool> Enabled;
+        public static ConfigEntry<bool> GateOnGroup;
+        public static ConfigEntry<float> RosterDays;
+        public static ConfigEntry<string> ExcludePlayerIds;
 
         // One row per biome. A global key name, or empty for "this biome is not gated".
         public static ConfigEntry<string> KeyMeadows;
@@ -59,6 +62,8 @@ namespace Wither
         public static ConfigEntry<string> SappedIconFrom;
         public static ConfigEntry<string> EnterMessage;
         public static ConfigEntry<string> LeaveMessage;
+        public static ConfigEntry<bool> NameTheBlockers;
+        public static ConfigEntry<string> BlockedByPrefix;
 
         public static ConfigEntry<bool> Verbose;
         public static ConfigEntry<bool> LogGlobalKeys;
@@ -69,6 +74,32 @@ namespace Wither
             Enabled = config.Bind(SecGate, "Enabled", true,
                 "Master switch. Off leaves the game completely untouched - the patches stay "
                 + "installed but every one of them returns immediately.");
+
+            GateOnGroup = config.Bind(SecGate, "GateOnGroup", true,
+                "Gate on whether everyone in the group has done the boss, rather than on "
+                + "whether the boss is dead in this world.\n"
+                + "The difference is the whole point. A world key is set once, by whoever "
+                + "landed the kill, and credits everybody - including someone who joined "
+                + "afterwards and has never seen the fight. On, the biome stays shut until "
+                + "every character on the roster was personally present at that boss's "
+                + "death, so carrying a friend through means actually bringing them.\n"
+                + "Off restores the original behaviour: one kill opens the biome for all.");
+
+            RosterDays = config.Bind(SecGate, "RosterDays", 14f,
+                "How many days a character counts for after it was last seen. Real days, not "
+                + "in-game ones.\n"
+                + "This is the answer to the obvious problem with a group gate: an alt made "
+                + "once, or a friend who visited for one evening, would otherwise hold every "
+                + "biome shut forever. Leaving is automatic and needs no admin command - stop "
+                + "logging in and you stop counting. The cost is that someone on a long "
+                + "holiday silently drops out and the gate may open without them, so set this "
+                + "comfortably longer than your group's normal gap between sessions.");
+
+            ExcludePlayerIds = config.Bind(SecGate, "ExcludePlayerIds", "",
+                "Character IDs that never count towards the group gate, comma-separated. The "
+                + "manual override for a character that has to keep playing but should not "
+                + "hold the gate. IDs rather than names, because global keys are lowercased "
+                + "and two characters can share a name. The roster dump on spawn prints both.");
 
             // The defaults are the vanilla progression, offset by one: the key that lets you
             // into a biome is the boss of the biome before it. Note this walls off the Black
@@ -135,9 +166,17 @@ namespace Wither
                 + "consumed, and guardian powers by their GP_ prefix, so this list is only "
                 + "for the odd one out. Turn on Diagnostics.LogBlockedEffects to see names.");
 
-            NeverBlock = config.Bind(SecBuffs, "NeverBlock", "",
+            NeverBlock = config.Bind(SecBuffs, "NeverBlock", "Puke",
                 "Status effect names to leave alone even if the rules above caught them, "
-                + "comma-separated. Wins over AlsoBlock.");
+                + "comma-separated. Wins over AlsoBlock.\n"
+                + "Puke is here because the first run in a real world found it: something "
+                + "applies it on consume, so the potion rule catches it, and it is a debuff. "
+                + "Blocking it would have handed the player an immunity to bad food in the "
+                + "one biome meant to be punishing them, and the drain would have made it "
+                + "wear off faster there than anywhere else. This is the exact failure the "
+                + "harmful-allowlist design was meant to avoid, arriving from the other "
+                + "direction - worth remembering if a future update adds another debuff that "
+                + "an item hands you.");
 
             BuffBlockedMessage = config.Bind(SecBuffs, "BuffBlockedMessage",
                 "The land turns your power aside",
@@ -182,6 +221,15 @@ namespace Wither
                 "The land loosens its grip",
                 "Shown once on leaving a gated biome. Blank to say nothing.");
 
+            NameTheBlockers = config.Bind(SecShow, "NameTheBlockers", true,
+                "Under a group gate, name the characters the biome is still waiting on. "
+                + "Worth leaving on: the honest question a player asks is 'why is this still "
+                + "shut when I killed it myself', and without an answer the only way to find "
+                + "one is to read a log file. Off if you would rather it stayed mysterious.");
+
+            BlockedByPrefix = config.Bind(SecShow, "BlockedByPrefix", "Still owed by:",
+                "Prefix for that list of names.");
+
             Verbose = config.Bind(SecDiag, "Verbose", false,
                 "Log every gate transition and every blocked effect as it happens.");
 
@@ -200,6 +248,7 @@ namespace Wither
             AlsoBlock.SettingChanged += (s, e) => InvalidateNameSets();
             NeverBlock.SettingChanged += (s, e) => InvalidateNameSets();
             BlockRested.SettingChanged += (s, e) => BlockedEffects.Rebuild();
+            ExcludePlayerIds.SettingChanged += (s, e) => _excludedIds = null;
         }
 
         private static ConfigEntry<string> BindKey(
@@ -242,6 +291,62 @@ namespace Wither
             }
 
             return string.IsNullOrEmpty(key) ? null : key.Trim();
+        }
+
+        /// <summary>
+        /// Every distinct global key the gate table names.
+        ///
+        /// Publishing is driven off this rather than off a fixed list of bosses, so pointing
+        /// a row at some other mod's key makes that key start replicating too, with no code
+        /// change. Blank rows drop out on their own.
+        /// </summary>
+        public static IEnumerable<string> AllGateKeys()
+        {
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (Heightmap.Biome biome in GateableBiomes)
+            {
+                string key = RequiredKeyFor(biome);
+                if (key != null && seen.Add(key)) yield return key;
+            }
+        }
+
+        /// <summary>
+        /// The nine gate rows, for handing to Core's config sync in one go. A row that
+        /// differed between host and client would put two players in different biomes as far
+        /// as the gate is concerned, which is the exact desync the sync exists to stop.
+        /// </summary>
+        public static ConfigEntryBase[] GateKeyEntries()
+        {
+            return new ConfigEntryBase[]
+            {
+                KeyMeadows, KeyBlackForest, KeySwamp, KeyMountain, KeyPlains,
+                KeyMistlands, KeyAshLands, KeyDeepNorth, KeyOcean
+            };
+        }
+
+        public static readonly Heightmap.Biome[] GateableBiomes =
+        {
+            Heightmap.Biome.Meadows,
+            Heightmap.Biome.BlackForest,
+            Heightmap.Biome.Swamp,
+            Heightmap.Biome.Mountain,
+            Heightmap.Biome.Plains,
+            Heightmap.Biome.Mistlands,
+            Heightmap.Biome.AshLands,
+            Heightmap.Biome.DeepNorth,
+            Heightmap.Biome.Ocean
+        };
+
+        private static HashSet<string> _excludedIds;
+
+        public static HashSet<string> ExcludedPlayerIds
+        {
+            get
+            {
+                if (_excludedIds == null) _excludedIds = Split(ExcludePlayerIds.Value);
+                return _excludedIds;
+            }
         }
 
         private static HashSet<string> _alsoBlock;

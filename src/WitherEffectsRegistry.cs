@@ -129,9 +129,19 @@ namespace Wither
 
             // Logged and skipped rather than thrown: a bad donor name should cost you an
             // icon, not a working mod.
-            WitherPlugin.Log.LogWarning(
-                "Icon donor '" + donorName + "' not found in ObjectDB - that effect will be "
-                + "invisible on the HUD. Turn on Diagnostics.LogBlockedEffects for names.");
+            //
+            // Only complain about a database that could plausibly have held the donor. The
+            // first ObjectDB.Awake of a session fires against a stub - two status effects and
+            // no items at all - and every lookup against it fails. The real one arrives a
+            // moment later and resolves fine, so warning on the stub prints a scary and
+            // completely false "your icons are broken" on every single launch. Measured on
+            // the first run: the stub reported 2 status effects, the real one 92.
+            if (db.m_items.Count > 0)
+                WitherPlugin.Log.LogWarning(
+                    "Icon donor '" + donorName + "' not found in ObjectDB - that effect will "
+                    + "be invisible on the HUD. Turn on Diagnostics.LogBlockedEffects for "
+                    + "names.");
+
             return null;
         }
     }

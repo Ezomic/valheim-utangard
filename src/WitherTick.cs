@@ -34,14 +34,42 @@ namespace Wither
         /// </summary>
         private static Player _watching;
 
+        /// <summary>
+        /// Seconds between publishing the local character's progress. Not per frame, because
+        /// a boss killed at any moment lands its credit in m_uniques a frame later and there
+        /// is no event to hook - but the publish checks before it writes, so this interval
+        /// governs how often a few dictionary lookups happen, not how much traffic there is.
+        /// </summary>
+        private const float PublishInterval = 5f;
+
+        private static float _publishTimer;
+
         public static void Run(Player player, float dt)
         {
             if (player == null) return;
+
+            // Player.FixedUpdate already refuses to reach UpdateStats unless it owns the
+            // character and it is the local one, so this is belt and braces - but publishing
+            // uses the local character's private unique-key set while writing under whichever
+            // player it was handed, and that pairing has to be true here, not two assemblies
+            // away in code nobody in this repo controls.
+            if (player != Player.m_localPlayer) return;
 
             if (!ReferenceEquals(_watching, player))
             {
                 _watching = player;
                 _wasWithered = false;
+                _publishTimer = PublishInterval;   // publish immediately for a new character
+            }
+
+            if (WitherConfig.GateOnGroup.Value)
+            {
+                _publishTimer += dt;
+                if (_publishTimer >= PublishInterval)
+                {
+                    _publishTimer = 0f;
+                    Progression.PublishLocal(player);
+                }
             }
 
             bool withered = BiomeGate.IsWithered(player);
@@ -117,12 +145,25 @@ namespace Wither
                 ? WitherConfig.EnterMessage.Value
                 : WitherConfig.LeaveMessage.Value;
 
+            // Naming who is missing is not decoration. Under a group gate the honest question
+            // a player asks is "why is this still shut when I killed it", and without an
+            // answer the only way to find one is to read a log file.
+            string blockedBy = withered ? BiomeGate.BlockersHere(player) : null;
+            //
+            // Plain text and not a $token: Message runs the string through
+            // Localization.Localize, and an unregistered token renders as the raw word
+            // rather than as anything a player would want to read.
+            if (withered && !string.IsNullOrEmpty(blockedBy)
+                && WitherConfig.NameTheBlockers.Value)
+                message = message + "\n" + WitherConfig.BlockedByPrefix.Value + " " + blockedBy;
+
             if (!string.IsNullOrEmpty(message))
                 player.Message(MessageHud.MessageType.Center, message);
 
             if (WitherConfig.Verbose.Value)
                 WitherPlugin.Log.LogInfo(
-                    (withered ? "Gate closed in " : "Gate opened in ") + player.GetCurrentBiome());
+                    (withered ? "Gate closed in " : "Gate opened in ") + player.GetCurrentBiome()
+                    + (string.IsNullOrEmpty(blockedBy) ? "" : " - waiting on " + blockedBy));
         }
     }
 }

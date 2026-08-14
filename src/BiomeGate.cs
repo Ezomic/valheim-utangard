@@ -32,7 +32,23 @@ namespace Wither
             ZoneSystem zone = ZoneSystem.instance;
             if (zone == null) return false;
 
-            return !zone.GetGlobalKey(key);
+            if (!WitherConfig.GateOnGroup.Value) return !zone.GetGlobalKey(key);
+
+            return !Progression.GroupHasKey(key);
+        }
+
+        /// <summary>
+        /// The names this player's current biome is still waiting on, or null.
+        ///
+        /// Separate from IsWithered and allocating, so the hot path stays free of it. Asked
+        /// only when a message is about to be shown.
+        /// </summary>
+        public static string BlockersHere(Player player)
+        {
+            if (player == null || !WitherConfig.GateOnGroup.Value) return null;
+
+            string key = WitherConfig.RequiredKeyFor(player.GetCurrentBiome());
+            return key == null ? null : Progression.BlockersFor(key);
         }
     }
 }

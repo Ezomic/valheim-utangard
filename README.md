@@ -30,6 +30,60 @@ The three parts do different jobs, which is why they are three parts and not one
   grab, and sprint out with no consequence at all — and a penalty you can dodge by being
   quick is a penalty for slow players only.
 
+## The gate is on the group, not the world
+
+By default the biome opens when **every member of the roster** has personally done the boss —
+not when the boss has died in this world. Kill Moder yourself and the Plains stays shut until
+the friend who was offline that night has killed it too.
+
+This asks for something Valheim seems not to record. It turns out it does. In
+`Character.OnDeath`:
+
+```csharp
+if (!string.IsNullOrEmpty(m_defeatSetGlobalKey))
+    Player.m_addUniqueKeyQueue.Add(m_defeatSetGlobalKey);
+
+if ((bool)m_nview && !m_nview.IsOwner())
+    return;                                    // ← the early-out comes AFTER
+```
+
+That push happens *before* the ownership early-return, so it runs on every client that had
+the boss loaded when it died — precisely "everyone who was there". It lands in
+`Player.m_uniques`, which `Player.Save` writes and `Player.Load` reads. The game has been
+recording per-character boss attendance all along. Nothing had to be invented, only found;
+and existing characters are already filled in.
+
+What was missing is visibility, since `m_uniques` is local and nothing replicates it. Each
+client republishes its own record into the world's **global keys** —
+`wither_p_<characterId>_<bosskey>`, plus one `wither_seen_<characterId>` heartbeat. Global
+keys are broadcast to every client on connect and saved with the world, which is the point: a
+gate that forgot people the moment they logged off would not be a group gate at all.
+
+**The roster is self-pruning.** A character joins it the first time it spawns with the mod and
+drops out after `RosterDays` (14) of absence. Two things fall out of that. Characters that
+predate the mod are not on it, so installing on a long-running world does not instantly
+wither everyone on behalf of an alt nobody has touched since spring. And leaving needs no
+admin command — stop logging in and you stop counting.
+
+`GateOnGroup = false` restores the original behaviour: one kill opens the biome for all.
+
+### This makes the mod mandatory
+
+A player without the plugin never publishes, so under a group gate they would hold every biome
+shut for everyone. That is why Wither registers with Core at `Requirement.Everyone` — the
+server refuses a client that does not have it, at a matching version.
+
+Which exposed something: **Core carried `[BepInProcess("valheim.exe")]`**, so it never loaded
+on a dedicated server, so `NetworkPatches`' gate only ever ran on a listen host and the
+`IsServer()` branch — the only one that can refuse a connection — was unreachable. Every
+dedicated server in this family was ungated. It also meant Delve, which declares Core a hard
+dependency and has no `BepInProcess` of its own, could not load on a dedicated server at all.
+Removing the attribute fixes both.
+
+> **Deploy this deliberately.** Once Core reaches a dedicated server, `EnforceVersions`
+> defaults to on and the server starts refusing anyone whose Ezomic mod set does not match.
+> Update the server and every player together, or set `EnforceVersions = false` first.
+
 ## The gate is a table
 
 `Key_<Biome>` in the config maps a biome to the global key that opens it. Defaults are the
@@ -100,6 +154,18 @@ choice from the outside:
   nothing at all.
 - **`StartGuardianPower` sets the cooldown before it applies the effect.** Blocking only the
   status effect would have burned a twenty-minute power on nothing.
+- **`Puke` is applied by an item on consume**, so the "anything a consumable grants" rule swept
+  it up as a buff — found on the first run in a real world, not by reading. Blocking a debuff
+  would have made a gated biome the one place bad food cannot hurt you, and the drain would
+  have made it wear off *faster* there than anywhere else. It ships in `NeverBlock`.
+- **Every global key write also does `m_knownWorldKeys.IncrementOrSet(key + " " + value)`**
+  into the saved player profile. A heartbeat carrying a fresh timestamp would have added an
+  entry to that dictionary every beat, forever, in everyone's character file. The last-seen
+  value is therefore a whole day number, and nothing is written unless it changed.
+- **The gate is asked several times a frame** — by the tick, by both status effects, and by
+  every consume and every status effect the game tries to apply. Building the roster walks
+  every global key in the world, so it is cached for two seconds, and the list of names owed
+  is built only on a transition rather than on every query.
 
 ## Configuration
 
@@ -113,21 +179,29 @@ Headline knobs: `FoodDrainMultiplier` and `BuffDrainMultiplier` (5), `BlockEatin
 
 ## Scope and honesty
 
-**Client-side.** Food timers and status effects belong to the owning client in Valheim, so
-there is nothing for a dedicated server to enforce and nothing goes over the wire. A player
-without the plugin plays vanilla. This is a rule for a group that all runs it, not a lock.
+**The gameplay is client-side; the gate is not.** Food timers and status effects belong to the
+owning client and nothing here reaches into another player's character. But the group gate
+reads and writes world state, and it only means anything if every client is publishing — hence
+the server requirement above.
 
-**Built and never played.** It compiles and the seams were read out of the game's own
-assemblies rather than guessed, but no part of it has been seen working in a world yet.
+**What has actually been tested.** One session on a fresh world confirmed: the plugin loads,
+the buff classification is right (7 guardian powers, 21 potions, Rested/Resting caught;
+armour sets, trinkets, Wishbone, Demister and every harmful effect left alone), both HUD icons
+resolve, the global key dump is correct, and the gate closes and opens cleanly crossing
+Meadows ↔ Black Forest with no exceptions.
 
-What to check first, in rough order of how likely it is to be wrong:
+**What has not.** Everything visual, and the whole group gate:
 
-- The global key dump on spawn, against a world with late bosses down.
+- That a refused meal **keeps its item**. The code takes the seam that makes this safe, but it
+  has not been watched happen.
+- The two icons rendering, the enter/leave messages, and the 5× food drain by eye.
 - That **Sapped accumulates and drains at the right rate** — it is charged by pushing an
   elapsed-time counter backwards, which is the least obvious thing in the mod.
-- That the two HUD icons appear at all. They borrow vanilla sprites, and the HUD skips any
-  effect whose icon is null, so a bad donor name means an invisible effect rather than an
-  error.
+- **The entire group gate.** Written after the only play session, so none of it has run:
+  publishing, the roster window, the "still owed by" line, or the Core version gate.
+- Whether `defeated_queen` and `defeated_fader` are the real key names. They are set from
+  prefab data rather than named in the `GlobalKeys` enum, so they could not be verified from
+  the code, and a wrong key fails *closed* and looks exactly like a live gate.
 - **Dungeons.** Crypts and mines sit in their own zone with no heightmap, which reports as
   `Biome.None` and is therefore ungated — a swamp crypt is a refuge from the swamp. That
   follows from the game's layout rather than from a decision, and it may want revisiting once
