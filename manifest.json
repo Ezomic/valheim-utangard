@@ -1,0 +1,10 @@
+{
+  "name": "Wither",
+  "author": "Robbin Thijssen",
+  "version_number": "0.1.0",
+  "website_url": "",
+  "description": "Biomes you have not earned starve you: food burns away, buffs are refused, and the land leaves you sapped.",
+  "dependencies": [
+    "denikson-BepInExPack_Valheim-5.4.2333"
+  ]
+}
