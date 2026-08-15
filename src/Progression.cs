@@ -121,6 +121,51 @@ namespace Wither
         }
 
         /// <summary>
+        /// Credit the local character for a boss that just died, immediately.
+        ///
+        /// This exists because reading m_uniques is not enough on its own, which cost a
+        /// session to discover. Vanilla's OnDeath pushes the defeat key onto the *static*
+        /// Player.m_addUniqueKeyQueue, and that queue is only drained by AddQueuedKeys, which
+        /// is called from exactly two places - Player.Start and SetLocalPlayer - both of which
+        /// are spawn-time. So m_uniques does not contain a boss you killed this session until
+        /// you next spawn, and if you quit to desktop before respawning the queue dies with
+        /// the process and the credit is lost outright.
+        ///
+        /// Observed rather than reasoned: Eikthyr was killed, the world key was set, and no
+        /// credit was ever published. Hooking the death directly is the only way to catch it
+        /// at the moment it is true.
+        ///
+        /// m_uniques is still read by PublishLocal, and still worth reading - it is where
+        /// credit earned before this mod existed lives, and it is the only backfill there is.
+        /// </summary>
+        public static void CreditLocal(string bossKey)
+        {
+            if (string.IsNullOrEmpty(bossKey)) return;
+
+            // Trolls, surtlings and bats carry a defeat key too. Publishing those would put a
+            // key in the world for every player and every creature type, for a gate that will
+            // never ask about them. If the table later starts asking, PublishLocal picks it
+            // up off m_uniques on the next spawn.
+            if (!WitherConfig.IsGateKey(bossKey)) return;
+
+            Player player = Player.m_localPlayer;
+            ZoneSystem zone = ZoneSystem.instance;
+            if (player == null || zone == null) return;
+
+            long id = player.GetPlayerID();
+            if (id == 0L) return;
+
+            string doneKey = DoneKey(id, bossKey);
+            if (zone.GetGlobalKey(doneKey)) return;
+
+            zone.SetGlobalKey(doneKey);
+            InvalidateRoster();
+
+            WitherPlugin.Log.LogInfo(
+                "Credited " + player.GetPlayerName() + " for " + bossKey + " at the kill.");
+        }
+
+        /// <summary>
         /// Whether the whole group has done this boss.
         ///
         /// Allocation-free and safe to ask several times a frame, which it is: the gate is

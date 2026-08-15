@@ -325,6 +325,17 @@ namespace Wither
             };
         }
 
+        /// <summary>Whether any row of the gate table asks for this key.</summary>
+        public static bool IsGateKey(string key)
+        {
+            if (string.IsNullOrEmpty(key)) return false;
+
+            foreach (string gateKey in AllGateKeys())
+                if (string.Equals(gateKey, key, StringComparison.OrdinalIgnoreCase)) return true;
+
+            return false;
+        }
+
         public static readonly Heightmap.Biome[] GateableBiomes =
         {
             Heightmap.Biome.Meadows,

@@ -49,11 +49,22 @@ if ((bool)m_nview && !m_nview.IsOwner())
 
 That push happens *before* the ownership early-return, so it runs on every client that had
 the boss loaded when it died — precisely "everyone who was there". It lands in
-`Player.m_uniques`, which `Player.Save` writes and `Player.Load` reads. The game has been
-recording per-character boss attendance all along. Nothing had to be invented, only found;
-and existing characters are already filled in.
+`Player.m_uniques`, which `Player.Save` writes and `Player.Load` reads — so **existing
+characters already carry their past attendance**.
 
-What was missing is visibility, since `m_uniques` is local and nothing replicates it. Each
+**But that lands there later than it looks, and the first version of this mod got it wrong.**
+`m_addUniqueKeyQueue` is a *static* list, drained only by `AddQueuedKeys`, which is called
+from exactly two places — `Player.Start` and `SetLocalPlayer`. Both are spawn-time. So
+`m_uniques` does not contain a boss you killed this session until you next spawn, and if you
+quit to desktop before respawning, the queue dies with the process and the credit is lost
+outright.
+
+Found by playing rather than by reading: Eikthyr was killed, the world key was set, and no
+credit was ever published. So Wither hooks `Character.OnDeath` itself and credits the local
+character at the moment of the kill. `m_uniques` is still read on spawn, because it is the
+only place credit earned *before* this mod lives — it is the backfill, not the live path.
+
+The other half is visibility, since `m_uniques` is local and nothing replicates it. Each
 client republishes its own record into the world's **global keys** —
 `wither_p_<characterId>_<bosskey>`, plus one `wither_seen_<characterId>` heartbeat. Global
 keys are broadcast to every client on connect and saved with the world, which is the point: a

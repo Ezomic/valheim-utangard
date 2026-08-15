@@ -164,6 +164,29 @@ namespace Wither
             AccessTools.FieldRefAccess<Player, StatusEffect>("m_guardianSE");
 
         /// <summary>
+        /// Credit the local character the moment a boss dies.
+        ///
+        /// A postfix, and postfixes run after the method returns however it returned - which
+        /// matters here, because Character.OnDeath takes an early return for anyone who does
+        /// not own the creature. Vanilla's own queue push sits above that line precisely so
+        /// every client present gets credited, and a postfix inherits the same reach for
+        /// free. A prefix would work too; a transpiler or an IsOwner check would not.
+        ///
+        /// The alternative - waiting for m_uniques - does not work, and the comment on
+        /// Progression.CreditLocal says why at length. Short version: the key sits in a
+        /// static queue that is only drained when a player spawns.
+        /// </summary>
+        [HarmonyPostfix]
+        [HarmonyPatch(typeof(Character), "OnDeath")]
+        private static void OnCharacterDeath(Character __instance)
+        {
+            if (!WitherConfig.Enabled.Value || !WitherConfig.GateOnGroup.Value) return;
+            if (__instance == null) return;
+
+            Progression.CreditLocal(__instance.m_defeatSetGlobalKey);
+        }
+
+        /// <summary>
         /// Both ObjectDB entry points, because both really happen: Awake builds the database
         /// for a local world, and CopyOtherDB replaces it wholesale with the host's when you
         /// join a server. Rebuilding on only one leaves the buff set and the borrowed icons
