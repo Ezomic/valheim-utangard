@@ -31,6 +31,7 @@ namespace Wither
         public static ConfigEntry<bool> GateOnGroup;
         public static ConfigEntry<bool> GateNeverRegresses;
         public static ConfigEntry<float> RosterDays;
+        public static ConfigEntry<float> CreditRadius;
         public static ConfigEntry<string> ExcludePlayerIds;
 
         // One row per biome. A global key name, or empty for "this biome is not gated".
@@ -107,6 +108,17 @@ namespace Wither
                 + "logging in and you stop counting. The cost is that someone on a long "
                 + "holiday silently drops out and the gate may open without them, so set this "
                 + "comfortably longer than your group's normal gap between sessions.");
+
+            CreditRadius = config.Bind(SecGate, "CreditRadius", 100f,
+                "How close to a dying boss a character has to be to be credited for it, in "
+                + "metres.\n"
+                + "Deliberately generous. Only one machine sees a boss die - the client that "
+                + "owns it - so it credits everyone standing nearby on the group's behalf, "
+                + "and the two ways of getting that wrong are not symmetric. Too tight and "
+                + "somebody who fought the whole battle is not credited, which holds the gate "
+                + "shut for the entire group with no way to fix it short of killing the boss "
+                + "again. Too loose and a bystander is credited, which costs one person's "
+                + "sense of having earned it. Prefer too loose.");
 
             ExcludePlayerIds = config.Bind(SecGate, "ExcludePlayerIds", "",
                 "Character IDs that never count towards the group gate, comma-separated. The "

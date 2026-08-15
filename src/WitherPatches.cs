@@ -164,17 +164,21 @@ namespace Wither
             AccessTools.FieldRefAccess<Player, StatusEffect>("m_guardianSE");
 
         /// <summary>
-        /// Credit the local character the moment a boss dies.
+        /// Credit everyone at the kill, the moment a boss dies.
         ///
-        /// A postfix, and postfixes run after the method returns however it returned - which
-        /// matters here, because Character.OnDeath takes an early return for anyone who does
-        /// not own the creature. Vanilla's own queue push sits above that line precisely so
-        /// every client present gets credited, and a postfix inherits the same reach for
-        /// free. A prefix would work too; a transpiler or an IsOwner check would not.
+        /// This patch runs on exactly one machine: the client that owns the creature's ZDO.
+        /// It reads as though it runs everywhere, because OnDeath pushes vanilla's unique key
+        /// above an `if (!m_nview.IsOwner()) return;` - but that guard is unreachable.
+        /// CheckDeath is OnDeath's only caller, and CheckDeath is itself called from one place,
+        /// inside `if (zDO.IsOwner())` in Character.CustomFixedUpdate.
         ///
-        /// The alternative - waiting for m_uniques - does not work, and the comment on
-        /// Progression.CreditLocal says why at length. Short version: the key sits in a
-        /// static queue that is only drained when a player spawns.
+        /// So there is no "every client present" to inherit, from a prefix, a postfix or
+        /// anything else. The owner has to do the crediting for the whole fight, which is why
+        /// this hands over a position rather than crediting the local player.
+        ///
+        /// Position comes from the transform rather than from a cached value because a
+        /// postfix runs before ZNetScene.Destroy has taken effect - the object is still where
+        /// it died.
         /// </summary>
         [HarmonyPostfix]
         [HarmonyPatch(typeof(Character), "OnDeath")]
@@ -183,7 +187,8 @@ namespace Wither
             if (!WitherConfig.Enabled.Value || !WitherConfig.GateOnGroup.Value) return;
             if (__instance == null) return;
 
-            Progression.CreditLocal(__instance.m_defeatSetGlobalKey);
+            Progression.CreditAttendees(
+                __instance.transform.position, __instance.m_defeatSetGlobalKey);
         }
 
         /// <summary>

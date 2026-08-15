@@ -47,22 +47,35 @@ if ((bool)m_nview && !m_nview.IsOwner())
     return;                                    // ← the early-out comes AFTER
 ```
 
-That push happens *before* the ownership early-return, so it runs on every client that had
-the boss loaded when it died — precisely "everyone who was there". It lands in
-`Player.m_uniques`, which `Player.Save` writes and `Player.Load` reads — so **existing
-characters already carry their past attendance**.
+That push sits *above* the ownership early-return, which reads as "every client that had the
+boss loaded is credited — everyone who was there". **That reading is wrong, and it cost two
+bugs.** The key does land in `Player.m_uniques`, which `Player.Save` writes and `Player.Load`
+reads, so **existing characters do carry their past attendance** — but how it gets there, and
+for whom, are both different from how they look.
 
-**But that lands there later than it looks, and the first version of this mod got it wrong.**
-`m_addUniqueKeyQueue` is a *static* list, drained only by `AddQueuedKeys`, which is called
-from exactly two places — `Player.Start` and `SetLocalPlayer`. Both are spawn-time. So
-`m_uniques` does not contain a boss you killed this session until you next spawn, and if you
-quit to desktop before respawning, the queue dies with the process and the credit is lost
-outright.
+**It lands later than it looks.** `m_addUniqueKeyQueue` is a *static* list, drained only by
+`AddQueuedKeys`, called from exactly two places — `Player.Start` and `SetLocalPlayer`, both
+spawn-time. So `m_uniques` does not contain a boss you killed this session until you next
+spawn, and quitting to desktop before respawning loses the credit with the process. Found by
+playing: Eikthyr died, the world key was set, nothing was recorded.
 
-Found by playing rather than by reading: Eikthyr was killed, the world key was set, and no
-credit was ever published. So Wither hooks `Character.OnDeath` itself and credits the local
-character at the moment of the kill. `m_uniques` is still read on spawn, because it is the
-only place credit earned *before* this mod lives — it is the backfill, not the live path.
+**And it lands for one player, not all of them.** That `!m_nview.IsOwner()` guard is
+unreachable. `CheckDeath` is `OnDeath`'s only caller, and `CheckDeath` is called from exactly
+one place — inside `if (zDO.IsOwner())` in `Character.CustomFixedUpdate`. `OnDeath` runs on the
+owning client and nowhere else. Crediting "the local player" from it would credit precisely one
+member of a group that killed a boss together, and the gate would then stay shut forever while
+looking exactly like it was working.
+
+So Wither hooks `Character.OnDeath` and the owning client credits **everyone within
+`CreditRadius` of the corpse**, on the group's behalf. It can: global keys are world state,
+writable for anyone, and `Player.GetPlayersInRange` sees every player instantiated on that
+client — which, at a boss fight, is all of them. The radius defaults to a generous 100 m
+because the two failure modes are not symmetric: crediting a bystander costs one person's sense
+of having earned it, while missing a genuine participant holds the gate shut for the whole
+group with no remedy short of killing the boss again.
+
+`m_uniques` is still read on spawn, because it is the only place credit earned *before* this
+mod lives — it is the backfill, not the live path.
 
 The other half is visibility, since `m_uniques` is local and nothing replicates it. Each
 client republishes its own record into the world's **global keys** —

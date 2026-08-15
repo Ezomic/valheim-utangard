@@ -52,6 +52,7 @@ namespace Wither
                 WitherConfig.GateOnGroup,
                 WitherConfig.GateNeverRegresses,
                 WitherConfig.RosterDays,
+                WitherConfig.CreditRadius,
                 WitherConfig.ExcludePlayerIds,
                 WitherConfig.FoodDrainMultiplier,
                 WitherConfig.BlockEating,

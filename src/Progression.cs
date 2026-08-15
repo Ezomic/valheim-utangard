@@ -156,25 +156,36 @@ namespace Wither
             }
         }
 
+        private static readonly List<Player> Attendees = new List<Player>();
+
         /// <summary>
-        /// Credit the local character for a boss that just died, immediately.
+        /// Credit everyone who was at the kill, from the one client that sees it happen.
         ///
-        /// This exists because reading m_uniques is not enough on its own, which cost a
-        /// session to discover. Vanilla's OnDeath pushes the defeat key onto the *static*
-        /// Player.m_addUniqueKeyQueue, and that queue is only drained by AddQueuedKeys, which
-        /// is called from exactly two places - Player.Start and SetLocalPlayer - both of which
-        /// are spawn-time. So m_uniques does not contain a boss you killed this session until
-        /// you next spawn, and if you quit to desktop before respawning the queue dies with
-        /// the process and the credit is lost outright.
+        /// Two separate things had to be got right here, and the first version got both wrong.
         ///
-        /// Observed rather than reasoned: Eikthyr was killed, the world key was set, and no
-        /// credit was ever published. Hooking the death directly is the only way to catch it
-        /// at the moment it is true.
+        /// First, why hook the death at all. Vanilla's OnDeath pushes the defeat key onto the
+        /// *static* Player.m_addUniqueKeyQueue, and that queue is only drained by
+        /// AddQueuedKeys, called from exactly two places - Player.Start and SetLocalPlayer -
+        /// both spawn-time. So m_uniques does not contain a boss you killed this session until
+        /// you next spawn, and quitting to desktop before respawning loses the credit with the
+        /// process. Observed, not reasoned: Eikthyr died, the world key was set, and nothing
+        /// was ever recorded.
         ///
-        /// m_uniques is still read by PublishLocal, and still worth reading - it is where
-        /// credit earned before this mod existed lives, and it is the only backfill there is.
+        /// Second, and worse, who OnDeath runs for. It looks like it runs on every client that
+        /// had the creature loaded, because it pushes that key *above* an
+        /// `if (!m_nview.IsOwner()) return;`. That guard is dead code. CheckDeath is the only
+        /// caller of OnDeath, and CheckDeath is called from exactly one place - inside
+        /// `if (zDO.IsOwner())` in Character.CustomFixedUpdate. So OnDeath only ever runs on
+        /// the client that owns the creature, and crediting "the local player" would credit
+        /// precisely one member of a group that killed a boss together. The gate would then
+        /// stay shut forever while looking exactly like it was working, which is the worst
+        /// shape a bug can take in a mod whose whole job is refusing things.
+        ///
+        /// So the owner credits everyone standing near the corpse. It can: global keys are
+        /// world state, writable on anyone's behalf, and Player.GetPlayersInRange sees every
+        /// player instantiated on this client - which, at a boss fight, is all of them.
         /// </summary>
-        public static void CreditLocal(string bossKey)
+        public static void CreditAttendees(Vector3 where, string bossKey)
         {
             if (string.IsNullOrEmpty(bossKey)) return;
 
@@ -184,21 +195,28 @@ namespace Wither
             // up off m_uniques on the next spawn.
             if (!WitherConfig.IsGateKey(bossKey)) return;
 
-            Player player = Player.m_localPlayer;
             ZoneSystem zone = ZoneSystem.instance;
-            if (player == null || zone == null) return;
+            if (zone == null) return;
 
-            long id = player.GetPlayerID();
-            if (id == 0L) return;
+            Attendees.Clear();
+            Player.GetPlayersInRange(where, WitherConfig.CreditRadius.Value, Attendees);
 
-            string doneKey = DoneKey(id, bossKey);
-            if (zone.GetGlobalKey(doneKey)) return;
+            foreach (Player attendee in Attendees)
+            {
+                if (attendee == null) continue;
 
-            zone.SetGlobalKey(doneKey);
-            InvalidateRoster();
+                long id = attendee.GetPlayerID();
+                if (id == 0L) continue;
 
-            WitherPlugin.Log.LogInfo(
-                "Credited " + player.GetPlayerName() + " for " + bossKey + " at the kill.");
+                string doneKey = DoneKey(id, bossKey);
+                if (zone.GetGlobalKey(doneKey)) continue;
+
+                zone.SetGlobalKey(doneKey);
+                InvalidateRoster();
+
+                WitherPlugin.Log.LogInfo(
+                    "Credited " + attendee.GetPlayerName() + " for " + bossKey + " at the kill.");
+            }
         }
 
         /// <summary>
