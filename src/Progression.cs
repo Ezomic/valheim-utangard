@@ -79,10 +79,16 @@ namespace Wither
         /// <summary>
         /// Publish anything about the local character the world does not already know.
         ///
-        /// Checks before it writes, so the steady state is silent - no RPC per tick, and no
-        /// profile-stat growth once the day's entry is in. Cheap enough to call often, which
-        /// matters because there is no single reliable moment to call it once: a boss can die
-        /// at any time, and the credit lands in m_uniques a frame later.
+        /// Checks before it writes, and that check is load-bearing rather than tidy. The
+        /// server's RPC_SetGlobalKey ends in SendGlobalKeys(ZRoutedRpc.Everybody) - accepting
+        /// one key rebroadcasts the world's entire key list to every connected player. Its
+        /// only guard is an exact string match against the flattened "key value", so a
+        /// publisher that did not check first would push a full broadcast to the whole server
+        /// on every call. Writing only on genuine change keeps that to once per player per
+        /// day, plus once per boss credit.
+        ///
+        /// Cheap enough to call often, which matters because there is no single reliable
+        /// moment to call it once: a character can arrive with credit from any past session.
         /// </summary>
         public static void PublishLocal(Player player)
         {
