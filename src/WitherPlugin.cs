@@ -50,6 +50,7 @@ namespace Wither
             Suite.Sync(
                 WitherConfig.Enabled,
                 WitherConfig.GateOnGroup,
+                WitherConfig.GateNeverRegresses,
                 WitherConfig.RosterDays,
                 WitherConfig.ExcludePlayerIds,
                 WitherConfig.FoodDrainMultiplier,

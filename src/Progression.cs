@@ -46,6 +46,18 @@ namespace Wither
         private const string DonePrefix = "wither_p_";
 
         /// <summary>
+        /// "the group has already cleared this boss, and that does not come undone".
+        ///
+        /// Latched once, never removed. Without it the gate regresses: a friend arriving with
+        /// a fresh character would find every biome the group had earned, decide nobody has
+        /// done the boss, and shut all of them - retroactively, for the people who did the
+        /// work. Progress a group has paid for should not be revocable by someone else's
+        /// arrival, so the moment the whole roster has a boss it is written down and the
+        /// question is never asked again.
+        /// </summary>
+        private const string OpenPrefix = "wither_open_";
+
+        /// <summary>
         /// Separates the last-seen day from the character name inside the seen key's value.
         /// The name is carried so the "waiting on" message can say who, and it rides along in
         /// the same key because one key per character is the whole point of the layout.
@@ -110,7 +122,25 @@ namespace Wither
 
             foreach (string bossKey in WitherConfig.AllGateKeys())
             {
+                LatchIfGroupCleared(zone, bossKey);
+
                 if (!HasLocally(uniques, bossKey)) continue;
+
+                // The backfill is only trusted for a boss this world has actually seen die.
+                //
+                // m_uniques is stored per character and is world-agnostic - it means "this
+                // character was present at an Eikthyr death", anywhere, ever. Taken at face
+                // value that is a hole straight through the gate: kill everything on a solo
+                // world, bring that character to the server, and arrive pre-credited for
+                // bosses nobody here has fought.
+                //
+                // Requiring the world's own defeat key first closes it exactly. If the boss
+                // has never died here, imported credit is refused. If it has, the world has
+                // demonstrably progressed past it and crediting a character who was probably
+                // one of the people who did it is both harmless and the only way an existing
+                // server gets backfilled at all - nobody's past kills were recorded by a mod
+                // that did not exist yet.
+                if (!zone.GetGlobalKey(bossKey)) continue;
 
                 string doneKey = DoneKey(id, bossKey);
                 if (zone.GetGlobalKey(doneKey)) continue;
@@ -191,6 +221,11 @@ namespace Wither
             ZoneSystem zone = ZoneSystem.instance;
             if (zone == null) return false;
 
+            // Cleared once is cleared for good. Checked first because it is one lookup and
+            // because it is the answer whenever it is present.
+            if (WitherConfig.GateNeverRegresses.Value
+                && zone.GetGlobalKey(OpenKey(bossKey))) return true;
+
             List<RosterEntry> roster = Roster();
             if (roster.Count == 0) return zone.GetGlobalKey(bossKey);
 
@@ -198,6 +233,50 @@ namespace Wither
                 if (!zone.GetGlobalKey(DoneKey(roster[i].Id, bossKey))) return false;
 
             return true;
+        }
+
+        /// <summary>
+        /// Write the latch the first time the whole roster has a boss.
+        ///
+        /// Called from the publish tick rather than from GroupHasKey, because GroupHasKey is
+        /// a hot read asked several times a frame and a read path should not be writing to
+        /// the world. A few seconds of lag costs nothing: until the latch lands, the
+        /// all-have-it check returns the same answer anyway.
+        ///
+        /// Deliberately not latched off the empty-roster fallback. An empty roster is a
+        /// startup condition, not a statement about the group, and latching from it would
+        /// let one client's loading screen permanently open a biome.
+        /// </summary>
+        private static void LatchIfGroupCleared(ZoneSystem zone, string bossKey)
+        {
+            if (!WitherConfig.GateNeverRegresses.Value) return;
+
+            string openKey = OpenKey(bossKey);
+            if (zone.GetGlobalKey(openKey)) return;
+
+            List<RosterEntry> roster = Roster();
+            if (roster.Count == 0) return;
+
+            for (int i = 0; i < roster.Count; i++)
+                if (!zone.GetGlobalKey(DoneKey(roster[i].Id, bossKey))) return;
+
+            zone.SetGlobalKey(openKey);
+            InvalidateRoster();
+
+            WitherPlugin.Log.LogInfo(
+                "The group has cleared " + bossKey + "; that biome is open for good.");
+        }
+
+        private static string OpenKey(string bossKey)
+        {
+            return OpenPrefix + bossKey.ToLowerInvariant();
+        }
+
+        /// <summary>Whether this boss is open because it was latched, for diagnostics.</summary>
+        public static bool IsLatchedOpen(string bossKey)
+        {
+            ZoneSystem zone = ZoneSystem.instance;
+            return zone != null && zone.GetGlobalKey(OpenKey(bossKey));
         }
 
         /// <summary>

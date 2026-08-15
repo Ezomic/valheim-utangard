@@ -70,6 +70,37 @@ client republishes its own record into the world's **global keys** —
 keys are broadcast to every client on connect and saved with the world, which is the point: a
 gate that forgot people the moment they logged off would not be a group gate at all.
 
+### Progress does not regress
+
+Once the whole roster has cleared a boss, that biome is latched open permanently
+(`wither_open_<bosskey>`) and the question is never asked again.
+
+Without the latch the gate runs backwards, and unpleasantly: a friend joining with a fresh
+character decides nobody has done Eikthyr and shuts the Black Forest *for the people who
+killed him*, retroactively, for as long as that friend keeps logging in. Progress a group has
+paid for should not be revocable by somebody else's arrival. What a newcomer still gates is
+everything the group has **not** yet cleared — which is where the "bring your friend" pressure
+belongs anyway.
+
+The latch is only written when the roster is non-empty and every member has the boss. Latching
+off the empty-roster fallback would let one client's loading screen open a biome forever.
+
+### Credit is per world, not per character
+
+`m_uniques` is stored per *character* and is world-agnostic — it means "this character was
+present at an Eikthyr death", anywhere, ever. Taken at face value that is a hole straight
+through the gate: clear a solo world, bring that character to the server, arrive pre-credited
+for bosses nobody here has fought.
+
+So the backfill from `m_uniques` is only trusted for a boss **this world has already seen
+die**. If the boss is still alive here, imported credit is refused. If it is dead, the world
+has demonstrably progressed past it, and crediting a character who was probably one of the
+people who did it is both harmless and the only way an existing server gets backfilled at all —
+nobody's past kills were recorded by a mod that did not exist yet.
+
+Kills witnessed here are unaffected: the `Character.OnDeath` hook always credits, because it
+saw it happen.
+
 **The roster is self-pruning.** A character joins it the first time it spawns with the mod and
 drops out after `RosterDays` (14) of absence. Two things fall out of that. Characters that
 predate the mod are not on it, so installing on a long-running world does not instantly

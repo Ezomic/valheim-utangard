@@ -29,6 +29,7 @@ namespace Wither
 
         public static ConfigEntry<bool> Enabled;
         public static ConfigEntry<bool> GateOnGroup;
+        public static ConfigEntry<bool> GateNeverRegresses;
         public static ConfigEntry<float> RosterDays;
         public static ConfigEntry<string> ExcludePlayerIds;
 
@@ -84,6 +85,18 @@ namespace Wither
                 + "every character on the roster was personally present at that boss's "
                 + "death, so carrying a friend through means actually bringing them.\n"
                 + "Off restores the original behaviour: one kill opens the biome for all.");
+
+            GateNeverRegresses = config.Bind(SecGate, "GateNeverRegresses", true,
+                "Once the whole group has cleared a boss, that biome stays open forever, even "
+                + "if someone new joins later who has not done it.\n"
+                + "Without this the gate runs backwards: a friend arriving with a fresh "
+                + "character decides nobody has done Eikthyr and shuts the Black Forest for "
+                + "the people who killed him - retroactively, and for as long as that friend "
+                + "keeps logging in. Progress the group paid for should not be revocable by "
+                + "somebody else's arrival.\n"
+                + "What a newcomer still gates is everything the group has NOT yet cleared, "
+                + "which is where the 'bring your friend' pressure belongs anyway. Off makes "
+                + "the gate strictly weakest-link at all times.");
 
             RosterDays = config.Bind(SecGate, "RosterDays", 14f,
                 "How many days a character counts for after it was last seen. Real days, not "

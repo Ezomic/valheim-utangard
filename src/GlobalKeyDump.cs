@@ -76,12 +76,18 @@ namespace Wither
                 bool open = Progression.GroupHasKey(key);
                 string blockedBy = open ? null : Progression.BlockersFor(key);
 
-                WitherPlugin.Log.LogInfo("  " + biome + ": needs '" + key + "' - "
-                    + (open
-                        ? "whole group has it, biome is open"
-                        : "biome withers" + (blockedBy == null
-                            ? " (roster empty; falling back to the world key)"
-                            : ", still owed by " + blockedBy)));
+                // Say when it is open because it was latched, not because the current roster
+                // all have it. Otherwise a biome that stays open while someone on the roster
+                // plainly has not done the boss reads as a bug.
+                string why = open
+                    ? (Progression.IsLatchedOpen(key)
+                        ? "cleared by the group, open for good"
+                        : "whole group has it, biome is open")
+                    : "biome withers" + (blockedBy == null
+                        ? " (roster empty; falling back to the world key)"
+                        : ", still owed by " + blockedBy);
+
+                WitherPlugin.Log.LogInfo("  " + biome + ": needs '" + key + "' - " + why);
             }
         }
 
