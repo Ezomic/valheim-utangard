@@ -370,17 +370,38 @@ namespace Wither
             string openKey = OpenKey(bossKey);
             if (zone.GetGlobalKey(openKey)) return;
 
-            List<RosterEntry> roster = Roster();
-            if (roster.Count == 0) return;
+            // A deadline that has run out latches too, and that is not a detail. Without it a
+            // biome opened by the deadline stays open only for as long as the deadline check
+            // keeps answering true - so lowering CatchUpDays later, or clearing a per-boss
+            // override, would silently shut a biome the group had already been playing in.
+            // "Progress does not regress" has to cover every way progress happens, or it is
+            // just a sentence about one of them.
+            bool why = DeadlinePassed(zone, bossKey);
 
-            for (int i = 0; i < roster.Count; i++)
-                if (!zone.GetGlobalKey(DoneKey(roster[i].Id, bossKey))) return;
+            if (!why)
+            {
+                List<RosterEntry> roster = Roster();
+                bool anyCounted = false;
+
+                for (int i = 0; i < roster.Count; i++)
+                {
+                    if (!Counts(roster[i], bossKey)) continue;
+                    anyCounted = true;
+
+                    if (!zone.GetGlobalKey(DoneKey(roster[i].Id, bossKey))) return;
+                }
+
+                // Nobody in the window is not a cleared group, it is an unanswered question.
+                // Latching off it would let one client's loading screen open a biome forever.
+                if (!anyCounted) return;
+            }
 
             zone.SetGlobalKey(openKey);
             InvalidateRoster();
 
-            WitherPlugin.Log.LogInfo(
-                "The group has cleared " + bossKey + "; that biome is open for good.");
+            WitherPlugin.Log.LogInfo(why
+                ? "The deadline on " + bossKey + " has run out; that biome is open for good."
+                : "The group has cleared " + bossKey + "; that biome is open for good.");
         }
 
         private static string OpenKey(string bossKey)

@@ -13,7 +13,7 @@ websiteUrl = "https://github.com/Ezomic/valheim-wither"
 containsNsfwContent = false
 
 [package.dependencies]
-Ezomic-Core = "0.2.0"
+Ezomic-Longhouse_Core = "0.2.0"
 denikson-BepInExPack_Valheim = "5.4.2333"
 
 [build]
