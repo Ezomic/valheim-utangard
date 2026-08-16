@@ -3,7 +3,7 @@
 Notable changes to Wither. Format follows [Keep a Changelog](https://keepachangelog.com),
 and the mod uses [semantic versioning](https://semver.org).
 
-## [1.1.0] — 2026-08-16
+## [Unreleased]
 
 ### Core is now optional
 
