@@ -7,6 +7,25 @@ down five times faster, refuses to let you eat or drink anything at all, and lea
 **Sapped** — seventy-five percent less stamina regeneration — for one second per second you
 spent there, up to half a minute, which keeps ticking after you leave.
 
+## Where this came from
+
+A particular kind of evening. Somebody has not killed The Elder yet and the Swamp trip is
+already being planned. Somebody else has been up a Mountain and come back with onion seeds, so
+the whole server is eating onion soup in the Black Forest. Nobody cheated and nothing is broken:
+Valheim's gates are made of damage, and damage is something a careful player with a decent
+shield walks straight through hours early. But the food comes back with them, and so does the
+gear and the map.
+
+What that does is not "harder" or "easier" in the abstract. It makes the game **easy early and
+empty later**. The opening hours get trivialised by food nobody should have yet, and the biomes
+those things were taken from have nothing left to give when the group finally arrives at them
+properly. Progression stops being a sequence of places you earn and turns into a shopping list
+you can run in any order.
+
+Everything below is aimed at that. The drain is what makes the early raid cost something; the
+group gate is what stops one person's shopping trip from setting the difficulty for everybody
+else.
+
 ## Why this and not a wall
 
 Valheim already gates its biomes. It gates them with damage, and damage is a soft gate: it
