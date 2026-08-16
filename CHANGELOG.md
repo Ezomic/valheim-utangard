@@ -3,6 +3,55 @@
 Notable changes to Wither. Format follows [Keep a Changelog](https://keepachangelog.com),
 and the mod uses [semantic versioning](https://semver.org).
 
+## [1.0.0] — 2026-08-16
+
+First release. Played, not merely built.
+
+### The group gate, finished
+
+0.2.0 shipped the idea; this is the version where it holds up.
+
+- **Credit is earned at the kill, by everyone present.** The owning client credits every
+  player within `CreditRadius` (100 m) of the corpse. It had to be done that way:
+  `Character.OnDeath` looks like it runs on every client that had the boss loaded — it pushes
+  vanilla's key above an `IsOwner` early-return — but that guard is unreachable, because
+  `CheckDeath` is its only caller and sits inside `if (zDO.IsOwner())`. Crediting "the local
+  player" would have credited exactly one member of a group that killed a boss together, and
+  the gate would then have jammed shut while looking like it worked.
+- **Credit is per world.** A character that cleared a solo world no longer arrives
+  pre-credited. `BackfillFromCharacter` still allows the migration case, and only for a boss
+  this world has already seen die.
+- **Progress never regresses.** Once the group clears a boss the biome latches open, so a
+  newcomer gates only what has *not* been cleared rather than revoking what has.
+- **A catch-up deadline**, defaulting to a ladder of one day for Eikthyr and one more per
+  boss after. Without it a single person who stops logging in holds a biome shut for everyone
+  until `RosterDays` finally drops them. A biome the deadline opens latches too.
+- **Per-boss roster windows** via `RosterDaysPerBoss`, for when one boss deserves a shorter
+  leash than another.
+- **The blocker line names other people, never you**, and shows how long is left.
+
+### Fixed
+
+- A refused meal or potion is no longer destroyed. `Player.ConsumeItem` removes the item
+  regardless of what `EatFood` returns, so the refusal had to move to `CanConsumeItem` — the
+  gate that path actually respects.
+- Refusing a guardian power no longer burns its cooldown; `StartGuardianPower` sets the
+  cooldown before applying the effect.
+- `Rested` can no longer be topped up past the drain. `SEMan` refreshes a running effect
+  through `Internal_AddStatusEffect` without ever reaching the public overload.
+- `Puke` is no longer treated as a buff. An item applies it on consume, so the potion rule
+  swept up a debuff — which would have made a gated biome the one place bad food cannot hurt
+  you.
+
+### Known limits
+
+- **Attendee credit has never run with more than one player.** Solo, you own the boss and
+  credit yourself either way. The loop is the same for one player or five; what is unproven is
+  whether other players' objects are instantiated on the owner's client at fight range.
+- `defeated_queen` and `defeated_fader` are taken from prefab data rather than the game's
+  `GlobalKeys` enum. A wrong key fails *closed*, which is indistinguishable from a working
+  gate — `LogGlobalKeys` prints what your world actually has.
+
 ## [0.2.0] — 2026-08-15
 
 Written and building. **Never run in game.**
