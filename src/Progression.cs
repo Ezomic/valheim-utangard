@@ -128,6 +128,11 @@ namespace Wither
             if (!zone.GetGlobalKey(seenKey, out current) || current != seenValue.ToLower())
                 zone.SetGlobalKey(seenKey + " " + seenValue);
 
+            // Everything below this line is the backfill, and it is the only path that grants
+            // credit for a fight this mod did not watch. Off, the rule is exact: you were
+            // there when it died, or you do not have it.
+            if (!WitherConfig.BackfillFromCharacter.Value) return;
+
             HashSet<string> uniques = UniquesOf(player);
             if (uniques == null) return;
 

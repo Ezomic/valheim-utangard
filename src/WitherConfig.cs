@@ -32,6 +32,7 @@ namespace Wither
         public static ConfigEntry<bool> GateOnGroup;
         public static ConfigEntry<bool> GateNeverRegresses;
         public static ConfigEntry<float> RosterDays;
+        public static ConfigEntry<bool> BackfillFromCharacter;
         public static ConfigEntry<string> RosterDaysPerBoss;
         public static ConfigEntry<float> CatchUpDays;
         public static ConfigEntry<string> CatchUpDaysPerBoss;
@@ -112,6 +113,21 @@ namespace Wither
                 + "logging in and you stop counting. The cost is that someone on a long "
                 + "holiday silently drops out and the gate may open without them, so set this "
                 + "comfortably longer than your group's normal gap between sessions.");
+
+            BackfillFromCharacter = config.Bind(SecGate, "BackfillFromCharacter", true,
+                "Credit a character for a boss its own file says it has attended, as long as "
+                + "that boss has already died in this world.\n"
+                + "This is the migration path and nothing else: nobody's past kills were "
+                + "recorded before this mod existed, so without it, installing on a "
+                + "long-running world gates every biome until every boss is killed again.\n"
+                + "It is also the one hole in the 'you had to be there' rule. The record it "
+                + "reads lives on the client and is not world-specific, so a player who was "
+                + "never at the fight is credited the moment somebody else kills that boss "
+                + "here. Requiring the world to have seen the boss die bounds that - imported "
+                + "credit cannot open a biome on its own - but it does not close it.\n"
+                + "Off makes the rule exact: credit comes only from kills this mod watched "
+                + "happen. Correct for a world that started with the mod installed, and "
+                + "punishing for one that did not.");
 
             RosterDaysPerBoss = config.Bind(SecGate, "RosterDaysPerBoss", "",
                 "Per-boss overrides for RosterDays, as 'key:days' pairs separated by commas. "
