@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using BepInEx.Configuration;
 
 namespace Wither
@@ -31,6 +32,9 @@ namespace Wither
         public static ConfigEntry<bool> GateOnGroup;
         public static ConfigEntry<bool> GateNeverRegresses;
         public static ConfigEntry<float> RosterDays;
+        public static ConfigEntry<string> RosterDaysPerBoss;
+        public static ConfigEntry<float> CatchUpDays;
+        public static ConfigEntry<string> CatchUpDaysPerBoss;
         public static ConfigEntry<float> CreditRadius;
         public static ConfigEntry<string> ExcludePlayerIds;
 
@@ -108,6 +112,36 @@ namespace Wither
                 + "logging in and you stop counting. The cost is that someone on a long "
                 + "holiday silently drops out and the gate may open without them, so set this "
                 + "comfortably longer than your group's normal gap between sessions.");
+
+            RosterDaysPerBoss = config.Bind(SecGate, "RosterDaysPerBoss", "",
+                "Per-boss overrides for RosterDays, as 'key:days' pairs separated by commas. "
+                + "For example: defeated_eikthyr:7, defeated_fader:60\n"
+                + "A short window for an early boss says 'keep up or stop counting'; a long "
+                + "one for a late boss keeps somebody on holiday from being written out of a "
+                + "fight the group has been building towards for weeks. Anything not listed "
+                + "uses RosterDays.\n"
+                + "Written as one line rather than nine config entries because the interesting "
+                + "case is overriding one or two of them, not filling in a table.");
+
+            CatchUpDays = config.Bind(SecGate, "CatchUpDays", 0f,
+                "Fallback deadline, in days, for any boss not named in CatchUpDaysPerBoss. "
+                + "0 means no deadline for those.\n"
+                + "Without a deadline of some kind, one person who stops logging in holds a "
+                + "biome shut for everybody until RosterDays finally drops them, which can be "
+                + "weeks.");
+
+            CatchUpDaysPerBoss = config.Bind(SecGate, "CatchUpDaysPerBoss",
+                "defeated_eikthyr:1, defeated_gdking:2, defeated_bonemass:3, "
+                + "defeated_dragon:4, defeated_goblinking:5, defeated_queen:6, defeated_fader:7",
+                "Days the rest of the group has to catch up once the first player has done a "
+                + "boss, after which the biome opens whether they did or not.\n"
+                + "The clock starts the first time this mod records anyone as having that boss "
+                + "in this world, and is written once and never moved.\n"
+                + "The default is a ladder: one day for Eikthyr and one more for each boss "
+                + "after. Early bosses are short trips somebody can be brought along on the "
+                + "same evening, so a day is enough pressure; a late boss is a whole evening's "
+                + "expedition that has to be organised, and holding the group to one day there "
+                + "would just mean the deadline always wins and the gate never does.");
 
             CreditRadius = config.Bind(SecGate, "CreditRadius", 100f,
                 "How close to a dying boss a character has to be to be credited for it, in "
@@ -348,6 +382,50 @@ namespace Wither
                 KeyMeadows, KeyBlackForest, KeySwamp, KeyMountain, KeyPlains,
                 KeyMistlands, KeyAshLands, KeyDeepNorth, KeyOcean
             };
+        }
+
+        /// <summary>
+        /// How many days a character counts for towards this particular boss.
+        ///
+        /// Per boss rather than per biome, because the boss is what is being waited on - two
+        /// biomes pointed at one key are one wait, not two.
+        /// </summary>
+        public static float RosterDaysFor(string bossKey)
+        {
+            float over;
+            return TryPerBoss(RosterDaysPerBoss.Value, bossKey, out over) ? over : RosterDays.Value;
+        }
+
+        /// <summary>Days the group has to catch up on this boss, or 0 for no deadline.</summary>
+        public static float CatchUpDaysFor(string bossKey)
+        {
+            float over;
+            return TryPerBoss(CatchUpDaysPerBoss.Value, bossKey, out over) ? over : CatchUpDays.Value;
+        }
+
+        /// <summary>
+        /// Parse a "key:days, key:days" line. Re-read rather than cached: these are consulted
+        /// a handful of times per gate query on lines that hold two or three entries, and a
+        /// cache would be another thing to invalidate when the config changes.
+        /// </summary>
+        private static bool TryPerBoss(string line, string bossKey, out float value)
+        {
+            value = 0f;
+            if (string.IsNullOrEmpty(line) || string.IsNullOrEmpty(bossKey)) return false;
+
+            foreach (string entry in line.Split(','))
+            {
+                int split = entry.IndexOf(':');
+                if (split <= 0) continue;
+
+                string name = entry.Substring(0, split).Trim();
+                if (!string.Equals(name, bossKey, StringComparison.OrdinalIgnoreCase)) continue;
+
+                return float.TryParse(entry.Substring(split + 1).Trim(),
+                    NumberStyles.Float, CultureInfo.InvariantCulture, out value);
+            }
+
+            return false;
         }
 
         /// <summary>Whether any row of the gate table asks for this key.</summary>

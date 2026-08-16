@@ -155,7 +155,16 @@ namespace Wither
             // rather than as anything a player would want to read.
             if (withered && !string.IsNullOrEmpty(blockedBy)
                 && WitherConfig.NameTheBlockers.Value)
+            {
                 message = message + "\n" + WitherConfig.BlockedByPrefix.Value + " " + blockedBy;
+
+                // A deadline nobody can see is not pressure, it is a surprise. Shown with the
+                // names, because "who" and "how long" are the same question to a player
+                // deciding whether to go and fetch somebody.
+                string key = WitherConfig.RequiredKeyFor(player.GetCurrentBiome());
+                long left = key == null ? -1L : Progression.SecondsLeft(key);
+                if (left >= 0L) message = message + " (" + GlobalKeyDump.Describe(left) + " left)";
+            }
 
             if (!string.IsNullOrEmpty(message))
                 player.Message(MessageHud.MessageType.Center, message);

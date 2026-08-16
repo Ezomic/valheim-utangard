@@ -58,6 +58,17 @@ namespace Wither
         private const string OpenPrefix = "wither_open_";
 
         /// <summary>
+        /// "the clock on this boss started here", as unix seconds.
+        ///
+        /// Written once, the first time anyone is recorded as having the boss, and never
+        /// moved. Seconds rather than the whole days used elsewhere because it is written
+        /// exactly once per boss - the day-granularity rule exists to stop a repeatedly
+        /// rewritten value growing the saved profile's known-keys dictionary, and a value
+        /// that is only ever written once cannot do that.
+        /// </summary>
+        private const string ClockPrefix = "wither_first_";
+
+        /// <summary>
         /// Separates the last-seen day from the character name inside the seen key's value.
         /// The name is carried so the "waiting on" message can say who, and it rides along in
         /// the same key because one key per character is the whole point of the layout.
@@ -146,6 +157,7 @@ namespace Wither
                 if (zone.GetGlobalKey(doneKey)) continue;
 
                 zone.SetGlobalKey(doneKey);
+                StartClock(zone, bossKey);
 
                 // A publish is exactly the event that can open a gate, so the cached roster
                 // answer is stale the moment it lands.
@@ -212,6 +224,7 @@ namespace Wither
                 if (zone.GetGlobalKey(doneKey)) continue;
 
                 zone.SetGlobalKey(doneKey);
+                StartClock(zone, bossKey);
                 InvalidateRoster();
 
                 WitherPlugin.Log.LogInfo(
@@ -244,13 +257,93 @@ namespace Wither
             if (WitherConfig.GateNeverRegresses.Value
                 && zone.GetGlobalKey(OpenKey(bossKey))) return true;
 
+            // The deadline. Once it has run out the biome opens whether the stragglers turned
+            // up or not - it limits how long the rest of the group may take, rather than
+            // punishing the people who did show up by holding their progress hostage.
+            if (DeadlinePassed(zone, bossKey)) return true;
+
             List<RosterEntry> roster = Roster();
-            if (roster.Count == 0) return zone.GetGlobalKey(bossKey);
+            bool anyCounted = false;
 
             for (int i = 0; i < roster.Count; i++)
-                if (!zone.GetGlobalKey(DoneKey(roster[i].Id, bossKey))) return false;
+            {
+                if (!Counts(roster[i], bossKey)) continue;
+                anyCounted = true;
 
-            return true;
+                if (!zone.GetGlobalKey(DoneKey(roster[i].Id, bossKey))) return false;
+            }
+
+            // Nobody in the window is the same situation as an empty roster: there is no group
+            // to speak for, so fall back to whether the world itself has seen the boss die.
+            return anyCounted || zone.GetGlobalKey(bossKey);
+        }
+
+        /// <summary>
+        /// Whether this character is recent enough to have a say about this boss.
+        ///
+        /// Future dates count rather than being discarded. A client with its clock set forward
+        /// writes one, and silently dropping that player from the roster would quietly open
+        /// the gate for everybody - failing open on a bad clock is the wrong direction.
+        /// </summary>
+        private static bool Counts(RosterEntry member, string bossKey)
+        {
+            long window = (long)Math.Max(1f, WitherConfig.RosterDaysFor(bossKey));
+            return Today() - member.LastSeenDay <= window;
+        }
+
+        /// <summary>
+        /// Start the clock on a boss, the first time anyone here is recorded as having it.
+        ///
+        /// Written once and never moved, so on a server that already had the mod the clock is
+        /// honest, and on one where credit is backfilled from character history it starts at
+        /// the backfill rather than at the original kill - which is the best that can be known,
+        /// since nothing recorded when that kill happened.
+        /// </summary>
+        private static void StartClock(ZoneSystem zone, string bossKey)
+        {
+            string key = ClockPrefix + bossKey.ToLowerInvariant();
+            if (zone.GetGlobalKey(key)) return;
+
+            zone.SetGlobalKey(key + " " + Now());
+            WitherPlugin.Log.LogInfo("The clock on " + bossKey + " has started.");
+        }
+
+        /// <summary>Seconds the group still has, or -1 when there is no deadline running.</summary>
+        internal static long SecondsLeft(string bossKey)
+        {
+            ZoneSystem zone = ZoneSystem.instance;
+            if (zone == null) return -1L;
+
+            float days = WitherConfig.CatchUpDaysFor(bossKey);
+            if (days <= 0f) return -1L;
+
+            string value;
+            if (!zone.GetGlobalKey(ClockPrefix + bossKey.ToLowerInvariant(), out value)) return -1L;
+
+            long started;
+            if (!long.TryParse(value, out started)) return -1L;
+
+            return Math.Max(0L, started + (long)(days * 86400f) - Now());
+        }
+
+        private static bool DeadlinePassed(ZoneSystem zone, string bossKey)
+        {
+            float days = WitherConfig.CatchUpDaysFor(bossKey);
+            if (days <= 0f) return false;
+
+            string value;
+            if (!zone.GetGlobalKey(ClockPrefix + bossKey.ToLowerInvariant(), out value)) return false;
+
+            long started;
+            if (!long.TryParse(value, out started)) return false;
+
+            return Now() >= started + (long)(days * 86400f);
+        }
+
+        private static long Now()
+        {
+            return (long)(DateTime.UtcNow - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc))
+                .TotalSeconds;
         }
 
         /// <summary>
@@ -323,6 +416,7 @@ namespace Wither
             foreach (RosterEntry member in Roster())
             {
                 if (excludeSelf && member.Id == self && self != 0L) continue;
+                if (!Counts(member, bossKey)) continue;
                 if (zone.GetGlobalKey(DoneKey(member.Id, bossKey))) continue;
 
                 if (missing == null) missing = new StringBuilder();
@@ -379,8 +473,6 @@ namespace Wither
             ZoneSystem zone = ZoneSystem.instance;
             if (zone == null) return roster;
 
-            long today = Today();
-            long window = Math.Max(1L, (long)WitherConfig.RosterDays.Value);
             HashSet<string> excluded = WitherConfig.ExcludedPlayerIds;
 
             // m_globalKeysValues is public, and is the only place the values live -
@@ -400,11 +492,9 @@ namespace Wither
                 string name;
                 if (!ParseSeenValue(pair.Value, out lastSeen, out name)) continue;
 
-                // Future dates survive the window check rather than being discarded. A client
-                // with a clock set forward writes one, and dropping that player out of the
-                // roster would quietly open the gate for everybody.
-                if (today - lastSeen > window) continue;
-
+                // Everyone ever seen is kept here; the staleness window is applied per boss at
+                // query time, because RosterDays can now differ per boss and one cached list
+                // filtered late is cheaper and simpler than a cache per window.
                 roster.Add(new RosterEntry
                 {
                     Id = id,

@@ -79,16 +79,31 @@ namespace Wither
                 // Say when it is open because it was latched, not because the current roster
                 // all have it. Otherwise a biome that stays open while someone on the roster
                 // plainly has not done the boss reads as a bug.
+                long left = Progression.SecondsLeft(key);
+                string clock = left < 0L ? "" : " - " + Describe(left) + " left to catch up";
+
                 string why = open
                     ? (Progression.IsLatchedOpen(key)
                         ? "cleared by the group, open for good"
                         : "whole group has it, biome is open")
                     : "biome withers" + (blockedBy == null
                         ? " (roster empty; falling back to the world key)"
-                        : ", still owed by " + blockedBy);
+                        : ", still owed by " + blockedBy + clock);
 
                 WitherPlugin.Log.LogInfo("  " + biome + ": needs '" + key + "' - " + why);
             }
+        }
+
+        /// <summary>
+        /// A deadline in words. Days once there is more than one left, hours below that -
+        /// "0.3 days" is not a thing anyone reads as urgency.
+        /// </summary>
+        internal static string Describe(long seconds)
+        {
+            if (seconds >= 172800L) return (seconds / 86400L) + " days";
+            if (seconds >= 7200L) return (seconds / 3600L) + " hours";
+            if (seconds >= 120L) return (seconds / 60L) + " minutes";
+            return seconds + " seconds";
         }
 
         /// <summary>
