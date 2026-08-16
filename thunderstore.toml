@@ -7,7 +7,7 @@ schemaVersion = "0.0.1"
 [package]
 namespace = "Ezomic"
 name = "Wither"
-versionNumber = "0.2.0"
+versionNumber = "1.0.0"
 description = "Biomes nobody in your group has earned starve you: food burns away, buffs are refused, and the land leaves you sapped."
 websiteUrl = "https://github.com/Ezomic/valheim-wither"
 containsNsfwContent = false
