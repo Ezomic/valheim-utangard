@@ -2,9 +2,10 @@
   "name": "Wither",
   "author": "Robbin Thijssen",
   "version_number": "0.2.0",
-  "website_url": "",
+  "website_url": "https://github.com/Ezomic/valheim-wither",
   "description": "Biomes nobody in your group has earned starve you: food burns away, buffs are refused, and the land leaves you sapped.",
   "dependencies": [
+    "Ezomic-Core-0.2.0",
     "denikson-BepInExPack_Valheim-5.4.2333"
   ]
 }
