@@ -5,7 +5,7 @@
     <AssemblyName>Wither</AssemblyName>
     <RootNamespace>Wither</RootNamespace>
     <LangVersion>latest</LangVersion>
-    <Version>1.0.0</Version>
+    <Version>1.1.0</Version>
     <Authors>Robbin Thijssen</Authors>
     <Company>Thijssen Software</Company>
     <Product>Wither</Product>
@@ -40,11 +40,15 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Wither consumes Core for the version gate: the group gate is only meaningful if
-         every client is guaranteed to be publishing its own progress, and Core's handshake
-         is what refuses one that is not. Private=false on purpose - Core deploys its own DLL
-         to plugins\Core, and a second copy landing in plugins\Wither would be two assemblies
-         sharing one BepInPlugin GUID, which is a plugin that silently does not load. -->
+    <!-- Compile-time only. Wither uses Core for the version gate - the group gate is only
+         enforceable if a client without the mod can be refused - but the dependency is soft,
+         so every Suite call sits behind a Chainloader check in WitherPlugin and the assembly
+         is never resolved on a machine without Core.
+
+         Private=false does double duty. Core deploys its own DLL to plugins\Core, and a second
+         copy landing in plugins\Wither would be two assemblies sharing one BepInPlugin GUID,
+         which is a plugin that silently does not load. It is also what makes standalone real:
+         the reference contributes a compile-time assembly ref and ships nothing. -->
     <ProjectReference Include="..\core\Core.csproj">
       <Private>false</Private>
     </ProjectReference>

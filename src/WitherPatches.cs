@@ -228,6 +228,38 @@ namespace Wither
         {
             if (__instance != Player.m_localPlayer) return;
             if (WitherConfig.LogGlobalKeys.Value) GlobalKeyDump.Log();
+
+            WarnIfGateIsUnenforceable();
+        }
+
+        /// <summary>
+        /// Say so, once, when the group gate is running somewhere it cannot be enforced.
+        ///
+        /// Standalone Wither is fully functional and singleplayer needs nothing else, so the
+        /// standalone path is deliberately not an error. But a group gate on a server with no
+        /// Core is the one combination that looks like it is working and is not: everyone who
+        /// installed the mod is gated, anyone who did not is not gated at all, and nothing
+        /// distinguishes that from a correctly gated server except a player walking into the
+        /// Ashlands on day one. Failing silently there is the worst of the options.
+        ///
+        /// Spawn rather than Awake because that is the first moment ZNet has an answer -
+        /// asking at plugin load reports a singleplayer session on every machine.
+        /// </summary>
+        private static void WarnIfGateIsUnenforceable()
+        {
+            if (WitherPlugin.CorePresent) return;
+            if (!WitherConfig.GateOnGroup.Value) return;
+
+            // Peers, not IsServer: a listen host with nobody connected is still effectively
+            // singleplayer, and a solo player has no roster to disagree with.
+            ZNet net = ZNet.instance;
+            if (net == null || net.GetPeerConnections() <= 0) return;
+
+            WitherPlugin.Log.LogWarning(
+                "The group gate is on in a multiplayer session, but Core is not installed. "
+                + "Nothing can refuse a player who does not have Wither, so anyone without it "
+                + "is not gated at all. Install Core on the server and every client to enforce "
+                + "it, or set GateOnGroup = false to gate on the world instead.");
         }
     }
 }

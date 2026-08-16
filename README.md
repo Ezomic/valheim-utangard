@@ -165,11 +165,22 @@ admin command — stop logging in and you stop counting.
 
 `GateOnGroup = false` restores the original behaviour: one kill opens the biome for all.
 
-### This makes the mod mandatory
+### Core is optional, but the group gate wants it
 
-A player without the plugin never publishes, so under a group gate they would hold every biome
-shut for everyone. That is why Wither registers with Core at `Requirement.Everyone` — the
-server refuses a client that does not have it, at a matching version.
+Wither installs and runs on its own. Everything above works without Core: the drain, the
+refusal and Sapped are local patches, and the gate travels over vanilla global keys, which
+every client replicates already. **Singleplayer needs nothing else at all.**
+
+What Core adds is enforcement, and on a server that matters. A player without the plugin never
+publishes, so under a group gate they are not gated by it either — they walk into the Ashlands
+on day one while everyone else waits on the roster. Wither registers with Core at
+`Requirement.Everyone`, which makes the server refuse a client that does not have it, at a
+matching version and a matching build.
+
+So the gate is an agreement between players without Core and a rule of the server with it.
+Which of those you want is yours to pick, which is why the mod logs the difference rather than
+insisting. It says so loudly, once, on spawn, if it finds the group gate on in a multiplayer
+session with no Core — that combination is the one that looks like it is working and is not.
 
 Which exposed something: **Core carried `[BepInProcess("valheim.exe")]`**, so it never loaded
 on a dedicated server, so `NetworkPatches`' gate only ever ran on a listen host and the
