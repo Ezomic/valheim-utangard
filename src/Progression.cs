@@ -301,14 +301,28 @@ namespace Wither
         /// The names still owed on this boss, comma separated, or null if nobody is.
         /// Allocates; call it on a transition or for a log line, never per frame.
         /// </summary>
-        public static string BlockersFor(string bossKey)
+        /// <param name="excludeSelf">
+        /// Leave the local character out. True for anything the player reads on screen, and
+        /// false for diagnostics.
+        ///
+        /// Solo, the roster is one name and it is your own, so the message read "Still owed
+        /// by: baldo" at somebody who knows perfectly well they have not killed Bonemass. It
+        /// is only information when it names other people, and when it names nobody else the
+        /// whole line is better gone - the icon has already said you cannot be here.
+        /// </param>
+        public static string BlockersFor(string bossKey, bool excludeSelf = false)
         {
             ZoneSystem zone = ZoneSystem.instance;
             if (zone == null) return null;
 
+            long self = 0L;
+            if (excludeSelf && Player.m_localPlayer != null)
+                self = Player.m_localPlayer.GetPlayerID();
+
             StringBuilder missing = null;
             foreach (RosterEntry member in Roster())
             {
+                if (excludeSelf && member.Id == self && self != 0L) continue;
                 if (zone.GetGlobalKey(DoneKey(member.Id, bossKey))) continue;
 
                 if (missing == null) missing = new StringBuilder();

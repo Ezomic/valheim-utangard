@@ -257,8 +257,11 @@ Meadows ↔ Black Forest with no exceptions.
 - Whether `defeated_queen` and `defeated_fader` are the real key names. They are set from
   prefab data rather than named in the `GlobalKeys` enum, so they could not be verified from
   the code, and a wrong key fails *closed* and looks exactly like a live gate.
-- **Dungeons.** Crypts and mines sit in their own zone with no heightmap, which reports as
-  `Biome.None` and is therefore ungated — a swamp crypt is a refuge from the swamp. That
-  follows from the game's layout rather than from a decision, and it may want revisiting once
-  it has been felt.
+- **Dungeons are gated, and inherit the biome above them.** Worth stating because the obvious
+  guess is the opposite. Crypt and mine interiors are generated at `y > 3000`, which sounds
+  like somewhere with no terrain and therefore no biome — but `Heightmap.FindBiome` resolves
+  through `IsPointInside`, and that compares **only X and Z**. The interior sits directly
+  above its own entrance, in a zone whose heightmap is loaded because you are standing in it,
+  so it reports the surface biome. A Swamp crypt withers you exactly like the Swamp.
+  Convenient, and entirely accidental.
 - Whether the Black Forest row survives contact with an actual new character.

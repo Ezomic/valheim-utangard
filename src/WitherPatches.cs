@@ -149,12 +149,11 @@ namespace Wither
             StatusEffect power = GuardianSeOf(__instance);
             if (!BlockedEffects.IsBlocked(power)) return true;
 
-            string message = WitherConfig.EatBlockedMessage.Value;
-            if (!string.IsNullOrEmpty(message))
-                __instance.Message(MessageHud.MessageType.Center, message);
-
-            __result = false;
-            return false;
+            // BuffBlockedMessage, not EatBlockedMessage. This said "the land will not feed you
+            // here" when a guardian power was refused, which is the food refusal wearing the
+            // wrong hat - the message was written before the buff one existed and did not
+            // follow it when it arrived.
+            return Refuse(__instance, ref __result, WitherConfig.BuffBlockedMessage.Value);
         }
 
         private static readonly AccessTools.FieldRef<SEMan, Character> CharacterOf =

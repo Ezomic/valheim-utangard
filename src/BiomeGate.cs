@@ -48,7 +48,7 @@ namespace Wither
             if (player == null || !WitherConfig.GateOnGroup.Value) return null;
 
             string key = WitherConfig.RequiredKeyFor(player.GetCurrentBiome());
-            return key == null ? null : Progression.BlockersFor(key);
+            return key == null ? null : Progression.BlockersFor(key, excludeSelf: true);
         }
     }
 }
