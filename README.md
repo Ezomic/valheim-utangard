@@ -263,29 +263,41 @@ owning client and nothing here reaches into another player's character. But the 
 reads and writes world state, and it only means anything if every client is publishing — hence
 the server requirement above.
 
-**What has actually been tested.** One session on a fresh world confirmed: the plugin loads,
-the buff classification is right (7 guardian powers, 21 potions, Rested/Resting caught;
-armour sets, trinkets, Wishbone, Demister and every harmful effect left alone), both HUD icons
-resolve, the global key dump is correct, and the gate closes and opens cleanly crossing
-Meadows ↔ Black Forest with no exceptions.
+**What has been played, not merely built.** On a local world and on a real dedicated server:
 
-**What has not.** Everything visual, and the whole group gate:
+- Refused meals and refused potions **keep their items** — the trap that would have destroyed
+  them silently, and the one worth checking first.
+- Both HUD icons render; the enter and leave messages appear; food and buff timers visibly
+  burn at 5×.
+- **Sapped** accumulates, counts down, follows you out of the biome, and cripples stamina
+  regeneration while it lasts.
+- A guardian power is refused **without burning its cooldown** — usable again the moment you
+  leave.
+- Gates close and open at biome borders, both directions, with no exceptions in a long session.
+- Credit is granted at the kill, published, and **survives a world reload**. The latch fires
+  and is read back. The `IsGateKey` guard keeps trolls and surtlings out of the key set.
+- A **two-character roster** naming both debtors, and the catch-up **deadline opening a biome**
+  for a group that had not all earned it.
+- `BackfillFromCharacter = false` holding: a character carrying credit from another world got
+  nothing here.
+- The buff classification: 7 guardian powers, 21 potions, Rested and Resting caught; armour
+  sets, trinkets, Wishbone, Demister, Warm and every harmful effect left alone.
 
-- That a refused meal **keeps its item**. The code takes the seam that makes this safe, but it
-  has not been watched happen.
-- The two icons rendering, the enter/leave messages, and the 5× food drain by eye.
-- That **Sapped accumulates and drains at the right rate** — it is charged by pushing an
-  elapsed-time counter backwards, which is the least obvious thing in the mod.
-- **The entire group gate.** Written after the only play session, so none of it has run:
-  publishing, the roster window, the "still owed by" line, or the Core version gate.
+**What has not been tested, and only this:**
+
+- **Attendee credit with more than one player.** Solo you own the boss ZDO and credit yourself
+  either way, and two characters taken in turns only credits whoever is logged in. The loop is
+  identical for one player or five; what is unproven is whether other players' objects are
+  instantiated on the owning client at fight range.
 - Whether `defeated_queen` and `defeated_fader` are the real key names. They are set from
   prefab data rather than named in the `GlobalKeys` enum, so they could not be verified from
-  the code, and a wrong key fails *closed* and looks exactly like a live gate.
-- **Dungeons are gated, and inherit the biome above them.** Worth stating because the obvious
-  guess is the opposite. Crypt and mine interiors are generated at `y > 3000`, which sounds
-  like somewhere with no terrain and therefore no biome — but `Heightmap.FindBiome` resolves
-  through `IsPointInside`, and that compares **only X and Z**. The interior sits directly
-  above its own entrance, in a zone whose heightmap is loaded because you are standing in it,
-  so it reports the surface biome. A Swamp crypt withers you exactly like the Swamp.
-  Convenient, and entirely accidental.
-- Whether the Black Forest row survives contact with an actual new character.
+  the code, and a wrong key fails *closed* — indistinguishable from a working gate. Turn on
+  `LogGlobalKeys` and read what your world actually has.
+
+**Dungeons are gated, and inherit the biome above them.** Worth stating because the obvious
+guess is the opposite. Crypt and mine interiors are generated at `y > 3000`, which sounds like
+somewhere with no terrain and therefore no biome — but `Heightmap.FindBiome` resolves through
+`IsPointInside`, and that compares **only X and Z**. The interior sits directly above its own
+entrance, in a zone whose heightmap is loaded because you are standing in it, so it reports the
+surface biome. A Swamp crypt withers you exactly like the Swamp. Convenient, and entirely
+accidental.

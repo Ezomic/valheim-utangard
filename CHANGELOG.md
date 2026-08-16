@@ -43,11 +43,21 @@ First release. Played, not merely built.
   swept up a debuff — which would have made a gated biome the one place bad food cannot hurt
   you.
 
+### Played, not merely built
+
+On a local world and on a real dedicated server: refused meals and potions keep their items,
+both HUD icons render, food and buff timers burn at 5×, Sapped accumulates and follows you out
+and cripples stamina regeneration, a guardian power is refused without burning its cooldown,
+gates open and close at borders, credit is granted at the kill and survives a reload, the latch
+fires, a two-character roster names both debtors, and the catch-up deadline opens a biome for a
+group that had not all earned it. No exceptions in a long session.
+
 ### Known limits
 
 - **Attendee credit has never run with more than one player.** Solo, you own the boss and
-  credit yourself either way. The loop is the same for one player or five; what is unproven is
-  whether other players' objects are instantiated on the owner's client at fight range.
+  credit yourself either way, and two characters taken in turns only credits whoever is logged
+  in. The loop is the same for one player or five; what is unproven is whether other players'
+  objects are instantiated on the owner's client at fight range.
 - `defeated_queen` and `defeated_fader` are taken from prefab data rather than the game's
   `GlobalKeys` enum. A wrong key fails *closed*, which is indistinguishable from a working
   gate — `LogGlobalKeys` prints what your world actually has.
