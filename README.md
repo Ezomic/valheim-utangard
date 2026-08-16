@@ -36,6 +36,30 @@ By default the biome opens when **every member of the roster** has personally do
 not when the boss has died in this world. Kill Moder yourself and the Plains stays shut until
 the friend who was offline that night has killed it too.
 
+### What this is for
+
+Valheim groups come apart along progression. One person plays more, gets ahead, and the others
+arrive to find the interesting content already cleared — so nobody wants to redo it, the person
+ahead has no reason to go back, and what started as a group becomes several people playing
+alone in the same world.
+
+The gate is aimed squarely at that. It makes helping the people behind you **the way you move
+forward yourself**, not a favour you do them. If your friend has not killed The Elder, the
+Swamp is shut for you as well, so going back to fight him again is not charity — it is the next
+thing on your own list. The pressure is real but it points somewhere useful: at organising the
+fight, at bringing the person who missed it, at the group arriving somewhere together instead
+of trickling in.
+
+It is a coordination device, not a punishment. Nothing is taken away from anyone, and the
+person who is ahead is not penalised for being ahead — they are simply given a reason to turn
+around, which the base game never gives them.
+
+Two rules exist to keep that from curdling into a hostage situation, and both are worth reading
+as part of the same idea: **progress never regresses**, so a newcomer cannot revoke a biome the
+group already earned, and **the catch-up deadline** means a single person who stops logging in
+cannot hold a biome shut indefinitely. The gate should make you fetch your friend, not trap you
+behind them.
+
 This asks for something Valheim seems not to record. It turns out it does. In
 `Character.OnDeath`:
 

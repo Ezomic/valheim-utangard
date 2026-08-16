@@ -90,6 +90,13 @@ namespace Wither
                 + "afterwards and has never seen the fight. On, the biome stays shut until "
                 + "every character on the roster was personally present at that boss's "
                 + "death, so carrying a friend through means actually bringing them.\n"
+                + "The point is to keep a group together. Valheim groups come apart along "
+                + "progression: one person plays more, gets ahead, and the rest arrive to find "
+                + "the interesting content already cleared - so nobody wants to redo it and "
+                + "the person ahead has no reason to go back. This makes helping the people "
+                + "behind you the way you move forward yourself, rather than a favour. If your "
+                + "friend has not killed The Elder, the Swamp is shut for you too, so going "
+                + "back is the next thing on your own list.\n"
                 + "Off restores the original behaviour: one kill opens the biome for all.");
 
             GateNeverRegresses = config.Bind(SecGate, "GateNeverRegresses", true,
