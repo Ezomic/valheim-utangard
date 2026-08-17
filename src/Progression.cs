@@ -34,6 +34,8 @@ namespace Utangard
     /// global keys and not a ZDO: a gate that forgets people the moment they log off is not
     /// the mechanic that was asked for.
     /// </summary>
+    // Stays internal. What other mods may ask is in UtangardApi, deliberately narrow, so this
+    // class can be refactored without breaking them.
     internal static class Progression
     {
         /// <summary>
