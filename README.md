@@ -2,21 +2,14 @@
 
 > **A biome you have not earned will not feed you.**
 
-Wither never stops you walking into the Swamp on day two. It just makes the land refuse to
-sustain you while you are there.
+Nothing stops you walking into the Swamp on day two. But while you are there, food burns down
+five times faster, you cannot eat or drink at all, and you leave **Sapped** — three quarters of
+your stamina regeneration gone, for up to half a minute. An early run for barley is still your
+call. It is just a raid now rather than an errand.
 
-Stand in a biome whose boss your group has not killed and your food burns away five times
-faster, you cannot eat or drink anything at all, and you leave **Sapped** — three quarters of
-your stamina regeneration gone, for up to half a minute after you get out.
-
-So an early run into the Plains for barley is still possible, still your call, and now
-genuinely a raid: you go in on whatever food you are already carrying, you watch it burn, and
-you come out slower than you went in.
-
-The second half is who "earned" means. By default a biome opens when **every member of your
-group has personally been at that boss's death** — not when the boss has died in the world.
-Kill Moder yourself and the Plains stays shut until the friend who was offline that night has
-killed it too.
+A biome counts as earned when **every member of your group has personally been at that boss's
+death**, not when the boss has died in the world. Kill Moder yourself and the Plains stays shut
+until the friend who was offline that night has killed it too.
 
 ---
 
