@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Text;
 using HarmonyLib;
 
-namespace Wither
+namespace Utangard
 {
     /// <summary>
     /// Prints what the world actually knows, once per spawn.
@@ -19,14 +19,14 @@ namespace Wither
         private static readonly AccessTools.FieldRef<ZoneSystem, HashSet<string>> KeysOf =
             AccessTools.FieldRefAccess<ZoneSystem, HashSet<string>>("m_globalKeys");
 
-        private static readonly Heightmap.Biome[] Gateable = WitherConfig.GateableBiomes;
+        private static readonly Heightmap.Biome[] Gateable = UtangardConfig.GateableBiomes;
 
         public static void Log()
         {
             ZoneSystem zone = ZoneSystem.instance;
             if (zone == null)
             {
-                WitherPlugin.Log.LogWarning("No ZoneSystem yet - nothing to report.");
+                UtangardPlugin.Log.LogWarning("No ZoneSystem yet - nothing to report.");
                 return;
             }
 
@@ -41,27 +41,27 @@ namespace Wither
                 line.Append(sorted[i]);
             }
 
-            WitherPlugin.Log.LogInfo("World global keys (" + sorted.Count + "): "
+            UtangardPlugin.Log.LogInfo("World global keys (" + sorted.Count + "): "
                 + (sorted.Count == 0 ? "(none)" : line.ToString()));
 
             LogRoster();
 
-            WitherPlugin.Log.LogInfo("Gate table:");
+            UtangardPlugin.Log.LogInfo("Gate table:");
             foreach (Heightmap.Biome biome in Gateable)
             {
-                string key = WitherConfig.RequiredKeyFor(biome);
+                string key = UtangardConfig.RequiredKeyFor(biome);
                 if (key == null)
                 {
-                    WitherPlugin.Log.LogInfo("  " + biome + ": ungated");
+                    UtangardPlugin.Log.LogInfo("  " + biome + ": ungated");
                     continue;
                 }
 
-                if (!WitherConfig.GateOnGroup.Value)
+                if (!UtangardConfig.GateOnGroup.Value)
                 {
                     // "not set" is the interesting case and it is ambiguous by nature: either
                     // the boss is alive, or the key name is wrong. Say so rather than
                     // reporting a typo as a closed gate.
-                    WitherPlugin.Log.LogInfo("  " + biome + ": needs '" + key + "' - "
+                    UtangardPlugin.Log.LogInfo("  " + biome + ": needs '" + key + "' - "
                         + (zone.GetGlobalKey(key)
                             ? "set, biome is open"
                             : "NOT set, biome withers"));
@@ -90,7 +90,7 @@ namespace Wither
                         ? " (roster empty; falling back to the world key)"
                         : ", still owed by " + blockedBy + clock);
 
-                WitherPlugin.Log.LogInfo("  " + biome + ": needs '" + key + "' - " + why);
+                UtangardPlugin.Log.LogInfo("  " + biome + ": needs '" + key + "' - " + why);
             }
         }
 
@@ -115,26 +115,26 @@ namespace Wither
         /// </summary>
         private static void LogRoster()
         {
-            if (!WitherConfig.GateOnGroup.Value)
+            if (!UtangardConfig.GateOnGroup.Value)
             {
-                WitherPlugin.Log.LogInfo("Gating on world keys; the group roster is not used.");
+                UtangardPlugin.Log.LogInfo("Gating on world keys; the group roster is not used.");
                 return;
             }
 
             List<Progression.RosterEntry> roster = Progression.Roster();
             if (roster.Count == 0)
             {
-                WitherPlugin.Log.LogInfo(
+                UtangardPlugin.Log.LogInfo(
                     "Roster is empty - falling back to world keys until somebody publishes. "
                     + "Expect this only on the first spawn after installing.");
                 return;
             }
 
-            WitherPlugin.Log.LogInfo("Roster (" + roster.Count + " within "
-                + WitherConfig.RosterDays.Value + " days):");
+            UtangardPlugin.Log.LogInfo("Roster (" + roster.Count + " within "
+                + UtangardConfig.RosterDays.Value + " days):");
 
             foreach (Progression.RosterEntry member in roster)
-                WitherPlugin.Log.LogInfo("  " + member.Name + " (id " + member.Id + ")");
+                UtangardPlugin.Log.LogInfo("  " + member.Name + " (id " + member.Id + ")");
         }
     }
 }

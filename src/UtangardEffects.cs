@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wither
+namespace Utangard
 {
     /// <summary>
     /// The icon you carry while the gate is closed on you. Pure signage - it modifies
@@ -11,7 +11,7 @@ namespace Wither
     /// once and then a mystery, and the tooltip is the only thing in the mod that can say
     /// which boss you are missing.
     /// </summary>
-    internal sealed class WitherMarker : StatusEffect
+    internal sealed class UtangardMarker : StatusEffect
     {
         /// <summary>
         /// Ends the moment the player leaves. The gate re-adds it every tick while inside,
@@ -85,14 +85,14 @@ namespace Wither
         /// </summary>
         public override void ModifyStaminaRegen(ref float staminaRegen)
         {
-            staminaRegen *= Mathf.Clamp01(WitherConfig.SappedStaminaRegen.Value);
+            staminaRegen *= Mathf.Clamp01(UtangardConfig.SappedStaminaRegen.Value);
         }
 
         private static float Ceiling()
         {
             // Never zero. A zero ttl means "no duration" to IsDone, which would make the
             // effect permanent - the opposite of what setting the ceiling to zero means.
-            return Mathf.Max(0.1f, WitherConfig.SappedMaxSeconds.Value);
+            return Mathf.Max(0.1f, UtangardConfig.SappedMaxSeconds.Value);
         }
     }
 }

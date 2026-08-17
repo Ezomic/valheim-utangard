@@ -1,4 +1,4 @@
-namespace Wither
+namespace Utangard
 {
     /// <summary>
     /// The one question the rest of the mod asks: is this player standing somewhere the
@@ -21,10 +21,10 @@ namespace Wither
         /// </summary>
         public static bool IsWithered(Player player)
         {
-            if (player == null || !WitherConfig.Enabled.Value) return false;
+            if (player == null || !UtangardConfig.Enabled.Value) return false;
             if (player != Player.m_localPlayer) return false;
 
-            string key = WitherConfig.RequiredKeyFor(player.GetCurrentBiome());
+            string key = UtangardConfig.RequiredKeyFor(player.GetCurrentBiome());
             if (key == null) return false;
 
             // No world yet means nothing to ask. Fail open: an unanswerable question must
@@ -32,7 +32,7 @@ namespace Wither
             ZoneSystem zone = ZoneSystem.instance;
             if (zone == null) return false;
 
-            if (!WitherConfig.GateOnGroup.Value) return !zone.GetGlobalKey(key);
+            if (!UtangardConfig.GateOnGroup.Value) return !zone.GetGlobalKey(key);
 
             return !Progression.GroupHasKey(key);
         }
@@ -45,9 +45,9 @@ namespace Wither
         /// </summary>
         public static string BlockersHere(Player player)
         {
-            if (player == null || !WitherConfig.GateOnGroup.Value) return null;
+            if (player == null || !UtangardConfig.GateOnGroup.Value) return null;
 
-            string key = WitherConfig.RequiredKeyFor(player.GetCurrentBiome());
+            string key = UtangardConfig.RequiredKeyFor(player.GetCurrentBiome());
             return key == null ? null : Progression.BlockersFor(key, excludeSelf: true);
         }
     }

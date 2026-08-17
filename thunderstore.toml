@@ -6,10 +6,10 @@ schemaVersion = "0.0.1"
 
 [package]
 namespace = "Ezomic"
-name = "Wither"
+name = "Utangard"
 versionNumber = "1.0.0"
 description = "Biomes nobody in your group has earned starve you: food burns away, buffs are refused, and the land leaves you sapped."
-websiteUrl = "https://github.com/Ezomic/valheim-wither"
+websiteUrl = "https://github.com/Ezomic/valheim-utangard"
 containsNsfwContent = false
 
 [package.dependencies]
@@ -21,8 +21,8 @@ readme = "./README.md"
 outdir = "./build"
 
 [[build.copy]]
-source = "./package/BepInEx/plugins/Wither"
-target = "plugins/Wither"
+source = "./package/BepInEx/plugins/Utangard"
+target = "plugins/Utangard"
 
 [publish]
 repository = "https://thunderstore.io"

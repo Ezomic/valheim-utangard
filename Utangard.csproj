@@ -2,14 +2,14 @@
 
   <PropertyGroup>
     <TargetFramework>net462</TargetFramework>
-    <AssemblyName>Wither</AssemblyName>
-    <RootNamespace>Wither</RootNamespace>
+    <AssemblyName>Utangard</AssemblyName>
+    <RootNamespace>Utangard</RootNamespace>
     <LangVersion>latest</LangVersion>
     <Version>1.0.0</Version>
     <Authors>Robbin Thijssen</Authors>
     <Company>Thijssen Software</Company>
-    <Product>Wither</Product>
-    <Description>A biome gate that starves you instead of walling you out.</Description>
+    <Product>Utangard</Product>
+    <Description>Outside the fence: a biome you have not earned will not sustain you.</Description>
     <Copyright>Copyright (c) 2026 Robbin Thijssen</Copyright>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
@@ -22,7 +22,7 @@
     <ManagedDir>$(ValheimDir)\valheim_Data\Managed</ManagedDir>
     <ProfileDir Condition="'$(ProfileDir)' == ''">$(MSBuildProjectDirectory)\testprofile</ProfileDir>
     <BepInExCore>$(ProfileDir)\BepInEx\core</BepInExCore>
-    <DeployDir>$(ProfileDir)\BepInEx\plugins\Wither</DeployDir>
+    <DeployDir>$(ProfileDir)\BepInEx\plugins\Utangard</DeployDir>
   </PropertyGroup>
 
   <ItemGroup>
@@ -46,7 +46,7 @@
          is never resolved on a machine without Core.
 
          Private=false does double duty. Core deploys its own DLL to plugins\Core, and a second
-         copy landing in plugins\Wither would be two assemblies sharing one BepInPlugin GUID,
+         copy landing in plugins\Utangard would be two assemblies sharing one BepInPlugin GUID,
          which is a plugin that silently does not load. It is also what makes standalone real:
          the reference contributes a compile-time assembly ref and ships nothing. -->
     <ProjectReference Include="..\core\Core.csproj">

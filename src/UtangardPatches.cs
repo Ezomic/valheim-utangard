@@ -1,12 +1,12 @@
 using HarmonyLib;
 
-namespace Wither
+namespace Utangard
 {
     /// <summary>
     /// Every patch the mod installs. Five of them, and each one is a single seam that the
     /// game funnels a whole category of behaviour through.
     /// </summary>
-    internal static class WitherPatches
+    internal static class UtangardPatches
     {
         /// <summary>
         /// The tick. Private in Player, which Harmony does not mind, so it is named by
@@ -21,7 +21,7 @@ namespace Wither
             // anything else starts calling it.
             if (forceUpdate) return;
 
-            WitherTick.Run(__instance, dt);
+            UtangardTick.Run(__instance, dt);
         }
 
         /// <summary>
@@ -52,14 +52,14 @@ namespace Wither
                 || item.m_shared.m_foodStamina > 0f
                 || item.m_shared.m_foodEitr > 0f;
 
-            if (isFood && WitherConfig.BlockEating.Value)
-                return Refuse(__instance, ref __result, WitherConfig.EatBlockedMessage.Value);
+            if (isFood && UtangardConfig.BlockEating.Value)
+                return Refuse(__instance, ref __result, UtangardConfig.EatBlockedMessage.Value);
 
             // A potion whose effect would be refused a moment later is a potion thrown away.
             // Stopping it here is the difference between a rule and a punishment.
-            if (WitherConfig.BlockNewBuffs.Value
+            if (UtangardConfig.BlockNewBuffs.Value
                 && BlockedEffects.IsBlocked(item.m_shared.m_consumeStatusEffect))
-                return Refuse(__instance, ref __result, WitherConfig.BuffBlockedMessage.Value);
+                return Refuse(__instance, ref __result, UtangardConfig.BuffBlockedMessage.Value);
 
             return true;
         }
@@ -89,14 +89,14 @@ namespace Wither
         private static bool OnAddStatusEffect(
             SEMan __instance, StatusEffect statusEffect, ref StatusEffect __result)
         {
-            if (!WitherConfig.BlockNewBuffs.Value) return true;
+            if (!UtangardConfig.BlockNewBuffs.Value) return true;
             if (statusEffect == null) return true;
             if (!BlockedEffects.IsBlocked(statusEffect)) return true;
 
             if (!BiomeGate.IsWithered(CharacterOf(__instance) as Player)) return true;
 
-            if (WitherConfig.Verbose.Value)
-                WitherPlugin.Log.LogInfo("Refused status effect " + statusEffect.name);
+            if (UtangardConfig.Verbose.Value)
+                UtangardPlugin.Log.LogInfo("Refused status effect " + statusEffect.name);
 
             __result = null;
             return false;
@@ -120,7 +120,7 @@ namespace Wither
         private static bool OnInternalAddStatusEffect(
             SEMan __instance, int nameHash, ref StatusEffect __result)
         {
-            if (!WitherConfig.BlockNewBuffs.Value) return true;
+            if (!UtangardConfig.BlockNewBuffs.Value) return true;
             if (!BlockedEffects.IsBlockedHash(nameHash)) return true;
             if (!BiomeGate.IsWithered(CharacterOf(__instance) as Player)) return true;
 
@@ -143,7 +143,7 @@ namespace Wither
         [HarmonyPatch(typeof(Player), nameof(Player.StartGuardianPower))]
         private static bool OnStartGuardianPower(Player __instance, ref bool __result)
         {
-            if (!WitherConfig.BlockNewBuffs.Value) return true;
+            if (!UtangardConfig.BlockNewBuffs.Value) return true;
             if (!BiomeGate.IsWithered(__instance)) return true;
 
             StatusEffect power = GuardianSeOf(__instance);
@@ -153,7 +153,7 @@ namespace Wither
             // here" when a guardian power was refused, which is the food refusal wearing the
             // wrong hat - the message was written before the buff one existed and did not
             // follow it when it arrived.
-            return Refuse(__instance, ref __result, WitherConfig.BuffBlockedMessage.Value);
+            return Refuse(__instance, ref __result, UtangardConfig.BuffBlockedMessage.Value);
         }
 
         private static readonly AccessTools.FieldRef<SEMan, Character> CharacterOf =
@@ -183,7 +183,7 @@ namespace Wither
         [HarmonyPatch(typeof(Character), "OnDeath")]
         private static void OnCharacterDeath(Character __instance)
         {
-            if (!WitherConfig.Enabled.Value || !WitherConfig.GateOnGroup.Value) return;
+            if (!UtangardConfig.Enabled.Value || !UtangardConfig.GateOnGroup.Value) return;
             if (__instance == null) return;
 
             Progression.CreditAttendees(
@@ -213,7 +213,7 @@ namespace Wither
         private static void RebuildFromObjectDb()
         {
             BlockedEffects.Rebuild();
-            WitherEffectsRegistry.Build();
+            UtangardEffectsRegistry.Build();
         }
 
         /// <summary>
@@ -227,7 +227,7 @@ namespace Wither
         private static void OnPlayerSpawned(Player __instance)
         {
             if (__instance != Player.m_localPlayer) return;
-            if (WitherConfig.LogGlobalKeys.Value) GlobalKeyDump.Log();
+            if (UtangardConfig.LogGlobalKeys.Value) GlobalKeyDump.Log();
 
             WarnIfGateIsUnenforceable();
         }
@@ -235,7 +235,7 @@ namespace Wither
         /// <summary>
         /// Say so, once, when the group gate is running somewhere it cannot be enforced.
         ///
-        /// Standalone Wither is fully functional and singleplayer needs nothing else, so the
+        /// Standalone Utangard is fully functional and singleplayer needs nothing else, so the
         /// standalone path is deliberately not an error. But a group gate on a server with no
         /// Core is the one combination that looks like it is working and is not: everyone who
         /// installed the mod is gated, anyone who did not is not gated at all, and nothing
@@ -247,17 +247,17 @@ namespace Wither
         /// </summary>
         private static void WarnIfGateIsUnenforceable()
         {
-            if (WitherPlugin.CorePresent) return;
-            if (!WitherConfig.GateOnGroup.Value) return;
+            if (UtangardPlugin.CorePresent) return;
+            if (!UtangardConfig.GateOnGroup.Value) return;
 
             // Peers, not IsServer: a listen host with nobody connected is still effectively
             // singleplayer, and a solo player has no roster to disagree with.
             ZNet net = ZNet.instance;
             if (net == null || net.GetPeerConnections() <= 0) return;
 
-            WitherPlugin.Log.LogWarning(
+            UtangardPlugin.Log.LogWarning(
                 "The group gate is on in a multiplayer session, but Core is not installed. "
-                + "Nothing can refuse a player who does not have Wither, so anyone without it "
+                + "Nothing can refuse a player who does not have Utangard, so anyone without it "
                 + "is not gated at all. Install Core on the server and every client to enforce "
                 + "it, or set GateOnGroup = false to gate on the world instead.");
         }

@@ -1,6 +1,10 @@
-# Wither
+# Utangard
 
 > **A biome you have not earned will not feed you.**
+
+*Utangards* is Old Norse for "outside the enclosure". The Norse divided the world into the
+fenced and settled ground, where a person has protection and hospitality, and everything
+beyond it. This mod puts every biome your group has not earned on the far side of that fence.
 
 Nothing stops you walking into the Swamp on day two. But while you are there, food burns down
 five times faster, you cannot eat or drink at all, and you leave **Sapped**: three quarters of
@@ -137,23 +141,23 @@ Single DLL, no asset bundle. Built for **BepInEx 5.4.23.3** on **net462**.
 
 1. Install [BepInExPack Valheim](https://thunderstore.io/c/valheim/p/denikson/BepInExPack_Valheim/)
    **5.4.2333**. It is the only required dependency.
-2. Drop `Wither.dll` into `BepInEx/plugins/`.
+2. Drop `Utangard.dll` into `BepInEx/plugins/`.
 3. Launch once. The config file is written to
-   `BepInEx/config/ezomic.valheim.wither.cfg`.
+   `BepInEx/config/ezomic.valheim.utangard.cfg`.
 
 **Everyone should install it, including the server.** The gate is enforced by each client on
 itself, so a player without the plugin is not gated by it.
 
 [Longhouse Core](https://github.com/Ezomic/valheim-core) is **optional**. Install it and the
-server refuses a client that does not have Wither at a matching version, and the host's gate
-settings are pushed to every client so nobody can disagree about the rules. Without Core, Wither
+server refuses a client that does not have Utangard at a matching version, and the host's gate
+settings are pushed to every client so nobody can disagree about the rules. Without Core, Utangard
 is fully functional (solo you need nothing else at all), but the gate becomes an agreement
-between players rather than a rule of the server. Wither says so loudly, once, in the log if it
+between players rather than a rule of the server. Utangard says so loudly, once, in the log if it
 finds the group gate running in multiplayer with no Core.
 
 ---
 
-## Why Wither exists
+## Why Utangard exists
 
 A particular kind of evening. Somebody has not killed The Elder yet and the Swamp trip is
 already being planned. Somebody else has been up a Mountain and come back with onion seeds, so
@@ -174,7 +178,7 @@ The usual mod answer is the opposite extreme: a hard boss gate that refuses to l
 the border at all. That fixes the pacing by deleting the thing worth having, which is the walk
 into somewhere you should not be.
 
-Wither sits between them. You can go anywhere, immediately, and nothing stops you at the edge.
+Utangard sits between them. You can go anywhere, immediately, and nothing stops you at the edge.
 The land just will not sustain you while you are there.
 
 ### Why three penalties and not one number
@@ -233,7 +237,7 @@ indefinitely. The gate should make you fetch your friend, not trap you behind th
 
 ## Configuration
 
-`BepInEx/config/ezomic.valheim.wither.cfg`. Every entry has a comment in the file explaining
+`BepInEx/config/ezomic.valheim.utangard.cfg`. Every entry has a comment in the file explaining
 the reasoning, not just the units.
 
 > **BepInEx writes this file on first run, and the saved value beats any new default in code.**
@@ -292,7 +296,7 @@ gate; it does not get to pick your phrasing or your log level.
 | Setting | Default | What it does |
 | --- | --- | --- |
 | `ShowStatusEffects` | `true` | Show the two effects on the HUD. |
-| `WitherIconFrom` | `Poison` | Vanilla effect whose icon the in-biome marker borrows. |
+| `MarkIconFrom` | `Poison` | Vanilla effect whose icon the in-biome marker borrows. |
 | `SappedIconFrom` | `Encumbered` | Vanilla effect whose icon Sapped borrows. |
 | `EnterMessage` | `Something here refuses you` | Shown once on entering. Blank to say nothing. |
 | `LeaveMessage` | `The land loosens its grip` | Shown once on leaving. |
@@ -359,7 +363,7 @@ owning client and nowhere else. Crediting "the local player" from it would credi
 member of a group that killed a boss together, and the gate would then stay shut forever while
 looking exactly like it was working.
 
-So Wither hooks `Character.OnDeath` and the owning client credits **everyone within
+So Utangard hooks `Character.OnDeath` and the owning client credits **everyone within
 `CreditRadius` of the corpse**, on the group's behalf. It can: global keys are world state,
 writable by anyone, and `Player.GetPlayersInRange` sees every player instantiated on that client,
 which at a boss fight is all of them. The radius is generous because the two failure modes
@@ -378,10 +382,10 @@ world.
 
 | Key | Meaning |
 | --- | --- |
-| `wither_seen_<characterId>` | Heartbeat. Value is `<day>\|<name>`: the day last seen, plus the name for the "waiting on" message. |
-| `wither_p_<characterId>_<bosskey>` | This character was present when that boss died. |
-| `wither_open_<bosskey>` | The group has cleared this boss. Latched once, never removed. |
-| `wither_first_<bosskey>` | Unix seconds when the catch-up clock started. Written once, never moved. |
+| `utangard_seen_<characterId>` | Heartbeat. Value is `<day>\|<name>`: the day last seen, plus the name for the "waiting on" message. |
+| `utangard_p_<characterId>_<bosskey>` | This character was present when that boss died. |
+| `utangard_open_<bosskey>` | The group has cleared this boss. Latched once, never removed. |
+| `utangard_first_<bosskey>` | Unix seconds when the catch-up clock started. Written once, never moved. |
 
 Writes always check first. `RPC_SetGlobalKey` ends in `SendGlobalKeys(Everybody)`, so accepting
 one key rebroadcasts the world's entire key list to every player. A publisher that did not
@@ -395,7 +399,7 @@ playing, which would make a 14-day window unmeasurable.
 
 ### Progress does not regress
 
-Once the whole roster has cleared a boss, `wither_open_<bosskey>` is latched and the question is
+Once the whole roster has cleared a boss, `utangard_open_<bosskey>` is latched and the question is
 never asked again. Without it the gate runs backwards: a friend joining with a fresh character
 decides nobody has done Eikthyr and shuts the Black Forest *for the people who killed him*.
 

@@ -4,7 +4,7 @@ using System.Text;
 using HarmonyLib;
 using UnityEngine;
 
-namespace Wither
+namespace Utangard
 {
     /// <summary>
     /// Who in the group has actually done which boss.
@@ -40,10 +40,10 @@ namespace Wither
         /// "this character has played here", with the day it was last seen as the value.
         /// One key per character, rewritten in place rather than accumulating.
         /// </summary>
-        private const string SeenPrefix = "wither_seen_";
+        private const string SeenPrefix = "utangard_seen_";
 
         /// <summary>"this character was present when that boss died".</summary>
-        private const string DonePrefix = "wither_p_";
+        private const string DonePrefix = "utangard_p_";
 
         /// <summary>
         /// "the group has already cleared this boss, and that does not come undone".
@@ -55,7 +55,7 @@ namespace Wither
         /// arrival, so the moment the whole roster has a boss it is written down and the
         /// question is never asked again.
         /// </summary>
-        private const string OpenPrefix = "wither_open_";
+        private const string OpenPrefix = "utangard_open_";
 
         /// <summary>
         /// "the clock on this boss started here", as unix seconds.
@@ -66,7 +66,7 @@ namespace Wither
         /// rewritten value growing the saved profile's known-keys dictionary, and a value
         /// that is only ever written once cannot do that.
         /// </summary>
-        private const string ClockPrefix = "wither_first_";
+        private const string ClockPrefix = "utangard_first_";
 
         /// <summary>
         /// Separates the last-seen day from the character name inside the seen key's value.
@@ -74,6 +74,55 @@ namespace Wither
         /// the same key because one key per character is the whole point of the layout.
         /// </summary>
         private const char ValueSeparator = '|';
+
+        /// <summary>
+        /// What these keys were called when the mod was named Wither.
+        ///
+        /// Read, never written. A world that ran the old name has every character's boss credit
+        /// and every latched biome recorded under the old prefix, and a rename that simply
+        /// stopped looking there would re-lock biomes the group had already earned and forget
+        /// who had done what - silently, and with no way back short of killing the bosses again.
+        ///
+        /// So every read falls back to the old spelling and every write uses the new one. A
+        /// world converts itself as people play: the first publish after the update writes the
+        /// new keys alongside the old, and once every member has been seen once the fallback
+        /// stops mattering. The old keys are deliberately not deleted - global keys are cheap,
+        /// and removing them would make downgrading lossy for no gain.
+        ///
+        /// Safe to delete this and Legacy() a version or two after the rename has settled.
+        /// </summary>
+        private const string NewPrefix = "utangard_";
+        private const string LegacyPrefix = "wither_";
+
+        /// <summary>The old spelling of the heartbeat, for the roster scan.</summary>
+        private static readonly string LegacySeenPrefix =
+            LegacyPrefix + SeenPrefix.Substring(NewPrefix.Length);
+
+        /// <summary>The pre-rename spelling of one of our keys, or null if it is not ours.</summary>
+        private static string Legacy(string key)
+        {
+            if (key == null || !key.StartsWith(NewPrefix, StringComparison.Ordinal)) return null;
+
+            return LegacyPrefix + key.Substring(NewPrefix.Length);
+        }
+
+        /// <summary>GetGlobalKey, but it also answers for keys written under the old name.</summary>
+        private static bool Has(ZoneSystem zone, string key)
+        {
+            if (zone.GetGlobalKey(key)) return true;
+
+            string old = Legacy(key);
+            return old != null && zone.GetGlobalKey(old);
+        }
+
+        /// <summary>GetGlobalKey with a value, falling back to the old name.</summary>
+        private static bool Has(ZoneSystem zone, string key, out string value)
+        {
+            if (zone.GetGlobalKey(key, out value)) return true;
+
+            string old = Legacy(key);
+            return old != null && zone.GetGlobalKey(old, out value);
+        }
 
         // m_uniques is private, and HaveUniqueKey is an exact match. Reading the set directly
         // allows a case-insensitive compare, so a config key typed as Defeated_Eikthyr still
@@ -125,18 +174,18 @@ namespace Wither
             string seenValue = Today() + ValueSeparator.ToString() + Sanitise(player.GetPlayerName());
 
             string current;
-            if (!zone.GetGlobalKey(seenKey, out current) || current != seenValue.ToLower())
+            if (!Has(zone, seenKey, out current) || current != seenValue.ToLower())
                 zone.SetGlobalKey(seenKey + " " + seenValue);
 
             // Everything below this line is the backfill, and it is the only path that grants
             // credit for a fight this mod did not watch. Off, the rule is exact: you were
             // there when it died, or you do not have it.
-            if (!WitherConfig.BackfillFromCharacter.Value) return;
+            if (!UtangardConfig.BackfillFromCharacter.Value) return;
 
             HashSet<string> uniques = UniquesOf(player);
             if (uniques == null) return;
 
-            foreach (string bossKey in WitherConfig.AllGateKeys())
+            foreach (string bossKey in UtangardConfig.AllGateKeys())
             {
                 LatchIfGroupCleared(zone, bossKey);
 
@@ -159,7 +208,7 @@ namespace Wither
                 if (!zone.GetGlobalKey(bossKey)) continue;
 
                 string doneKey = DoneKey(id, bossKey);
-                if (zone.GetGlobalKey(doneKey)) continue;
+                if (Has(zone, doneKey)) continue;
 
                 zone.SetGlobalKey(doneKey);
                 StartClock(zone, bossKey);
@@ -168,7 +217,7 @@ namespace Wither
                 // answer is stale the moment it lands.
                 InvalidateRoster();
 
-                WitherPlugin.Log.LogInfo(
+                UtangardPlugin.Log.LogInfo(
                     "Published " + player.GetPlayerName() + "'s credit for " + bossKey + ".");
             }
         }
@@ -210,13 +259,13 @@ namespace Wither
             // key in the world for every player and every creature type, for a gate that will
             // never ask about them. If the table later starts asking, PublishLocal picks it
             // up off m_uniques on the next spawn.
-            if (!WitherConfig.IsGateKey(bossKey)) return;
+            if (!UtangardConfig.IsGateKey(bossKey)) return;
 
             ZoneSystem zone = ZoneSystem.instance;
             if (zone == null) return;
 
             Attendees.Clear();
-            Player.GetPlayersInRange(where, WitherConfig.CreditRadius.Value, Attendees);
+            Player.GetPlayersInRange(where, UtangardConfig.CreditRadius.Value, Attendees);
 
             foreach (Player attendee in Attendees)
             {
@@ -226,13 +275,13 @@ namespace Wither
                 if (id == 0L) continue;
 
                 string doneKey = DoneKey(id, bossKey);
-                if (zone.GetGlobalKey(doneKey)) continue;
+                if (Has(zone, doneKey)) continue;
 
                 zone.SetGlobalKey(doneKey);
                 StartClock(zone, bossKey);
                 InvalidateRoster();
 
-                WitherPlugin.Log.LogInfo(
+                UtangardPlugin.Log.LogInfo(
                     "Credited " + attendee.GetPlayerName() + " for " + bossKey + " at the kill.");
             }
         }
@@ -259,8 +308,8 @@ namespace Wither
 
             // Cleared once is cleared for good. Checked first because it is one lookup and
             // because it is the answer whenever it is present.
-            if (WitherConfig.GateNeverRegresses.Value
-                && zone.GetGlobalKey(OpenKey(bossKey))) return true;
+            if (UtangardConfig.GateNeverRegresses.Value
+                && Has(zone, OpenKey(bossKey))) return true;
 
             // The deadline. Once it has run out the biome opens whether the stragglers turned
             // up or not - it limits how long the rest of the group may take, rather than
@@ -275,7 +324,7 @@ namespace Wither
                 if (!Counts(roster[i], bossKey)) continue;
                 anyCounted = true;
 
-                if (!zone.GetGlobalKey(DoneKey(roster[i].Id, bossKey))) return false;
+                if (!Has(zone, DoneKey(roster[i].Id, bossKey))) return false;
             }
 
             // Nobody in the window is the same situation as an empty roster: there is no group
@@ -292,7 +341,7 @@ namespace Wither
         /// </summary>
         private static bool Counts(RosterEntry member, string bossKey)
         {
-            long window = (long)Math.Max(1f, WitherConfig.RosterDaysFor(bossKey));
+            long window = (long)Math.Max(1f, UtangardConfig.RosterDaysFor(bossKey));
             return Today() - member.LastSeenDay <= window;
         }
 
@@ -307,10 +356,10 @@ namespace Wither
         private static void StartClock(ZoneSystem zone, string bossKey)
         {
             string key = ClockPrefix + bossKey.ToLowerInvariant();
-            if (zone.GetGlobalKey(key)) return;
+            if (Has(zone, key)) return;
 
             zone.SetGlobalKey(key + " " + Now());
-            WitherPlugin.Log.LogInfo("The clock on " + bossKey + " has started.");
+            UtangardPlugin.Log.LogInfo("The clock on " + bossKey + " has started.");
         }
 
         /// <summary>Seconds the group still has, or -1 when there is no deadline running.</summary>
@@ -319,11 +368,11 @@ namespace Wither
             ZoneSystem zone = ZoneSystem.instance;
             if (zone == null) return -1L;
 
-            float days = WitherConfig.CatchUpDaysFor(bossKey);
+            float days = UtangardConfig.CatchUpDaysFor(bossKey);
             if (days <= 0f) return -1L;
 
             string value;
-            if (!zone.GetGlobalKey(ClockPrefix + bossKey.ToLowerInvariant(), out value)) return -1L;
+            if (!Has(zone, ClockPrefix + bossKey.ToLowerInvariant(), out value)) return -1L;
 
             long started;
             if (!long.TryParse(value, out started)) return -1L;
@@ -333,11 +382,11 @@ namespace Wither
 
         private static bool DeadlinePassed(ZoneSystem zone, string bossKey)
         {
-            float days = WitherConfig.CatchUpDaysFor(bossKey);
+            float days = UtangardConfig.CatchUpDaysFor(bossKey);
             if (days <= 0f) return false;
 
             string value;
-            if (!zone.GetGlobalKey(ClockPrefix + bossKey.ToLowerInvariant(), out value)) return false;
+            if (!Has(zone, ClockPrefix + bossKey.ToLowerInvariant(), out value)) return false;
 
             long started;
             if (!long.TryParse(value, out started)) return false;
@@ -365,10 +414,10 @@ namespace Wither
         /// </summary>
         private static void LatchIfGroupCleared(ZoneSystem zone, string bossKey)
         {
-            if (!WitherConfig.GateNeverRegresses.Value) return;
+            if (!UtangardConfig.GateNeverRegresses.Value) return;
 
             string openKey = OpenKey(bossKey);
-            if (zone.GetGlobalKey(openKey)) return;
+            if (Has(zone, openKey)) return;
 
             // A deadline that has run out latches too, and that is not a detail. Without it a
             // biome opened by the deadline stays open only for as long as the deadline check
@@ -388,7 +437,7 @@ namespace Wither
                     if (!Counts(roster[i], bossKey)) continue;
                     anyCounted = true;
 
-                    if (!zone.GetGlobalKey(DoneKey(roster[i].Id, bossKey))) return;
+                    if (!Has(zone, DoneKey(roster[i].Id, bossKey))) return;
                 }
 
                 // Nobody in the window is not a cleared group, it is an unanswered question.
@@ -399,7 +448,7 @@ namespace Wither
             zone.SetGlobalKey(openKey);
             InvalidateRoster();
 
-            WitherPlugin.Log.LogInfo(why
+            UtangardPlugin.Log.LogInfo(why
                 ? "The deadline on " + bossKey + " has run out; that biome is open for good."
                 : "The group has cleared " + bossKey + "; that biome is open for good.");
         }
@@ -499,16 +548,21 @@ namespace Wither
             ZoneSystem zone = ZoneSystem.instance;
             if (zone == null) return roster;
 
-            HashSet<string> excluded = WitherConfig.ExcludedPlayerIds;
+            HashSet<string> excluded = UtangardConfig.ExcludedPlayerIds;
 
             // m_globalKeysValues is public, and is the only place the values live -
             // m_globalKeys holds "key value" as one flattened string, which would have to be
             // re-split to be useful.
             foreach (KeyValuePair<string, string> pair in zone.m_globalKeysValues)
             {
-                if (!pair.Key.StartsWith(SeenPrefix, StringComparison.Ordinal)) continue;
+                string prefix = pair.Key.StartsWith(SeenPrefix, StringComparison.Ordinal)
+                    ? SeenPrefix
+                    : (pair.Key.StartsWith(LegacySeenPrefix, StringComparison.Ordinal)
+                        ? LegacySeenPrefix
+                        : null);
+                if (prefix == null) continue;
 
-                string idText = pair.Key.Substring(SeenPrefix.Length);
+                string idText = pair.Key.Substring(prefix.Length);
                 if (excluded.Contains(idText)) continue;
 
                 long id;
@@ -517,6 +571,26 @@ namespace Wither
                 long lastSeen;
                 string name;
                 if (!ParseSeenValue(pair.Value, out lastSeen, out name)) continue;
+
+                // One entry per character, not one per key. A world part way through the
+                // rename carries both spellings of the same heartbeat, and counting a player
+                // twice would mean the gate waits for them twice - and the "still owed by"
+                // line would name them twice, which is how it would first be noticed.
+                //
+                // The newer sighting wins, so the old key cannot drag someone's last-seen day
+                // backwards and drop them off the roster while they are actually playing.
+                int existing = roster.FindIndex(e => e.Id == id);
+                if (existing >= 0)
+                {
+                    if (lastSeen > roster[existing].LastSeenDay)
+                        roster[existing] = new RosterEntry
+                        {
+                            Id = id,
+                            Name = string.IsNullOrEmpty(name) ? idText : name,
+                            LastSeenDay = lastSeen
+                        };
+                    continue;
+                }
 
                 // Everyone ever seen is kept here; the staleness window is applied per boss at
                 // query time, because RosterDays can now differ per boss and one cached list

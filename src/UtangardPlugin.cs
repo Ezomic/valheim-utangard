@@ -5,10 +5,10 @@ using BepInEx.Logging;
 using Ezomic.Core;
 using HarmonyLib;
 
-namespace Wither
+namespace Utangard
 {
     /// <summary>
-    /// Wither. A biome you have not earned will not feed you.
+    /// Utangard. A biome you have not earned will not feed you.
     ///
     /// The gameplay is still client-side - food timers and status effects belong to the
     /// owning client, and nothing here reaches into another player's character. But the
@@ -23,14 +23,14 @@ namespace Wither
     /// RPC_PeerInfo - so this has to load there to be enforced at all.
     /// </summary>
     [BepInPlugin(PluginGuid, PluginName, PluginVersion)]
-    // Soft, not hard. Wither has to be installable on its own, because it is worth wanting on
+    // Soft, not hard. Utangard has to be installable on its own, because it is worth wanting on
     // its own and a stranger should not have to install two mods to get one. Soft still buys
     // the load-order guarantee when Core is present, which is all that registering needs.
     [BepInDependency(CoreGuid, BepInDependency.DependencyFlags.SoftDependency)]
-    public class WitherPlugin : BaseUnityPlugin
+    public class UtangardPlugin : BaseUnityPlugin
     {
-        public const string PluginGuid = "ezomic.valheim.wither";
-        public const string PluginName = "Wither";
+        public const string PluginGuid = "ezomic.valheim.utangard";
+        public const string PluginName = "Utangard";
         public const string PluginVersion = "1.0.0";
         public const string PluginAuthor = "Robbin Thijssen";
 
@@ -50,12 +50,12 @@ namespace Wither
         private void Awake()
         {
             Log = Logger;
-            WitherConfig.Bind(Config);
+            UtangardConfig.Bind(Config);
 
             TryRegisterWithCore();
 
             _harmony = new Harmony(PluginGuid);
-            _harmony.PatchAll(typeof(WitherPatches));
+            _harmony.PatchAll(typeof(UtangardPatches));
 
             Log.LogInfo(PluginName + " " + PluginVersion + " by " + PluginAuthor + " - ready.");
         }
@@ -64,12 +64,12 @@ namespace Wither
         /// Joins Core's version gate when Core is installed, and does nothing when it is not.
         ///
         /// What is lost standing alone is worth naming exactly, because it is not the mod. All
-        /// of Wither runs without Core: the drain, the refusal and Sapped are local patches,
+        /// of Utangard runs without Core: the drain, the refusal and Sapped are local patches,
         /// and the group gate travels over vanilla global keys, which every client already
         /// replicates. Singleplayer is unaffected in every respect.
         ///
         /// What is lost is the *enforcement*. Core is what refuses a client that does not have
-        /// Wither, and without that refusal a player without the mod is not gated at all - they
+        /// Utangard, and without that refusal a player without the mod is not gated at all - they
         /// walk into the Ashlands on day one while everyone else waits on the roster. The gate
         /// becomes an agreement between players rather than a rule of the server. That is a
         /// real loss and a legitimate choice; it is the server owner's to make, not this
@@ -109,27 +109,27 @@ namespace Wither
             // somebody else, and syncing the diagnostics would turn a debug flag into a
             // server-wide one.
             Suite.Sync(
-                WitherConfig.Enabled,
-                WitherConfig.GateOnGroup,
-                WitherConfig.GateNeverRegresses,
-                WitherConfig.BackfillFromCharacter,
-                WitherConfig.RosterDays,
-                WitherConfig.RosterDaysPerBoss,
-                WitherConfig.CatchUpDays,
-                WitherConfig.CatchUpDaysPerBoss,
-                WitherConfig.CreditRadius,
-                WitherConfig.ExcludePlayerIds,
-                WitherConfig.FoodDrainMultiplier,
-                WitherConfig.BlockEating,
-                WitherConfig.BuffDrainMultiplier,
-                WitherConfig.BlockNewBuffs,
-                WitherConfig.BlockRested,
-                WitherConfig.AlsoBlock,
-                WitherConfig.NeverBlock,
-                WitherConfig.SappedStaminaRegen,
-                WitherConfig.SappedMaxSeconds);
+                UtangardConfig.Enabled,
+                UtangardConfig.GateOnGroup,
+                UtangardConfig.GateNeverRegresses,
+                UtangardConfig.BackfillFromCharacter,
+                UtangardConfig.RosterDays,
+                UtangardConfig.RosterDaysPerBoss,
+                UtangardConfig.CatchUpDays,
+                UtangardConfig.CatchUpDaysPerBoss,
+                UtangardConfig.CreditRadius,
+                UtangardConfig.ExcludePlayerIds,
+                UtangardConfig.FoodDrainMultiplier,
+                UtangardConfig.BlockEating,
+                UtangardConfig.BuffDrainMultiplier,
+                UtangardConfig.BlockNewBuffs,
+                UtangardConfig.BlockRested,
+                UtangardConfig.AlsoBlock,
+                UtangardConfig.NeverBlock,
+                UtangardConfig.SappedStaminaRegen,
+                UtangardConfig.SappedMaxSeconds);
 
-            Suite.Sync(WitherConfig.GateKeyEntries());
+            Suite.Sync(UtangardConfig.GateKeyEntries());
         }
 
         private void OnDestroy()

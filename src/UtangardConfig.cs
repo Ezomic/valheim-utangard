@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using BepInEx.Configuration;
 
-namespace Wither
+namespace Utangard
 {
     /// <summary>
     /// Every knob the mod has.
@@ -19,7 +19,7 @@ namespace Wither
     /// variations are all table edits: point every biome at one key for a single-boss gate,
     /// blank a row to let a biome through, or point a row at a key some other mod sets.
     /// </summary>
-    internal static class WitherConfig
+    internal static class UtangardConfig
     {
         private const string SecGate = "Gate";
         private const string SecFood = "Food";
@@ -65,7 +65,7 @@ namespace Wither
         public static ConfigEntry<float> SappedMaxSeconds;
 
         public static ConfigEntry<bool> ShowStatusEffects;
-        public static ConfigEntry<string> WitherIconFrom;
+        public static ConfigEntry<string> MarkIconFrom;
         public static ConfigEntry<string> SappedIconFrom;
         public static ConfigEntry<string> EnterMessage;
         public static ConfigEntry<string> LeaveMessage;
@@ -288,7 +288,7 @@ namespace Wither
             // effects exist and do their work but never appear. Borrowing a vanilla sprite
             // costs nothing and matches the art by construction; a hand-drawn png is the
             // obvious upgrade and is one field away.
-            WitherIconFrom = config.Bind(SecShow, "WitherIconFrom", "Poison",
+            MarkIconFrom = config.Bind(SecShow, "MarkIconFrom", "Poison",
                 "Name of the vanilla status effect whose icon the in-biome marker borrows.");
 
             SappedIconFrom = config.Bind(SecShow, "SappedIconFrom", "Encumbered",

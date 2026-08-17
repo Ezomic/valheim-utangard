@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using HarmonyLib;
 using UnityEngine;
 
-namespace Wither
+namespace Utangard
 {
     /// <summary>
     /// The per-tick half of the mod: the drains, and the effects that carry them.
@@ -14,7 +14,7 @@ namespace Wither
     /// someone would be a bug. And it comes with the dt the rest of the game is using, so
     /// there is no second clock to keep in step.
     /// </summary>
-    internal static class WitherTick
+    internal static class UtangardTick
     {
         private static readonly AccessTools.FieldRef<Player, List<Player.Food>> FoodsOf =
             AccessTools.FieldRefAccess<Player, List<Player.Food>>("m_foods");
@@ -62,7 +62,7 @@ namespace Wither
                 _publishTimer = PublishInterval;   // publish immediately for a new character
             }
 
-            if (WitherConfig.GateOnGroup.Value)
+            if (UtangardConfig.GateOnGroup.Value)
             {
                 _publishTimer += dt;
                 if (_publishTimer >= PublishInterval)
@@ -82,7 +82,7 @@ namespace Wither
 
             if (!withered) return;
 
-            WitherEffectsRegistry.Ensure(player);
+            UtangardEffectsRegistry.Ensure(player);
             DrainFood(player, dt);
             DrainBuffs(player, dt);
         }
@@ -99,7 +99,7 @@ namespace Wither
         /// </summary>
         private static void DrainFood(Player player, float dt)
         {
-            float extra = (WitherConfig.FoodDrainMultiplier.Value - 1f) * dt;
+            float extra = (UtangardConfig.FoodDrainMultiplier.Value - 1f) * dt;
             if (extra <= 0f) return;
 
             List<Player.Food> foods = FoodsOf(player);
@@ -122,7 +122,7 @@ namespace Wither
         /// </summary>
         private static void DrainBuffs(Player player, float dt)
         {
-            float extra = (WitherConfig.BuffDrainMultiplier.Value - 1f) * dt;
+            float extra = (UtangardConfig.BuffDrainMultiplier.Value - 1f) * dt;
             if (extra <= 0f) return;
 
             SEMan seman = player.GetSEMan();
@@ -142,8 +142,8 @@ namespace Wither
         private static void Announce(Player player, bool withered)
         {
             string message = withered
-                ? WitherConfig.EnterMessage.Value
-                : WitherConfig.LeaveMessage.Value;
+                ? UtangardConfig.EnterMessage.Value
+                : UtangardConfig.LeaveMessage.Value;
 
             // Naming who is missing is not decoration. Under a group gate the honest question
             // a player asks is "why is this still shut when I killed it", and without an
@@ -154,14 +154,14 @@ namespace Wither
             // Localization.Localize, and an unregistered token renders as the raw word
             // rather than as anything a player would want to read.
             if (withered && !string.IsNullOrEmpty(blockedBy)
-                && WitherConfig.NameTheBlockers.Value)
+                && UtangardConfig.NameTheBlockers.Value)
             {
-                message = message + "\n" + WitherConfig.BlockedByPrefix.Value + " " + blockedBy;
+                message = message + "\n" + UtangardConfig.BlockedByPrefix.Value + " " + blockedBy;
 
                 // A deadline nobody can see is not pressure, it is a surprise. Shown with the
                 // names, because "who" and "how long" are the same question to a player
                 // deciding whether to go and fetch somebody.
-                string key = WitherConfig.RequiredKeyFor(player.GetCurrentBiome());
+                string key = UtangardConfig.RequiredKeyFor(player.GetCurrentBiome());
                 long left = key == null ? -1L : Progression.SecondsLeft(key);
                 if (left >= 0L) message = message + " (" + GlobalKeyDump.Describe(left) + " left)";
             }
@@ -169,8 +169,8 @@ namespace Wither
             if (!string.IsNullOrEmpty(message))
                 player.Message(MessageHud.MessageType.Center, message);
 
-            if (WitherConfig.Verbose.Value)
-                WitherPlugin.Log.LogInfo(
+            if (UtangardConfig.Verbose.Value)
+                UtangardPlugin.Log.LogInfo(
                     (withered ? "Gate closed in " : "Gate opened in ") + player.GetCurrentBiome()
                     + (string.IsNullOrEmpty(blockedBy) ? "" : " - waiting on " + blockedBy));
         }

@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
 
-namespace Wither
+namespace Utangard
 {
     /// <summary>
     /// Decides what counts as a buff.
@@ -68,7 +68,7 @@ namespace Wither
             // 3. Rested and Resting. These are not potions and have no prefix in common with
             //    anything, so they can only be named. They are also the difference between a
             //    harsh mod and a brutal one, hence the switch.
-            if (WitherConfig.BlockRested.Value)
+            if (UtangardConfig.BlockRested.Value)
             {
                 Blocked.Add(SEMan.s_statusEffectRested);
                 Blocked.Add(SEMan.s_statusEffectResting);
@@ -76,21 +76,21 @@ namespace Wither
 
             // 4. Whatever the config adds, then whatever it takes back out. Exemptions run
             //    last so NeverBlock beats every rule above it, including its own AlsoBlock.
-            foreach (string name in WitherConfig.AlsoBlockNames)
+            foreach (string name in UtangardConfig.AlsoBlockNames)
                 Blocked.Add(name.GetStableHashCode());
 
-            foreach (string name in WitherConfig.NeverBlockNames)
+            foreach (string name in UtangardConfig.NeverBlockNames)
                 Blocked.Remove(name.GetStableHashCode());
 
             _built = true;
 
-            WitherPlugin.Log.LogInfo("Buff set rebuilt: " + Blocked.Count + " status effects.");
-            if (WitherConfig.LogBlockedEffects.Value) LogNames(db);
+            UtangardPlugin.Log.LogInfo("Buff set rebuilt: " + Blocked.Count + " status effects.");
+            if (UtangardConfig.LogBlockedEffects.Value) LogNames(db);
         }
 
         private static void Add(StatusEffect effect)
         {
-            if (WitherConfig.NeverBlockNames.Contains(effect.name)) return;
+            if (UtangardConfig.NeverBlockNames.Contains(effect.name)) return;
             Blocked.Add(effect.NameHash());
         }
 
@@ -104,7 +104,7 @@ namespace Wither
         public static bool IsBlocked(StatusEffect effect)
         {
             if (!_built || effect == null) return false;
-            if (effect is WitherMarker || effect is SappedEffect) return false;
+            if (effect is UtangardMarker || effect is SappedEffect) return false;
             return Blocked.Contains(effect.NameHash());
         }
 
@@ -116,8 +116,8 @@ namespace Wither
         public static bool IsBlockedHash(int nameHash)
         {
             if (!_built) return false;
-            if (nameHash == WitherEffectsRegistry.MarkerHash) return false;
-            if (nameHash == WitherEffectsRegistry.SappedHash) return false;
+            if (nameHash == UtangardEffectsRegistry.MarkerHash) return false;
+            if (nameHash == UtangardEffectsRegistry.SappedHash) return false;
             return Blocked.Contains(nameHash);
         }
 
@@ -140,10 +140,10 @@ namespace Wither
             caught.Sort();
             passed.Sort();
 
-            WitherPlugin.Log.LogInfo("Treated as buffs (blocked and drained):");
-            WitherPlugin.Log.LogInfo("  " + Join(caught));
-            WitherPlugin.Log.LogInfo("Left alone:");
-            WitherPlugin.Log.LogInfo("  " + Join(passed));
+            UtangardPlugin.Log.LogInfo("Treated as buffs (blocked and drained):");
+            UtangardPlugin.Log.LogInfo("  " + Join(caught));
+            UtangardPlugin.Log.LogInfo("Left alone:");
+            UtangardPlugin.Log.LogInfo("  " + Join(passed));
         }
 
         private static string Join(List<string> names)

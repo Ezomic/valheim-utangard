@@ -1,6 +1,6 @@
 # Changelog
 
-Notable changes to Wither. Format follows [Keep a Changelog](https://keepachangelog.com),
+Notable changes to Utangard. Format follows [Keep a Changelog](https://keepachangelog.com),
 and the mod uses [semantic versioning](https://semver.org).
 
 ## [1.0.0] - 2026-08-16
@@ -9,7 +9,7 @@ First release. Played, not merely built.
 
 ### Core is optional
 
-Wither installs and runs on its own. Core is a **soft** dependency: present, it is used exactly
+Utangard installs and runs on its own. Core is a **soft** dependency: present, it is used exactly
 as before; absent, the mod is fully functional without it.
 
 Nothing about the gameplay needed Core. The drain, the refusal and Sapped are local patches,
@@ -17,7 +17,7 @@ and the group gate travels over vanilla global keys, which every client replicat
 Singleplayer is unaffected in every respect.
 
 What Core buys is **enforcement**, and that is the whole of what standalone gives up. Core is
-what refuses a client that does not have Wither; without it, a player who skips the mod is not
+what refuses a client that does not have Utangard; without it, a player who skips the mod is not
 gated at all and walks into the Ashlands on day one while everyone else waits on the roster.
 The gate becomes an agreement between players rather than a rule of the server.
 
@@ -33,8 +33,8 @@ than decorative. The JIT resolves the assemblies a method needs when it first co
 method, so a `Suite` call sitting directly in `Awake` would drag `Ezomic.Core` in *before* the
 check could prevent it, and the missing-assembly exception would land during plugin load.
 
-Core is not listed in `manifest.json`, so installing Wither does not install Core with it.
-Confirmed in game: Wither loads alone, logs that it is running standalone, and the whole gate
+Core is not listed in `manifest.json`, so installing Utangard does not install Core with it.
+Confirmed in game: Utangard loads alone, logs that it is running standalone, and the whole gate
 works without Core present.
 
 ### The group gate, finished
@@ -105,7 +105,7 @@ out-healed, which is why the Plains stops being frightening ten minutes after it
 usual mod answer is a hard boss gate that refuses to let you across the border, which fixes
 the pacing by deleting the thing worth having: the walk into somewhere you should not be.
 
-Wither sits between them. You can go anywhere, immediately, and nothing stops you at the
+Utangard sits between them. You can go anywhere, immediately, and nothing stops you at the
 edge. The land just will not sustain you while you are there.
 
 ### The three parts

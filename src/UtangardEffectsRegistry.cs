@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wither
+namespace Utangard
 {
     /// <summary>
     /// Builds and hands out the two status effect prototypes.
@@ -10,7 +10,7 @@ namespace Wither
     /// (MemberwiseClone, in AddStatusEffect) and never looks the prototype up in ObjectDB,
     /// so there is nothing to register - the effects only have to exist.
     /// </summary>
-    internal static class WitherEffectsRegistry
+    internal static class UtangardEffectsRegistry
     {
         /// <summary>
         /// Prefab-style names, because NameHash is taken from them and SEMan keys on that
@@ -22,7 +22,7 @@ namespace Wither
         public static readonly int MarkerHash = MarkerName.GetStableHashCode();
         public static readonly int SappedHash = SappedName.GetStableHashCode();
 
-        private static WitherMarker _marker;
+        private static UtangardMarker _marker;
         private static SappedEffect _sapped;
 
         private static Sprite _markerIcon;
@@ -37,7 +37,7 @@ namespace Wither
         {
             if (_marker == null)
             {
-                _marker = ScriptableObject.CreateInstance<WitherMarker>();
+                _marker = ScriptableObject.CreateInstance<UtangardMarker>();
                 _marker.name = MarkerName;
                 _marker.m_name = "Denied";
                 _marker.m_tooltip =
@@ -60,8 +60,8 @@ namespace Wither
                 _sapped.hideFlags = HideFlags.HideAndDontSave;
             }
 
-            _markerIcon = BorrowIcon(WitherConfig.WitherIconFrom.Value);
-            _sappedIcon = BorrowIcon(WitherConfig.SappedIconFrom.Value);
+            _markerIcon = BorrowIcon(UtangardConfig.MarkIconFrom.Value);
+            _sappedIcon = BorrowIcon(UtangardConfig.SappedIconFrom.Value);
         }
 
         /// <summary>
@@ -78,7 +78,7 @@ namespace Wither
             SEMan seman = player.GetSEMan();
             if (seman == null) return;
 
-            bool show = WitherConfig.ShowStatusEffects.Value;
+            bool show = UtangardConfig.ShowStatusEffects.Value;
 
             // The marker is signage and nothing else, so when signage is off it does not
             // need to exist at all. Sapped is a mechanic and is applied either way.
@@ -121,7 +121,7 @@ namespace Wither
                 if (effect != null && effect.name == donorName)
                 {
                     if (effect.m_icon == null)
-                        WitherPlugin.Log.LogWarning(
+                        UtangardPlugin.Log.LogWarning(
                             "Icon donor '" + donorName + "' exists but has no sprite.");
                     return effect.m_icon;
                 }
@@ -137,7 +137,7 @@ namespace Wither
             // completely false "your icons are broken" on every single launch. Measured on
             // the first run: the stub reported 2 status effects, the real one 92.
             if (db.m_items.Count > 0)
-                WitherPlugin.Log.LogWarning(
+                UtangardPlugin.Log.LogWarning(
                     "Icon donor '" + donorName + "' not found in ObjectDB - that effect will "
                     + "be invisible on the HUD. Turn on Diagnostics.LogBlockedEffects for "
                     + "names.");
