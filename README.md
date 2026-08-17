@@ -60,11 +60,16 @@ This is a rule for a group that all runs it, not an anti-cheat. If you want that
 - **Joining late does not undo anything.** Once the group has cleared a boss, that biome is
   open **permanently**. A friend arriving with a fresh character gates only what the group has
   *not* yet cleared.
-- **Stopping playing stops blocking.** A character drops off the roster after **14 days**
-  without logging in. No admin command, no list to maintain.
-- **There is a catch-up deadline.** Once the first person clears a boss, the rest of the group
-  has a set number of days before the biome opens regardless: one day for Eikthyr, and one
-  more for each boss after. A single person who vanishes cannot hold a biome shut for weeks.
+- **A deadline opens the biome anyway.** Once the first person clears a boss, the rest of the
+  group has a set number of days before it opens regardless: one day for Eikthyr, and one more
+  for each boss after. This is what stops one person who vanishes holding a biome shut, and it
+  is usually what unblocks you.
+- **The roster forgets people who stop playing.** A character stops counting for a boss after
+  **14 days** without logging in. This is what decides who "everyone" means, so a friend who
+  visited for one evening, or an alt made once, cannot hold the gate forever. No admin command
+  and no list to maintain. With the default deadlines above this rarely decides anything on its
+  own, but it is the only backstop if you clear the deadlines or point a biome at a boss that
+  has none.
 - **Existing worlds and characters are handled.** Installing on a long-running save does not
   re-lock everything: a character is credited for a boss its own file says it attended, as long
   as that boss has **already died in this world**.
@@ -368,7 +373,8 @@ mod lives. It is the backfill, not the live path.
 ### The key layout
 
 `m_uniques` is local and nothing replicates it, so each client republishes its own record into
-the world's **global keys**, which are broadcast to every client on connect and saved with the world.
+the world's **global keys**, which are broadcast to every client on connect and saved with the
+world.
 
 | Key | Meaning |
 | --- | --- |

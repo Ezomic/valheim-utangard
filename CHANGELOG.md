@@ -3,9 +3,11 @@
 Notable changes to Wither. Format follows [Keep a Changelog](https://keepachangelog.com),
 and the mod uses [semantic versioning](https://semver.org).
 
-## [Unreleased]
+## [1.0.0] - 2026-08-16
 
-### Core is now optional
+First release. Played, not merely built.
+
+### Core is optional
 
 Wither installs and runs on its own. Core is a **soft** dependency: present, it is used exactly
 as before; absent, the mod is fully functional without it.
@@ -20,23 +22,20 @@ gated at all and walks into the Ashlands on day one while everyone else waits on
 The gate becomes an agreement between players rather than a rule of the server.
 
 That is a real trade and it belongs to whoever runs the server, so the mod logs it rather than
-refusing to run — and it says so **loudly**, once, on spawn, when it finds the group gate
+refusing to run, and it says so **loudly**, once, on spawn, when it finds the group gate
 enabled in a multiplayer session with no Core. That combination is the one that looks like it
 is working and is not, and failing silently there is the worst of the options.
 
-Mechanically: `[BepInDependency]` is now `SoftDependency`, every `Suite` call sits behind a
+Mechanically: `[BepInDependency]` is `SoftDependency`, every `Suite` call sits behind a
 `Chainloader.PluginInfos` check inside a `[MethodImpl(MethodImplOptions.NoInlining)]` method,
 and the project reference to Core is compile-time only. The no-inlining is load-bearing rather
-than decorative — the JIT resolves the assemblies a method needs when it first compiles that
+than decorative. The JIT resolves the assemblies a method needs when it first compiles that
 method, so a `Suite` call sitting directly in `Awake` would drag `Ezomic.Core` in *before* the
 check could prevent it, and the missing-assembly exception would land during plugin load.
 
-Core is no longer listed in `manifest.json`. Installing Wither from Thunderstore no longer
-installs Core with it; suite users install Core themselves, exactly as before.
-
-## [1.0.0] — 2026-08-16
-
-First release. Played, not merely built.
+Core is not listed in `manifest.json`, so installing Wither does not install Core with it.
+Confirmed in game: Wither loads alone, logs that it is running standalone, and the whole gate
+works without Core present.
 
 ### The group gate, finished
 
@@ -44,8 +43,8 @@ First release. Played, not merely built.
 
 - **Credit is earned at the kill, by everyone present.** The owning client credits every
   player within `CreditRadius` (100 m) of the corpse. It had to be done that way:
-  `Character.OnDeath` looks like it runs on every client that had the boss loaded — it pushes
-  vanilla's key above an `IsOwner` early-return — but that guard is unreachable, because
+  `Character.OnDeath` looks like it runs on every client that had the boss loaded, since it
+  pushes vanilla's key above an `IsOwner` early-return. But that guard is unreachable, because
   `CheckDeath` is its only caller and sits inside `if (zDO.IsOwner())`. Crediting "the local
   player" would have credited exactly one member of a group that killed a boss together, and
   the gate would then have jammed shut while looking like it worked.
@@ -64,14 +63,14 @@ First release. Played, not merely built.
 ### Fixed
 
 - A refused meal or potion is no longer destroyed. `Player.ConsumeItem` removes the item
-  regardless of what `EatFood` returns, so the refusal had to move to `CanConsumeItem` — the
+  regardless of what `EatFood` returns, so the refusal had to move to `CanConsumeItem`, the
   gate that path actually respects.
 - Refusing a guardian power no longer burns its cooldown; `StartGuardianPower` sets the
   cooldown before applying the effect.
 - `Rested` can no longer be topped up past the drain. `SEMan` refreshes a running effect
   through `Internal_AddStatusEffect` without ever reaching the public overload.
 - `Puke` is no longer treated as a buff. An item applies it on consume, so the potion rule
-  swept up a debuff — which would have made a gated biome the one place bad food cannot hurt
+  swept up a debuff, which would have made a gated biome the one place bad food cannot hurt
   you.
 
 ### Played, not merely built
@@ -91,9 +90,9 @@ group that had not all earned it. No exceptions in a long session.
   objects are instantiated on the owner's client at fight range.
 - `defeated_queen` and `defeated_fader` are taken from prefab data rather than the game's
   `GlobalKeys` enum. A wrong key fails *closed*, which is indistinguishable from a working
-  gate — `LogGlobalKeys` prints what your world actually has.
+  gate. `LogGlobalKeys` prints what your world actually has.
 
-## [0.2.0] — 2026-08-15
+## [0.2.0] - 2026-08-15
 
 Written and building. **Never run in game.**
 
@@ -101,7 +100,7 @@ Written and building. **Never run in game.**
 
 > **A biome you have not earned will not feed you. It never stops you walking in.**
 
-Valheim gates its biomes with damage, which is a soft gate — out-geared, out-run or
+Valheim gates its biomes with damage, which is a soft gate: out-geared, out-run or
 out-healed, which is why the Plains stops being frightening ten minutes after it starts. The
 usual mod answer is a hard boss gate that refuses to let you across the border, which fixes
 the pacing by deleting the thing worth having: the walk into somewhere you should not be.
@@ -120,7 +119,7 @@ Three parts rather than one number, because they do different jobs:
   than a time limit.
 - **Sapped.** Seventy-five percent less stamina regeneration, one second per second spent in
   the biome up to thirty, and it keeps ticking after you leave. Without it the optimal play
-  is to sprint in, grab and sprint out at no cost — and a penalty you can dodge by being
+  is to sprint in, grab and sprint out at no cost, and a penalty you can dodge by being
   quick is a penalty for slow players only.
 
 ### The gate is on the group, not the world
