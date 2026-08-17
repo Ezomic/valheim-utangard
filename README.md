@@ -3,7 +3,7 @@
 > **A biome you have not earned will not feed you.**
 
 Nothing stops you walking into the Swamp on day two. But while you are there, food burns down
-five times faster, you cannot eat or drink at all, and you leave **Sapped** — three quarters of
+five times faster, you cannot eat or drink at all, and you leave **Sapped**: three quarters of
 your stamina regeneration gone, for up to half a minute. An early run for barley is still your
 call. It is just a raid now rather than an errand.
 
@@ -22,14 +22,14 @@ While you are standing in a gated biome:
 - **Food burns 5× faster.** A 1600-second meal becomes a 320-second one. Your existing food
   is not deleted, it just runs out fast.
 - **You cannot eat or drink.** Meals, mead and potions are all refused, with
-  *"The land will not feed you here"* on screen. **Nothing is consumed or destroyed** — the
+  *"The land will not feed you here"* on screen. **Nothing is consumed or destroyed**. The
   item stays in your inventory.
 - **Running buffs burn 5× faster,** and new ones are refused. Guardian powers are refused
   **without burning the cooldown**, so you can use yours the moment you leave.
 - **Rested and Resting count as buffs,** so a fire and a roof buy you nothing inside. This is
   the harshest single rule in the mod and it has its own switch.
 - **Harmful effects are never touched.** Wet, Cold, Freezing, Burning, Poison and the rest run
-  exactly as normal — speeding up Poison would be a mercy, not a penalty.
+  exactly as normal. Speeding up Poison would be a mercy, not a penalty.
 
 And on the way out:
 
@@ -37,18 +37,18 @@ And on the way out:
   of it, up to **30 seconds**, and it only spends itself once you are somewhere the land
   tolerates you. A dash in and out still costs you; living there is a flat tax rather than an
   escalating one. It stacks with food and Rested rather than replacing them, so a sapped player
-  with good food still regenerates faster than a sapped player without — just badly.
+  with good food still regenerates faster than a sapped player without, just badly.
 
 You get a HUD icon while you are inside, a second one for Sapped, and a message on the way in
 and out that names who the biome is still waiting on.
 
 **The gate is the same for everybody.** It is one answer about the group, not a per-player one.
 If the roster has not all cleared Moder, the Plains withers *you* too, even if you personally
-landed the kill. That is the point rather than a side effect — see below.
+landed the kill. That is the point rather than a side effect. See below.
 
 Two things worth knowing. **Dungeons inherit the biome above them**, so a Swamp crypt withers
-you exactly like the Swamp. And **a player without the mod installed is not gated at all** —
-this is a rule for a group that all runs it, not an anti-cheat. If you want that enforced, see
+you exactly like the Swamp. And **a player without the mod installed is not gated at all**.
+This is a rule for a group that all runs it, not an anti-cheat. If you want that enforced, see
 [Installation](#installation).
 
 ### Group progression
@@ -63,7 +63,7 @@ this is a rule for a group that all runs it, not an anti-cheat. If you want that
 - **Stopping playing stops blocking.** A character drops off the roster after **14 days**
   without logging in. No admin command, no list to maintain.
 - **There is a catch-up deadline.** Once the first person clears a boss, the rest of the group
-  has a set number of days before the biome opens regardless — one day for Eikthyr, and one
+  has a set number of days before the biome opens regardless: one day for Eikthyr, and one
   more for each boss after. A single person who vanishes cannot hold a biome shut for weeks.
 - **Existing worlds and characters are handled.** Installing on a long-running save does not
   re-lock everything: a character is credited for a boss its own file says it attended, as long
@@ -100,7 +100,7 @@ the next.
 
 | Biome | Opened by | Global key |
 | --- | --- | --- |
-| Meadows | — | *ungated* |
+| Meadows | *nothing* | *ungated* |
 | Black Forest | Eikthyr | `defeated_eikthyr` |
 | Swamp | The Elder | `defeated_gdking` |
 | Mountain | Bonemass | `defeated_bonemass` |
@@ -108,7 +108,7 @@ the next.
 | Mistlands | Yagluth | `defeated_goblinking` |
 | Ashlands | The Queen | `defeated_queen` |
 | Deep North | Fader | `defeated_fader` |
-| Ocean | — | *ungated* |
+| Ocean | *nothing* | *ungated* |
 
 It is a table, not a hardcoded progression, so the interesting variations are all edits to it.
 Blank a row and that biome is never gated. Point every row at one key and you have a
@@ -120,7 +120,7 @@ change to the opening hour.
 
 **Two key names could not be verified from the game's code.** `defeated_queen` and
 `defeated_fader` are set from prefab data rather than named in Valheim's `GlobalKeys` enum. A
-wrong key fails *closed*, which looks exactly like a working gate — so `LogGlobalKeys` is on by
+wrong key fails *closed*, which looks exactly like a working gate, so `LogGlobalKeys` is on by
 default and prints what your world actually records. Check it once against a save where those
 bosses are down.
 
@@ -131,7 +131,7 @@ bosses are down.
 Single DLL, no asset bundle. Built for **BepInEx 5.4.23.3** on **net462**.
 
 1. Install [BepInExPack Valheim](https://thunderstore.io/c/valheim/p/denikson/BepInExPack_Valheim/)
-   **5.4.2333** — the only required dependency.
+   **5.4.2333**. It is the only required dependency.
 2. Drop `Wither.dll` into `BepInEx/plugins/`.
 3. Launch once. The config file is written to
    `BepInEx/config/ezomic.valheim.wither.cfg`.
@@ -142,7 +142,7 @@ itself, so a player without the plugin is not gated by it.
 [Longhouse Core](https://github.com/Ezomic/valheim-core) is **optional**. Install it and the
 server refuses a client that does not have Wither at a matching version, and the host's gate
 settings are pushed to every client so nobody can disagree about the rules. Without Core, Wither
-is fully functional — solo you need nothing else at all — but the gate becomes an agreement
+is fully functional (solo you need nothing else at all), but the gate becomes an agreement
 between players rather than a rule of the server. Wither says so loudly, once, in the log if it
 finds the group gate running in multiplayer with no Core.
 
@@ -157,7 +157,7 @@ the whole server is eating onion soup in the Black Forest.
 Nobody cheated. Valheim's gates are made of damage, and damage is a soft gate: it can be
 out-geared, out-run or simply out-healed, which is why the Plains stops being frightening about
 ten minutes after it starts. A careful player with a decent shield walks through any of them
-hours early — and the food, the gear and the map all come back with them.
+hours early, and the food, the gear and the map all come back with them.
 
 What that does is not "harder" or "easier" in the abstract. It makes the game **easy early and
 empty later**. The opening hours are trivialised by food nobody should have yet, and the biomes
@@ -180,19 +180,19 @@ They do different jobs, which is why they are three parts:
 - **The refusal** makes the clock real. Without it the drain is simply beaten by a bigger food
   pack, and the mod becomes an inventory tax rather than a time limit.
 - **Sapped** makes leaving cost something. Without it the optimal play is to sprint in, grab,
-  and sprint out at no cost — and a penalty you can dodge by being quick is a penalty for slow
+  and sprint out at no cost, and a penalty you can dodge by being quick is a penalty for slow
   players only.
 
 ### Why the gate is on the group
 
 Valheim groups come apart along progression. One person plays more, gets ahead, and the others
-arrive to find the interesting content already cleared — so nobody wants to redo it, the person
+arrive to find the interesting content already cleared, so nobody wants to redo it, the person
 ahead has no reason to go back, and what started as a group becomes several people playing
 alone in the same world.
 
 The group gate is aimed squarely at that. It makes helping the people behind you **the way you
 move forward yourself**, not a favour you do them. If your friend has not killed The Elder, the
-Swamp is shut for you as well, so going back to fight him again is not charity — it is the next
+Swamp is shut for you as well, so going back to fight him again is not charity. It is the next
 thing on your own list.
 
 **It is a coordination device, not a punishment.** Nothing is taken away from anyone, and the
@@ -234,7 +234,7 @@ the reasoning, not just the units.
 > **BepInEx writes this file on first run, and the saved value beats any new default in code.**
 > If a change appears to do nothing, check the cfg before reading anything else.
 
-With Longhouse Core installed, every setting that decides **a rule** is synced from the host —
+With Longhouse Core installed, every setting that decides **a rule** is synced from the host:
 all of **Gate** including the biome keys, the drains and blocks under **Food** and **Buffs**,
 and both **Sapped** values. Anything that decides **wording** stays yours: the two blocked
 messages, all of **Presentation**, and all of **Diagnostics**. The host sets the rules of the
@@ -299,7 +299,7 @@ gate; it does not get to pick your phrasing or your log level.
 | Setting | Default | What it does |
 | --- | --- | --- |
 | `Verbose` | `false` | Log every gate transition and blocked effect. |
-| `LogGlobalKeys` | `true` | Log the world's keys and the whole gate table on spawn. **Leave this on** — it is how you catch a wrong key name. |
+| `LogGlobalKeys` | `true` | Log the world's keys and the whole gate table on spawn. **Leave this on**. It is how you catch a wrong key name. |
 | `LogBlockedEffects` | `false` | Log the full list of effects the mod decided are buffs. |
 
 ### What counts as a buff
@@ -307,9 +307,9 @@ gate; it does not get to pick your phrasing or your log level.
 Found rather than listed, because a list of potion names goes stale the first time the game
 ships a new potion:
 
-1. Anything an item applies when you consume it — every potion and every mead, read straight
+1. Anything an item applies when you consume it: every potion and every mead, read straight
    off `ObjectDB`.
-2. Anything named `GP_*` — the guardian powers.
+2. Anything named `GP_*`, which is the guardian powers.
 3. `Rested` and `Resting`, if `BlockRested` is on.
 
 Everything else passes through untouched, and that is the important half. An allowlist of
@@ -338,26 +338,26 @@ if ((bool)m_nview && !m_nview.IsOwner())
 That push sits *above* the ownership early-return, which reads as "every client that had the
 boss loaded is credited". **That reading is wrong, and it cost two bugs.** The key does land in
 `Player.m_uniques`, which `Player.Save` writes and `Player.Load` reads, so existing characters
-do carry their past attendance — but how it gets there, and for whom, are both different from
+do carry their past attendance. But how it gets there, and for whom, are both different from
 how they look.
 
 **It lands later than it looks.** `m_addUniqueKeyQueue` is a *static* list, drained only by
-`AddQueuedKeys`, called from exactly two places — `Player.Start` and `SetLocalPlayer`, both
+`AddQueuedKeys`, called from exactly two places, `Player.Start` and `SetLocalPlayer`, both
 spawn-time. So `m_uniques` does not contain a boss you killed this session until you next spawn,
 and quitting to desktop before respawning loses the credit with the process. Found by playing:
 Eikthyr died, the world key was set, nothing was recorded.
 
 **And it lands for one player, not all of them.** That `!m_nview.IsOwner()` guard is
 unreachable. `CheckDeath` is `OnDeath`'s only caller, and `CheckDeath` is called from exactly
-one place — inside `if (zDO.IsOwner())` in `Character.CustomFixedUpdate`. `OnDeath` runs on the
+one place, inside `if (zDO.IsOwner())` in `Character.CustomFixedUpdate`. `OnDeath` runs on the
 owning client and nowhere else. Crediting "the local player" from it would credit precisely one
 member of a group that killed a boss together, and the gate would then stay shut forever while
 looking exactly like it was working.
 
 So Wither hooks `Character.OnDeath` and the owning client credits **everyone within
 `CreditRadius` of the corpse**, on the group's behalf. It can: global keys are world state,
-writable by anyone, and `Player.GetPlayersInRange` sees every player instantiated on that client
-— which, at a boss fight, is all of them. The radius is generous because the two failure modes
+writable by anyone, and `Player.GetPlayersInRange` sees every player instantiated on that client,
+which at a boss fight is all of them. The radius is generous because the two failure modes
 are not symmetric: crediting a bystander costs one person's sense of having earned it, while
 missing a genuine participant holds the gate shut for the whole group with no remedy short of
 killing the boss again.
@@ -368,23 +368,23 @@ mod lives. It is the backfill, not the live path.
 ### The key layout
 
 `m_uniques` is local and nothing replicates it, so each client republishes its own record into
-the world's **global keys** — broadcast to every client on connect, and saved with the world.
+the world's **global keys**, which are broadcast to every client on connect and saved with the world.
 
 | Key | Meaning |
 | --- | --- |
-| `wither_seen_<characterId>` | Heartbeat. Value is `<day>\|<name>` — the day last seen, plus the name for the "waiting on" message. |
+| `wither_seen_<characterId>` | Heartbeat. Value is `<day>\|<name>`: the day last seen, plus the name for the "waiting on" message. |
 | `wither_p_<characterId>_<bosskey>` | This character was present when that boss died. |
 | `wither_open_<bosskey>` | The group has cleared this boss. Latched once, never removed. |
 | `wither_first_<bosskey>` | Unix seconds when the catch-up clock started. Written once, never moved. |
 
 Writes always check first. `RPC_SetGlobalKey` ends in `SendGlobalKeys(Everybody)`, so accepting
-one key rebroadcasts the world's entire key list to every player — a publisher that did not
+one key rebroadcasts the world's entire key list to every player. A publisher that did not
 check would push a full broadcast on every call. The heartbeat therefore carries a whole **day
 number** rather than a timestamp, for a second reason too: every global key write also does
 `m_knownWorldKeys.IncrementOrSet(key + " " + value)` into the saved player profile, so a value
 that changed every beat would grow that dictionary forever, in everyone's character file.
 
-Days are real days, UTC, not world time — Valheim's clock only advances while somebody is
+Days are real days, UTC, not world time. Valheim's clock only advances while somebody is
 playing, which would make a 14-day window unmeasurable.
 
 ### Progress does not regress
@@ -395,7 +395,7 @@ decides nobody has done Eikthyr and shuts the Black Forest *for the people who k
 
 The latch is only written when the roster is non-empty and every counted member has the boss.
 Latching off the empty-roster fallback would let one client's loading screen open a biome
-forever. **A deadline that expires latches too** — otherwise a biome opened by the deadline
+forever. **A deadline that expires latches too**, or a biome opened by the deadline
 would silently shut again if `CatchUpDays` were later lowered.
 
 It is written from the publish tick rather than from the read path, because `GroupHasKey` is
@@ -403,7 +403,7 @@ asked several times a frame and a read should not write to the world.
 
 ### Credit is per world, not per character
 
-`m_uniques` is world-agnostic — it means "this character was present at an Eikthyr death",
+`m_uniques` is world-agnostic. It means "this character was present at an Eikthyr death",
 anywhere, ever. Taken at face value that is a hole straight through the gate: clear a solo
 world, bring the character to the server, arrive pre-credited for bosses nobody here has fought.
 
@@ -411,14 +411,14 @@ So the backfill is only trusted for a boss **this world has already seen die**. 
 still alive here, imported credit is refused. If it is dead, the world has demonstrably
 progressed past it, and crediting a character who was probably one of the people who did it is
 both harmless and the only way an existing server gets backfilled at all. Kills witnessed here
-are unaffected — the `OnDeath` hook always credits, because it saw it happen.
+are unaffected. The `OnDeath` hook always credits, because it saw it happen.
 
 ### Things that were nearly bugs
 
 Each took reading the game to find and would have looked like a design choice from the outside:
 
 - **`Player.ConsumeItem` removes the item whether or not `EatFood` succeeded.** Refusing food
-  in `EatFood` — the obvious seam, and the one with the right name — would have destroyed every
+  in `EatFood`, the obvious seam and the one with the right name, would have destroyed every
   meal and potion it refused. The block lives in `CanConsumeItem`, which is the gate that path
   actually respects and where vanilla puts its own refusal.
 - **`SEMan` refreshes a running effect without going through `AddStatusEffect`.**
@@ -428,10 +428,10 @@ Each took reading the game to find and would have looked like a design choice fr
 - **`StartGuardianPower` sets the cooldown before it applies the effect.** Blocking only the
   status effect would have burned a twenty-minute power on nothing.
 - **`Puke` is applied by an item on consume**, so the "anything a consumable grants" rule swept
-  it up as a buff — found on the first run in a real world. Blocking a debuff would have made a
+  it up as a buff, found on the first run in a real world. Blocking a debuff would have made a
   gated biome the one place bad food cannot hurt you, and the drain would have made it wear off
   *faster* there. It ships in `NeverBlock`.
-- **The gate is asked several times a frame** — by the tick, by both status effects, and by
+- **The gate is asked several times a frame**: by the tick, by both status effects, and by
   every consume. Building the roster walks every global key in the world, so it is cached for
   two seconds, and the list of names owed is built only on a transition.
 - **`SEMan.GetHUDStatusEffects` skips any effect whose icon is null**, so a custom effect with
@@ -449,7 +449,7 @@ Swamp crypt withers you exactly like the Swamp. Convenient, and entirely acciden
 
 `Player.UpdateFood`, not `Update` or a MonoBehaviour of its own. It is where the food timers
 live, it is called from `UpdateStats` which already refuses to run during the intro and
-mid-teleport — two windows where starving someone would be a bug — and it arrives with the `dt`
+mid-teleport (two windows where starving someone would be a bug), and it arrives with the `dt`
 the rest of the game is using, so there is no second clock to keep in step.
 
 Only `m_time` is touched, never the health and stamina values derived from it. Vanilla
@@ -477,7 +477,7 @@ confirmed in game.
 - **Attendee credit with more than one player.** Solo you own the boss ZDO and credit yourself
   either way. The loop is identical for one player or five; what is unproven is whether other
   players' objects are instantiated on the owning client at fight range.
-- Whether `defeated_queen` and `defeated_fader` are the real key names — see
+- Whether `defeated_queen` and `defeated_fader` are the real key names. See
   [Biome progression](#biome-progression).
 
 ---
