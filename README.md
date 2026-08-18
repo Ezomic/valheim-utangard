@@ -53,6 +53,16 @@ And on the way out:
 You get a HUD icon while you are inside, a second one for Sapped, and a message on the way in
 and out that names who the biome is still waiting on.
 
+**And you can read the whole gate at any time.** The compendium - the texts screen, beside
+Logs and Active Effects - carries a Utangard page listing every biome, whether it is open, who
+still owes it, and how long until the deadline opens it anyway. It is the same report the log
+prints on spawn, which is the point: nobody should have to read a log file to find out why
+their food vanished.
+
+**When a biome opens you are told, wherever you are.** Including when it was not your kill,
+and including when nothing died at all - a catch-up deadline expiring opens biomes too. The
+person the news matters most to is usually the one who was at home.
+
 **The gate is the same for everybody.** It is one answer about the group, not a per-player one.
 If the roster has not all cleared Moder, the Plains withers *you* too, even if you personally
 landed the kill. That is the point rather than a side effect. See below.
@@ -137,10 +147,14 @@ run most people do before touching him. That is the intended shape, and it is al
 change to the opening hour.
 
 **Two key names could not be verified from the game's code.** `defeated_queen` and
-`defeated_fader` are set from prefab data rather than named in Valheim's `GlobalKeys` enum. A
-wrong key fails *closed*, which looks exactly like a working gate, so `LogGlobalKeys` is on by
-default and prints what your world actually records. Check it once against a save where those
-bosses are down.
+`defeated_fader` are set from prefab data rather than named in Valheim's `GlobalKeys` enum, so
+they could only ever be read off a running game. A wrong key fails *closed*, which looks
+exactly like a working gate.
+
+So the mod now reads them off the running game. On spawn it walks the world's creature prefabs,
+collects every key any of them sets on death - vanilla's and any other mod's - and warns if a
+gate row names a key nothing here can set, listing the ones that exist. You do not need a save
+with those bosses down: the prefab is enough.
 
 ---
 
@@ -280,6 +294,10 @@ gate; it does not get to pick your phrasing or your log level.
 | `LeaveMessage` | `The land loosens its grip` | Shown once on leaving. |
 | `NameTheBlockers` | `true` | Name the characters the biome is still waiting on. |
 | `BlockedByPrefix` | `Still owed by:` | Prefix for that list. |
+| `AnnounceOpenings` | `true` | Say so, wherever you are, when a biome opens. |
+| `OpenedMessage` | `{biome} opens to you` | That message. `{biome}` becomes the biome's name. |
+| `ShowCompendiumPage` | `true` | Add the Utangard page to the compendium's text list. |
+| `CompendiumTopic` | `Utangard` | What that page is called in the list. |
 
 ### Diagnostics
 
@@ -288,6 +306,7 @@ gate; it does not get to pick your phrasing or your log level.
 | `Verbose` | `false` | Log every gate transition and blocked effect. |
 | `LogGlobalKeys` | `true` | Log the world's keys and the whole gate table on spawn. **Leave this on**. It is how you catch a wrong key name. |
 | `LogBlockedEffects` | `false` | Log the full list of effects the mod decided are buffs. |
+| `LogDefeatKeys` | `false` | Log every key a creature in this world sets on death, and what sets it. |
 
 ## Status
 
@@ -299,16 +318,16 @@ reload, the latch fires, a two-character roster names both debtors, and the catc
 opens a biome for a group that had not all earned it. Running standalone with no Core has been
 confirmed in game.
 
-**Built but not yet played:** the 5 m border margin and the healing block, both added after
-that session.
+**Built but not yet played:** the 5 m border margin, the healing block, the compendium page,
+the biome-opened announcement, and the defeat-key check - all added after that session.
 
 **What has not been tested, and only this:**
 
 - **Attendee credit with more than one player.** Solo you own the boss ZDO and credit yourself
   either way. The loop is identical for one player or five; what is unproven is whether other
   players' objects are instantiated on the owning client at fight range.
-- Whether `defeated_queen` and `defeated_fader` are the real key names. See
-  [Biome progression](#biome-progression).
+- Whether `defeated_queen` and `defeated_fader` are the real key names. The check above
+  answers this the first time anyone runs it; nobody has run it yet.
 
 ---
 

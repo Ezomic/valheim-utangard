@@ -39,6 +39,48 @@ Also: the deadline in the entry message is now read from the biome that is actua
 you rather than the one underfoot. With a margin those part company, and a countdown for the
 wrong boss is worse than no countdown.
 
+### You can see the gate, and you are told when it opens
+
+**A Utangard page in the compendium**, beside Logs and Active Effects: every biome, whether it
+is open, who still owes it, and how long until the deadline opens it anyway. Until now that
+report existed only as log lines on spawn, which is the wrong medium for the person who most
+needs it - somebody mid-raid wondering why their food vanished is not going to read
+`LogOutput.log`.
+
+It is a postfix on `TextsDialog.UpdateTextsList`, so it is vanilla's list with vanilla's skin,
+font, scrolling, gamepad handling and close behaviour, none of which this mod then owns. The
+alternative was an IMGUI window: four patches (both `TakeInput` overloads,
+`PlayerController.InInventoryEtc`, `GameCamera.UpdateMouseCapture`) and a keybind, to arrive at
+something that looks like a different game.
+
+The log and the page are one function now. They were about to be two copies of "is this biome
+open, and if not who owes it", and the interesting part is not the wording but the three-way
+distinction between open-because-latched, open-because-everyone-has-it and shut-with-an-empty-
+roster. Two copies of that stay right for about a week.
+
+**`Presentation.AnnounceOpenings`.** A message when a biome opens, wherever you are. The mod's
+whole argument is that fetching the friend who is behind is worth doing, and the payoff for
+doing it used to land silently - you found out by walking to the Mountain and not being
+refused. It watches the answer rather than the kill, so a catch-up deadline expiring and a
+roster member ageing out announce themselves too, and it needs no network code at all: global
+keys are already broadcast to every client.
+
+### The gate keys are checked against the game, not assumed
+
+`defeated_queen` and `defeated_fader` are set from prefab data rather than named in the
+`GlobalKeys` enum, so they were the two shipped defaults that could not be verified from the
+game's code - and a wrong key fails *closed*, which looks exactly like a working gate.
+
+`Character.m_defeatSetGlobalKey` is a public string on every creature prefab and `OnDeath`
+hands it straight to `SetGlobalKey`, so walking ZNetScene's prefab list gives the complete list
+of keys any death in this world can set, another mod's creatures included. On spawn Utangard
+now warns about any gate row naming a key nothing here sets, and prints the ones that exist -
+which is the answer to the question the warning provokes. `Diagnostics.LogDefeatKeys` prints
+the whole map.
+
+It checks and never corrects. A row pointed at another mod's key, or at a key a location sets,
+is a supported thing to want.
+
 ## [1.1.0] - 2026-08-17
 
 ### An API for other mods to ask what the group has earned

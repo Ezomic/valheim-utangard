@@ -59,6 +59,7 @@ namespace Utangard
             {
                 _watching = player;
                 _wasWithered = false;
+                Openings.Forget();
                 _publishTimer = PublishInterval;   // publish immediately for a new character
             }
 
@@ -71,6 +72,8 @@ namespace Utangard
                     Progression.PublishLocal(player);
                 }
             }
+
+            Openings.Check(player, dt);
 
             bool withered = BiomeGate.IsWithered(player);
 

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using HarmonyLib;
 
 namespace Utangard
@@ -214,6 +215,42 @@ namespace Utangard
         {
             BlockedEffects.Rebuild();
             UtangardEffectsRegistry.Build();
+        }
+
+        /// <summary>
+        /// m_texts is private, and there is no other way in. TextInfo itself is public, so
+        /// only the list needs reaching for.
+        /// </summary>
+        private static readonly AccessTools.FieldRef<TextsDialog, List<TextsDialog.TextInfo>>
+            TextsOf = AccessTools.FieldRefAccess<TextsDialog, List<TextsDialog.TextInfo>>("m_texts");
+
+        /// <summary>
+        /// A Utangard page in the compendium, beside Logs and Active Effects.
+        ///
+        /// This is the mod's whole UI, and it is somebody else's UI. Vanilla builds that list
+        /// in UpdateTextsList and then instantiates a row per entry in FillTextList, so a
+        /// postfix here is an entry with the game's own skin, font, scrolling, gamepad
+        /// handling and close behaviour - none of which this mod then owns. An IMGUI window
+        /// would have been four patches (both TakeInput overloads, InInventoryEtc and
+        /// GameCamera.UpdateMouseCapture) and a keybind, to end up with something that looks
+        /// like a different game.
+        ///
+        /// Inserted at the front because the question it answers - why is this biome shut and
+        /// who am I waiting on - is the one a player opens this screen to ask.
+        /// </summary>
+        [HarmonyPostfix]
+        [HarmonyPatch(typeof(TextsDialog), "UpdateTextsList")]
+        private static void OnUpdateTextsList(TextsDialog __instance)
+        {
+            if (!UtangardConfig.Enabled.Value || !UtangardConfig.ShowCompendiumPage.Value) return;
+
+            List<TextsDialog.TextInfo> texts = TextsOf(__instance);
+            if (texts == null) return;
+
+            string topic = UtangardConfig.CompendiumTopic.Value;
+            if (string.IsNullOrEmpty(topic)) topic = UtangardPlugin.PluginName;
+
+            texts.Insert(0, new TextsDialog.TextInfo(topic, GateReport.Page()));
         }
 
         /// <summary>

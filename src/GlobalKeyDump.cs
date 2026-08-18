@@ -19,8 +19,6 @@ namespace Utangard
         private static readonly AccessTools.FieldRef<ZoneSystem, HashSet<string>> KeysOf =
             AccessTools.FieldRefAccess<ZoneSystem, HashSet<string>>("m_globalKeys");
 
-        private static readonly Heightmap.Biome[] Gateable = UtangardConfig.GateableBiomes;
-
         public static void Log()
         {
             ZoneSystem zone = ZoneSystem.instance;
@@ -47,51 +45,19 @@ namespace Utangard
             LogRoster();
 
             UtangardPlugin.Log.LogInfo("Gate table:");
-            foreach (Heightmap.Biome biome in Gateable)
+            foreach (GateReport.Row row in GateReport.Rows())
             {
-                string key = UtangardConfig.RequiredKeyFor(biome);
-                if (key == null)
-                {
-                    UtangardPlugin.Log.LogInfo("  " + biome + ": ungated");
-                    continue;
-                }
-
-                if (!UtangardConfig.GateOnGroup.Value)
-                {
-                    // "not set" is the interesting case and it is ambiguous by nature: either
-                    // the boss is alive, or the key name is wrong. Say so rather than
-                    // reporting a typo as a closed gate.
-                    UtangardPlugin.Log.LogInfo("  " + biome + ": needs '" + key + "' - "
-                        + (zone.GetGlobalKey(key)
-                            ? "set, biome is open"
-                            : "NOT set, biome withers"));
-                    continue;
-                }
-
-                // The verdict comes from GroupHasKey and the names from BlockersFor, and they
-                // are not interchangeable: with an empty roster BlockersFor has nobody to
-                // report and returns null, while GroupHasKey falls back to the world key and
-                // may well be shut. Reading "no names" as "open" would print the opposite of
-                // the truth in exactly the situation that needs diagnosing.
-                bool open = Progression.GroupHasKey(key);
-                string blockedBy = open ? null : Progression.BlockersFor(key);
-
-                // Say when it is open because it was latched, not because the current roster
-                // all have it. Otherwise a biome that stays open while someone on the roster
-                // plainly has not done the boss reads as a bug.
-                long left = Progression.SecondsLeft(key);
-                string clock = left < 0L ? "" : " - " + Describe(left) + " left to catch up";
-
-                string why = open
-                    ? (Progression.IsLatchedOpen(key)
-                        ? "cleared by the group, open for good"
-                        : "whole group has it, biome is open")
-                    : "biome withers" + (blockedBy == null
-                        ? " (roster empty; falling back to the world key)"
-                        : ", still owed by " + blockedBy + clock);
-
-                UtangardPlugin.Log.LogInfo("  " + biome + ": needs '" + key + "' - " + why);
+                // The same rows the compendium page renders. The log used to compute its own
+                // verdicts, which meant two pieces of code deciding what "open" means about
+                // one world - and the interesting cases here are the ambiguous ones, where a
+                // difference between the two would read as a bug in whichever one the player
+                // happened to be looking at.
+                UtangardPlugin.Log.LogInfo("  " + row.Biome
+                    + (row.Key == null ? ": " : ": needs '" + row.Key + "' - ")
+                    + GateReport.Verdict(row));
             }
+
+            DefeatKeys.Report();
         }
 
         /// <summary>

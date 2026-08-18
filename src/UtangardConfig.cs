@@ -73,10 +73,15 @@ namespace Utangard
         public static ConfigEntry<string> LeaveMessage;
         public static ConfigEntry<bool> NameTheBlockers;
         public static ConfigEntry<string> BlockedByPrefix;
+        public static ConfigEntry<bool> AnnounceOpenings;
+        public static ConfigEntry<string> OpenedMessage;
+        public static ConfigEntry<bool> ShowCompendiumPage;
+        public static ConfigEntry<string> CompendiumTopic;
 
         public static ConfigEntry<bool> Verbose;
         public static ConfigEntry<bool> LogGlobalKeys;
         public static ConfigEntry<bool> LogBlockedEffects;
+        public static ConfigEntry<bool> LogDefeatKeys;
 
         public static void Bind(ConfigFile config)
         {
@@ -333,6 +338,26 @@ namespace Utangard
             BlockedByPrefix = config.Bind(SecShow, "BlockedByPrefix", "Still owed by:",
                 "Prefix for that list of names.");
 
+            AnnounceOpenings = config.Bind(SecShow, "AnnounceOpenings", true,
+                "Say so, wherever you are, when a biome opens. Without it the only way to "
+                + "learn that the group has finally cleared Bonemass is to walk to the "
+                + "Mountain and not be refused - which lands the payoff for fetching your "
+                + "friend silently, and usually to the person who was not at the fight.");
+
+            OpenedMessage = config.Bind(SecShow, "OpenedMessage",
+                "{biome} opens to you",
+                "Shown when a biome opens. {biome} is replaced with the biome's name in your "
+                + "own language, and with both names when one boss opens two.");
+
+            ShowCompendiumPage = config.Bind(SecShow, "ShowCompendiumPage", true,
+                "Add a Utangard page to the compendium's text list, beside Logs and Active "
+                + "Effects. It is the only place in the game that can answer 'which biomes "
+                + "are shut, who is still owed, and how long until it opens anyway' without "
+                + "walking there or reading a log file.");
+
+            CompendiumTopic = config.Bind(SecShow, "CompendiumTopic", "Utangard",
+                "What that page is called in the list.");
+
             Verbose = config.Bind(SecDiag, "Verbose", false,
                 "Log every gate transition and every blocked effect as it happens.");
 
@@ -340,6 +365,13 @@ namespace Utangard
                 "Log the world's global keys once when a world loads. This is how you check "
                 + "that the key names in the Gate table match what your world actually "
                 + "records - a typo there fails open and gates nothing, silently.");
+
+            LogDefeatKeys = config.Bind(SecDiag, "LogDefeatKeys", false,
+                "Log every global key any creature in this world sets when it dies, and what "
+                + "sets it. This is where the real name of a boss key comes from - the Queen "
+                + "and Fader carry theirs in prefab data rather than in the game's GlobalKeys "
+                + "enum, so it can only be read off a running game. The mismatch warning is "
+                + "printed whether or not this is on; this is the full listing behind it.");
 
             LogBlockedEffects = config.Bind(SecDiag, "LogBlockedEffects", false,
                 "Log the full list of status effects the mod decided are buffs, once, when "

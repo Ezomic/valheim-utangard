@@ -198,6 +198,56 @@ Eight points and no interior ring, because a biome border is a smooth curve tens
 across at its sharpest: at five metres the arc between neighbouring samples is under four
 metres, and a border that touches the ring at all crosses one of them.
 
+### Reading the boss keys off the game
+
+The one silent failure this mod can have is a gate row naming a key nothing ever sets: it fails
+closed, permanently, and is indistinguishable from a working gate against a boss nobody has
+killed. Two of the shipped defaults sat exactly there. `defeated_queen` and `defeated_fader`
+are not in the `GlobalKeys` enum, because those two bosses carry their key in prefab data, so
+no amount of decompiling `assembly_valheim` can confirm them.
+
+The prefabs can. `Character.m_defeatSetGlobalKey` is a public string field, and `OnDeath` hands
+it straight to `ZoneSystem.SetGlobalKey`, so walking `ZNetScene.m_prefabs` and collecting that
+field off every `Character` produces the complete and authoritative set of keys any death in
+this world can set - including creatures another mod added, for free.
+
+Scanned once per world and keyed on the `ZNetScene` instance rather than a bool, for the reason
+every part of this suite keys on the live scene: ZNetScene is destroyed and rebuilt on every
+world load, including a trip to the menu and back, and a flag answers "already done" about a
+scene that no longer exists.
+
+It warns and never edits. Pointing a row at another mod's key, or at a key a location sets, is
+a supported thing to want, so an unrecognised name is a warning that also lists the keys that
+do exist - because the next question after "that key is wrong" is always "then what is it
+called".
+
+### Why the panel is vanilla's panel
+
+`TextsDialog.UpdateTextsList` builds the compendium's list of readable pages and
+`FillTextList` instantiates a row per entry immediately afterwards, so a postfix that inserts
+one `TextInfo` gets the game's skin, font, scrolling, gamepad handling and close behaviour and
+owns none of them. The mod's own window would have been four patches - `Player.TakeInput`,
+`PlayerController.TakeInput`, `PlayerController.InInventoryEtc` and
+`GameCamera.UpdateMouseCapture`, which re-locks the cursor every frame unless one of ten named
+vanilla interfaces is open - plus a keybind, to end up with something that reads as a different
+game.
+
+The report behind it is shared with the spawn-time log rather than written twice. What is worth
+not duplicating is not the wording but the three-way distinction the verdict makes:
+open-because-latched, open-because-the-whole-roster-has-it, and shut-with-an-empty-roster
+falling back to the world key. A page and a log that disagreed about that would each read as a
+bug in the other.
+
+### Why the opening announcement needs no RPC
+
+Every input to the gate is a global key, and `ZoneSystem` broadcasts the whole key list to
+every client whenever one is written, so each client can watch its own copy and announce to
+itself. An RPC would be a second channel repeating what the first already said.
+
+Watching the *answer* rather than hooking the kill is also what makes it cover the openings
+nobody caused: a catch-up deadline expiring, or the last debtor ageing off the roster, both
+open a biome without anything dying.
+
 ### Why healing is an effect and not a patch
 
 Everything else the mod does to a player is an edit to a timer or an answer, and lives in a

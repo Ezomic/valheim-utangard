@@ -106,8 +106,14 @@ namespace Utangard
             return key == null ? null : Progression.BlockersFor(key, excludeSelf: true);
         }
 
-        /// <summary>Whether the world, or the group, counts this key as done.</summary>
-        private static bool Earned(ZoneSystem zone, string key)
+        /// <summary>
+        /// Whether the world, or the group, counts this key as done.
+        ///
+        /// Shared with the openings watcher rather than private, so that "open" means one
+        /// thing: the message announcing a biome and the gate that stops withering you are
+        /// then incapable of disagreeing, which they would eventually do as two copies.
+        /// </summary>
+        public static bool Earned(ZoneSystem zone, string key)
         {
             if (!UtangardConfig.GateOnGroup.Value) return zone.GetGlobalKey(key);
 
