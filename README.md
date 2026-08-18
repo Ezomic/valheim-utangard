@@ -184,7 +184,7 @@ The land just will not sustain you while you are there.
 ### Read on
 
 The rest of the argument, and the technical notes on how Valheim actually records boss
-attendance, are in [DESIGN.md](DESIGN.md).
+attendance, are in [DESIGN.md](https://github.com/Ezomic/valheim-utangard/blob/main/DESIGN.md).
 
 ---
 
