@@ -245,12 +245,34 @@ namespace Utangard
             if (!UtangardConfig.Enabled.Value || !UtangardConfig.ShowCompendiumPage.Value) return;
 
             List<TextsDialog.TextInfo> texts = TextsOf(__instance);
-            if (texts == null) return;
+            if (texts == null)
+            {
+                UtangardPlugin.Log.LogWarning("Compendium: no m_texts list to add to.");
+                return;
+            }
 
             string topic = UtangardConfig.CompendiumTopic.Value;
             if (string.IsNullOrEmpty(topic)) topic = UtangardPlugin.PluginName;
 
-            texts.Insert(0, new TextsDialog.TextInfo(topic, GateReport.Page()));
+            // Wrapped, and not because the body looks risky. This runs inside somebody
+            // else's UI build: a throw here leaves vanilla's own list half-built, so the
+            // failure would present as "the compendium is broken" rather than as "a mod is".
+            // Unity swallows the stack in a UI callback often enough that it is worth saying
+            // so in our own log rather than hoping it lands in the game's.
+            try
+            {
+                texts.Insert(0, new TextsDialog.TextInfo(topic, GateReport.Page()));
+
+                // Behind Verbose: this fires every time the screen is opened, and a line
+                // per glance at the compendium buries the ones worth reading.
+                if (UtangardConfig.Verbose.Value)
+                    UtangardPlugin.Log.LogInfo("Compendium: added '" + topic + "' ("
+                        + texts.Count + " entries in the list).");
+            }
+            catch (System.Exception e)
+            {
+                UtangardPlugin.Log.LogError("Compendium page failed to build: " + e);
+            }
         }
 
         /// <summary>

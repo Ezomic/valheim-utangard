@@ -81,6 +81,18 @@ the whole map.
 It checks and never corrects. A row pointed at another mod's key, or at a key a location sets,
 is a supported thing to want.
 
+**It has now been run**, and both names are right. The scan on a live world reported
+`defeated_eikthyr`, `defeated_gdking`, `defeated_bonemass`, `defeated_dragon`,
+`defeated_goblinking`, `defeated_queen`, `defeated_fader`, and also `defeated_hive` and
+`defeated_serpent` for the two creatures that set a key without gating anything here.
+
+### Played
+
+All of the above except one path: the border margin refusing a player standing three metres
+outside a gated biome, the healing block, the compendium page, and the announcement firing on
+the transition. Still unplayed: the healing block with `ShowStatusEffects = false`, which is
+the one path the marker's new job could be wrong on.
+
 ## [1.1.0] - 2026-08-17
 
 ### An API for other mods to ask what the group has earned

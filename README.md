@@ -149,9 +149,10 @@ change to the opening hour.
 **Two key names could not be verified from the game's code.** `defeated_queen` and
 `defeated_fader` are set from prefab data rather than named in Valheim's `GlobalKeys` enum, so
 they could only ever be read off a running game. A wrong key fails *closed*, which looks
-exactly like a working gate.
+exactly like a working gate. Both are now confirmed correct, by the check below rather than by
+guessing.
 
-So the mod now reads them off the running game. On spawn it walks the world's creature prefabs,
+The mod reads them off the running game. On spawn it walks the world's creature prefabs,
 collects every key any of them sets on death - vanilla's and any other mod's - and warns if a
 gate row names a key nothing here can set, listing the ones that exist. You do not need a save
 with those bosses down: the prefab is enough.
@@ -318,16 +319,19 @@ reload, the latch fires, a two-character roster names both debtors, and the catc
 opens a biome for a group that had not all earned it. Running standalone with no Core has been
 confirmed in game.
 
-**Built but not yet played:** the 5 m border margin, the healing block, the compendium page,
-the biome-opened announcement, and the defeat-key check - all added after that session.
+Played since, on 2026-08-19: the 5 m border margin refusing a player standing three metres
+outside a gated biome, the healing block, the compendium page naming each boss, the
+biome-opened announcement firing on the transition, and the defeat-key check - which verified
+all nine gate rows against the world's own creature prefabs.
 
 **What has not been tested, and only this:**
 
 - **Attendee credit with more than one player.** Solo you own the boss ZDO and credit yourself
   either way. The loop is identical for one player or five; what is unproven is whether other
   players' objects are instantiated on the owning client at fight range.
-- Whether `defeated_queen` and `defeated_fader` are the real key names. The check above
-  answers this the first time anyone runs it; nobody has run it yet.
+- The healing block with `ShowStatusEffects = false`. The marker effect carries that rule and
+  used to be skipped entirely when hidden, so this is the one path the change could still be
+  wrong on.
 
 ---
 
