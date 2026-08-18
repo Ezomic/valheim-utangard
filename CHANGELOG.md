@@ -3,6 +3,32 @@
 Notable changes to Utangard. Format follows [Keep a Changelog](https://keepachangelog.com),
 and the mod uses [semantic versioning](https://semver.org).
 
+## [1.1.0] - 2026-08-17
+
+### An API for other mods to ask what the group has earned
+
+`UtangardApi.GroupHasKey(bossKey)` answers the one question this mod knows and nothing else
+does: whether the group has *earned* a boss, rather than whether the world has merely seen it
+die. Those two answers part company the moment somebody is offline for a kill.
+
+It exists because Hoard scales stack sizes by world progression. Reading the raw `defeated_`
+key there would hand out Plains-era stacks for a biome still fenced off here, which is two mods
+disagreeing out loud about the same word in a way that reads as a bug in whichever one the
+player happens to be looking at.
+
+A facade rather than making `Progression` public: the roster, the latch and the deadline are
+nobody else's business. Read-only by construction, so a consumer cannot open a biome by asking
+about it.
+
+### The README is half the length
+
+The source-code archaeology moved to `DESIGN.md` - why `Character.OnDeath` credits one player
+rather than all of them, what the global keys are called and why, and the handful of things
+that were nearly bugs. None of it is needed to play, and it was sitting between a new reader
+and the part that says what the mod does.
+
+Nothing about the gameplay changed in this release.
+
 ## [1.0.0] - 2026-08-16
 
 First release. Played, not merely built.

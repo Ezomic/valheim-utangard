@@ -1,7 +1,7 @@
 {
   "name": "Utangard",
   "author": "Robbin Thijssen",
-  "version_number": "1.0.0",
+  "version_number": "1.1.0",
   "website_url": "https://github.com/Ezomic/valheim-utangard",
   "description": "Biomes nobody in your group has earned starve you: food burns away, buffs are refused, and the land leaves you sapped.",
   "dependencies": [
