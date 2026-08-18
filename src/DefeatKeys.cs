@@ -33,6 +33,18 @@ namespace Utangard
             new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
 
         /// <summary>
+        /// Key to the localisation token of the creature that sets it - "$enemy_gdking" and
+        /// friends, which is what turns 'defeated_gdking' into 'The Elder' on the panel.
+        ///
+        /// A boss wins over anything else that sets the same key, because several creatures
+        /// can and the boss is the one a player is being asked about. Stored as the token and
+        /// localised at the moment of display: the panel is built while the player reads it,
+        /// and Localization is not necessarily loaded when this scan runs.
+        /// </summary>
+        private static readonly Dictionary<string, string> Names =
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>
         /// The scene the map was built from.
         ///
         /// Identity, not a bool. ZNetScene is destroyed and rebuilt whenever a world is
@@ -56,6 +68,7 @@ namespace Utangard
             if (scene == null || ReferenceEquals(scene, _scannedScene)) return;
 
             Setters.Clear();
+            Names.Clear();
             _scannedScene = scene;
 
             List<GameObject> prefabs = scene.m_prefabs;
@@ -80,7 +93,38 @@ namespace Utangard
                 }
 
                 names.Add(prefab.name);
+
+                // First one in wins unless a boss turns up later. m_boss is the flag vanilla
+                // itself uses to decide who gets the health bar at the top of the screen, so
+                // it is exactly the "is this the creature the player means" question.
+                if (string.IsNullOrEmpty(character.m_name)) continue;
+                if (!Names.ContainsKey(key) || character.m_boss) Names[key] = character.m_name;
             }
+        }
+
+        /// <summary>
+        /// What to call the thing that sets this key, in the player's language, or null when
+        /// nothing in this world sets it.
+        ///
+        /// This is why the scan is worth having twice over: the panel wanted to say "needs
+        /// The Elder" and the only place that mapping exists is the prefab that carries both
+        /// the key and the name. Hardcoding a table of eight would have been a second list to
+        /// keep in step with the config, wrong for any mod-added boss, and untranslated.
+        /// </summary>
+        public static string NameFor(string key)
+        {
+            if (string.IsNullOrEmpty(key)) return null;
+
+            Scan();
+
+            string token;
+            if (!Names.TryGetValue(key, out token)) return null;
+
+            Localization loc = Localization.instance;
+            if (loc == null) return null;
+
+            string name = loc.Localize(token);
+            return string.IsNullOrEmpty(name) || name == token ? null : name;
         }
 
         /// <summary>Whether any creature in this world sets that key on death.</summary>

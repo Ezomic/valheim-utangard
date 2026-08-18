@@ -156,7 +156,11 @@ namespace Utangard
                     continue;
                 }
 
-                text.Append("\n  needs ").Append(row.Key).Append('\n');
+                // The boss's name, not the global key. 'needs defeated_gdking' is a
+                // sentence about the implementation; the player is waiting on The Elder. The
+                // key is still what the log prints, because there the string that can be
+                // wrong is the whole point.
+                text.Append("\n  needs ").Append(BossName(row.Key)).Append('\n');
 
                 if (row.RosterEmpty)
                 {
@@ -220,6 +224,19 @@ namespace Utangard
 
             text.Append("\nA character stops counting once it has not played for that long, "
                 + "which is how the gate forgets somebody who has stopped playing.\n");
+        }
+
+        /// <summary>
+        /// The name of whatever sets this key, falling back to the key itself.
+        ///
+        /// The fallback is not a formality: a row may point at another mod's key, or at one a
+        /// location sets rather than a creature, and printing nothing there would leave the
+        /// panel saying a biome is shut for no stated reason.
+        /// </summary>
+        private static string BossName(string key)
+        {
+            string name = DefeatKeys.NameFor(key);
+            return string.IsNullOrEmpty(name) ? key : name;
         }
 
         /// <summary>
