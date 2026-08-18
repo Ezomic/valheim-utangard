@@ -7,7 +7,7 @@ schemaVersion = "0.0.1"
 [package]
 namespace = "Ezomic"
 name = "Utangard"
-versionNumber = "1.1.0"
+versionNumber = "1.2.0"
 description = "Biomes nobody in your group has earned starve you: food burns away, buffs are refused, and the land leaves you sapped."
 websiteUrl = "https://github.com/Ezomic/valheim-utangard"
 containsNsfwContent = false

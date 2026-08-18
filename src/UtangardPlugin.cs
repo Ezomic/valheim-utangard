@@ -31,7 +31,7 @@ namespace Utangard
     {
         public const string PluginGuid = "ezomic.valheim.utangard";
         public const string PluginName = "Utangard";
-        public const string PluginVersion = "1.1.0";
+        public const string PluginVersion = "1.2.0";
         public const string PluginAuthor = "Robbin Thijssen";
 
         /// <summary>Core's plugin GUID. Optional - see TryRegisterWithCore.</summary>

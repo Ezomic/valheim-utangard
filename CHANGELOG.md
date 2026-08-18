@@ -3,7 +3,7 @@
 Notable changes to Utangard. Format follows [Keep a Changelog](https://keepachangelog.com),
 and the mod uses [semantic versioning](https://semver.org).
 
-## [Unreleased]
+## [1.2.0] - 2026-08-19
 
 ### The border is a band, and wounds do not close
 
