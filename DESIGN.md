@@ -177,6 +177,42 @@ that compares **only X and Z**. The interior sits directly above its own entranc
 whose heightmap is loaded because you are standing in it, so it reports the surface biome. A
 Swamp crypt withers you exactly like the Swamp. Convenient, and entirely accidental.
 
+### The border is a band
+
+`Heightmap.FindBiome` at eight compass points, five metres out, and the gate closes if any of
+them lands in a biome the group has not earned. The player's own biome is still the first
+question asked, and the ring is only consulted when the ground underfoot is allowed - inside a
+gated biome it can only ever agree, and it costs eight heightmap lookups to say so.
+
+Vanilla's own answer, `Player.m_currentBiome`, is no use here: it is refreshed once a second
+from the player's own position, and there is no per-point equivalent. `FindBiome` compares only
+X and Z, so the dungeon case looks after itself exactly as the main gate does.
+
+What is cached is the set of biomes within reach, and deliberately not the verdict on them. A
+verdict goes stale the moment a boss dies or a deadline passes, and the player it would go
+stale for is the one standing still at a border - which is precisely who is watching when a
+biome opens. Which biomes are within five metres, by contrast, cannot change while the player
+does not move, so the cache is keyed on position and re-taken every quarter of a metre.
+
+Eight points and no interior ring, because a biome border is a smooth curve tens of metres
+across at its sharpest: at five metres the arc between neighbouring samples is under four
+metres, and a border that touches the ring at all crosses one of them.
+
+### Why healing is an effect and not a patch
+
+Everything else the mod does to a player is an edit to a timer or an answer, and lives in a
+patch. Health regeneration is different in kind, because vanilla already asks for it:
+`Player.UpdateFood` totals every meal's `m_foodRegen`, calls `SEMan.ModifyHealthRegen` on the
+result, and heals by what comes back. So the marker effect overrides `ModifyHealthRegen` and
+the multiplier composes with every other one rather than replacing them - the same argument as
+Sapped's stamina figure.
+
+The cost was that the marker stopped being optional. It was signage, and signage that nobody
+can see does not need to exist, so it was skipped entirely when `ShowStatusEffects` was off.
+Carrying a rule, that would have made a presentation toggle silently disable a mechanic. Both
+effects are now always applied and hidden by handing them a null icon, which is what
+`SEMan.GetHUDStatusEffects` already checks for.
+
 ### Where the drain rides
 
 `Player.UpdateFood`, not `Update` or a MonoBehaviour of its own. It is where the food timers

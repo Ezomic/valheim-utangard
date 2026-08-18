@@ -7,9 +7,9 @@ fenced and settled ground, where a person has protection and hospitality, and ev
 beyond it. This mod puts every biome your group has not earned on the far side of that fence.
 
 Nothing stops you walking into the Swamp on day two. But while you are there, food burns down
-five times faster, you cannot eat or drink at all, and you leave **Sapped**: three quarters of
-your stamina regeneration gone, for up to half a minute. An early run for barley is still your
-call. It is just a raid now rather than an errand.
+five times faster, you cannot eat or drink at all, your wounds do not close, and you leave
+**Sapped**: three quarters of your stamina regeneration gone, for up to half a minute. An early
+run for barley is still your call. It is just a raid now rather than an errand.
 
 A biome counts as earned when **every member of your group has personally been at that boss's
 death**, not when the boss has died in the world. Kill Moder yourself and the Plains stays shut
@@ -32,8 +32,15 @@ While you are standing in a gated biome:
   **without burning the cooldown**, so you can use yours the moment you leave.
 - **Rested and Resting count as buffs,** so a fire and a roof buy you nothing inside. This is
   the harshest single rule in the mod and it has its own switch.
+- **Wounds do not close.** Food is Valheim's only passive healing, so the land that will not
+  feed you does not mend you either: the regeneration your meals would have given is set to
+  zero. Damage taken in a gated biome is damage you carry home.
 - **Harmful effects are never touched.** Wet, Cold, Freezing, Burning, Poison and the rest run
   exactly as normal. Speeding up Poison would be a mercy, not a penalty.
+- **The border is a band, not a line.** The gate reaches **5 m** past the edge of a gated
+  biome. Without that, every one of these rules is escapable by taking three steps out of the
+  Swamp, eating, and stepping back in, which makes it a rule about where you may chew rather
+  than where you may live.
 
 And on the way out:
 
@@ -89,11 +96,13 @@ Every value here is the shipped default and every one is configurable.
 | Food drain in a gated biome | **5×** |
 | Buff drain in a gated biome | **5×** |
 | Eating and drinking | **refused** |
+| Health regeneration in a gated biome | **none** |
 | New buffs | **refused** |
 | Rested / Resting | **treated as buffs** |
 | Stamina regeneration while Sapped | **25% of normal** (a 75% penalty) |
 | Sapped banked per second inside | **1 second** |
 | Sapped maximum | **30 seconds** |
+| Reach past the biome border | **5 m** |
 | Boss credit radius | **100 m** |
 | Roster absence before you stop counting | **14 real days** |
 | Catch-up deadline | **1 day for Eikthyr, +1 per boss after** |
@@ -211,8 +220,8 @@ the reasoning, not just the units.
 > If a change appears to do nothing, check the cfg before reading anything else.
 
 With Longhouse Core installed, every setting that decides **a rule** is synced from the host:
-all of **Gate** including the biome keys, the drains and blocks under **Food** and **Buffs**,
-and both **Sapped** values. Anything that decides **wording** stays yours: the two blocked
+all of **Gate** including the biome keys and the border margin, the drains and blocks under
+**Food** and **Buffs** including the healing multiplier, and both **Sapped** values. Anything that decides **wording** stays yours: the two blocked
 messages, all of **Presentation**, and all of **Diagnostics**. The host sets the rules of the
 gate; it does not get to pick your phrasing or your log level.
 
@@ -229,6 +238,7 @@ gate; it does not get to pick your phrasing or your log level.
 | `CatchUpDays` | `0` | Fallback deadline for any boss not named below. `0` means none. |
 | `CatchUpDaysPerBoss` | `eikthyr:1 … fader:7` | Days the group has to catch up once the first player clears a boss. |
 | `CreditRadius` | `100` | Metres from a dying boss to be credited. |
+| `BorderMargin` | `5` | Metres the gate reaches past the edge of a gated biome. `0` puts it exactly on the border. |
 | `ExcludePlayerIds` | *(empty)* | Character IDs that never count towards the gate. IDs, not names. |
 | `Key_<Biome>` | see table above | The global key that opens each biome. Blank means never gated. |
 
@@ -239,6 +249,7 @@ gate; it does not get to pick your phrasing or your log level.
 | `FoodDrainMultiplier` | `5` | How much faster food burns. `1` disables the drain and leaves only the refusal. |
 | `BlockEating` | `true` | Refuse to eat or drink anything at all. |
 | `EatBlockedMessage` | `The land will not feed you here` | Shown when a bite is refused. |
+| `HealthRegenMultiplier` | `0` | Health regeneration in a gated biome, as a fraction of normal. `1` leaves healing alone. |
 
 ### Buffs
 
@@ -287,6 +298,9 @@ open and close at borders in both directions, credit is granted at the kill and 
 reload, the latch fires, a two-character roster names both debtors, and the catch-up deadline
 opens a biome for a group that had not all earned it. Running standalone with no Core has been
 confirmed in game.
+
+**Built but not yet played:** the 5 m border margin and the healing block, both added after
+that session.
 
 **What has not been tested, and only this:**
 

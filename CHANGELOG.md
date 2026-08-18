@@ -3,6 +3,42 @@
 Notable changes to Utangard. Format follows [Keep a Changelog](https://keepachangelog.com),
 and the mod uses [semantic versioning](https://semver.org).
 
+## [Unreleased]
+
+### The border is a band, and wounds do not close
+
+Two rules, both configurable, both on by default.
+
+**`Gate.BorderMargin`, 5 metres.** The gate now reaches five metres past the edge of a gated
+biome. On a line, every penalty in the mod is escapable by taking three steps out of the Swamp,
+eating, and stepping back in - the drain, the refusal and the grudge all end at a boundary you
+can see and stand behind. That makes it a rule about where you may chew rather than where you
+may live, and it is worst exactly where it matters most, at the edge of a fight you are already
+in. A band has to be genuinely cleared. Set it to 0 to put the gate back on the border.
+
+It samples eight compass points at the margin, so it costs eight biome lookups. Those are
+cached against the player's position and re-taken every quarter of a metre walked; what is
+cached is *which* biomes are within reach and never the verdict on them, so a biome that opens
+while somebody stands at its border opens for them where they stand.
+
+**`Food.HealthRegenMultiplier`, 0.** Health regeneration in a gated biome, as a fraction of
+normal. It sits in the Food section because food is the only passive healing Valheim has -
+`Player.UpdateFood` adds up every meal's `m_foodRegen` every ten seconds and heals you by it -
+so this multiplies exactly the healing the food you are not allowed to eat would have given.
+The land that will not feed you does not mend you either.
+
+It rides `StatusEffect.ModifyHealthRegen` on the marker effect rather than a patch, because
+that is the seam vanilla already offers and it composes with every other multiplier instead of
+overriding them. Which meant the marker had to stop being skipped when `ShowStatusEffects` was
+off: it was pure signage then and is carrying a rule now, and turning off the HUD would
+otherwise have quietly turned off the healing block.
+
+Both are host-synced with Core, like every other setting that decides a rule.
+
+Also: the deadline in the entry message is now read from the biome that is actually withering
+you rather than the one underfoot. With a margin those part company, and a countdown for the
+wrong boss is worse than no countdown.
+
 ## [1.1.0] - 2026-08-17
 
 ### An API for other mods to ask what the group has earned

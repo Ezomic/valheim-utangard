@@ -161,7 +161,10 @@ namespace Utangard
                 // A deadline nobody can see is not pressure, it is a surprise. Shown with the
                 // names, because "who" and "how long" are the same question to a player
                 // deciding whether to go and fetch somebody.
-                string key = UtangardConfig.RequiredKeyFor(player.GetCurrentBiome());
+                // The gating key, not the key of the biome underfoot. With a border margin
+                // the two part company, and a deadline counted for the wrong boss is worse
+                // than no deadline at all.
+                string key = BiomeGate.GatingKey(player);
                 long left = key == null ? -1L : Progression.SecondsLeft(key);
                 if (left >= 0L) message = message + " (" + GlobalKeyDump.Describe(left) + " left)";
             }

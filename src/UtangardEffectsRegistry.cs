@@ -80,10 +80,12 @@ namespace Utangard
 
             bool show = UtangardConfig.ShowStatusEffects.Value;
 
-            // The marker is signage and nothing else, so when signage is off it does not
-            // need to exist at all. Sapped is a mechanic and is applied either way.
-            if (show) Apply(seman, MarkerHash, _marker, _markerIcon);
-
+            // Both are applied whether or not they are shown, and hidden by handing them a
+            // null icon. The marker used to be skipped entirely when signage was off, which
+            // was right while it was signage and became a bug the moment it started carrying
+            // the health-regeneration multiplier: turning off the HUD would have quietly
+            // turned off a rule.
+            Apply(seman, MarkerHash, _marker, show ? _markerIcon : null);
             Apply(seman, SappedHash, _sapped, show ? _sappedIcon : null);
         }
 

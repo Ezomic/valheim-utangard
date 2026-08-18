@@ -38,6 +38,7 @@ namespace Utangard
         public static ConfigEntry<string> CatchUpDaysPerBoss;
         public static ConfigEntry<float> CreditRadius;
         public static ConfigEntry<string> ExcludePlayerIds;
+        public static ConfigEntry<float> BorderMargin;
 
         // One row per biome. A global key name, or empty for "this biome is not gated".
         public static ConfigEntry<string> KeyMeadows;
@@ -53,6 +54,7 @@ namespace Utangard
         public static ConfigEntry<float> FoodDrainMultiplier;
         public static ConfigEntry<bool> BlockEating;
         public static ConfigEntry<string> EatBlockedMessage;
+        public static ConfigEntry<float> HealthRegenMultiplier;
 
         public static ConfigEntry<float> BuffDrainMultiplier;
         public static ConfigEntry<bool> BlockNewBuffs;
@@ -183,6 +185,15 @@ namespace Utangard
                 + "hold the gate. IDs rather than names, because global keys are lowercased "
                 + "and two characters can share a name. The roster dump on spawn prints both.");
 
+            BorderMargin = config.Bind(SecGate, "BorderMargin", 5f,
+                "How far the gate reaches past the edge of a gated biome, in metres. Without "
+                + "it the border is a line you can stand a step behind: walk out of the "
+                + "Swamp, eat, walk back, and the drain is a mild inconvenience rather than "
+                + "a reason to leave. With it the edge is a band you have to actually clear, "
+                + "and the biome you can see from is still the biome you are in. Costs eight "
+                + "biome lookups a step, cached, so it is not free but it is close. 0 turns "
+                + "it off and puts the gate exactly on the border.");
+
             // The defaults are the vanilla progression, offset by one: the key that lets you
             // into a biome is the boss of the biome before it. Note this walls off the Black
             // Forest copper run until Eikthyr is down, which is the intended shape but is
@@ -226,6 +237,16 @@ namespace Utangard
             EatBlockedMessage = config.Bind(SecFood, "EatBlockedMessage",
                 "The land will not feed you here",
                 "Shown centre-screen when a bite is refused.");
+
+            HealthRegenMultiplier = config.Bind(SecFood, "HealthRegenMultiplier", 0f,
+                "Health regeneration in a gated biome, as a fraction of normal. 0 is 'wounds "
+                + "do not close here'. It belongs in this section because food is the only "
+                + "passive healing Valheim has - Player.UpdateFood adds up m_foodRegen every "
+                + "ten seconds and heals you by it - so this multiplies exactly the healing "
+                + "the food you are not allowed to eat would have given. Healing that comes "
+                + "from an effect you were carrying is drained by the Buffs section instead. "
+                + "1 leaves healing alone, which makes a gated biome survivable in a way "
+                + "resting off a bad fight makes it liveable.");
 
             BuffDrainMultiplier = config.Bind(SecBuffs, "BuffDrainMultiplier", 5f,
                 "How much faster an already-running buff burns down in a gated biome. Only "

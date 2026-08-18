@@ -3,16 +3,39 @@ using UnityEngine;
 namespace Utangard
 {
     /// <summary>
-    /// The icon you carry while the gate is closed on you. Pure signage - it modifies
-    /// nothing, because the drain and the refusals are done by the patches, and putting them
-    /// here as well would mean two places to look when a number is wrong.
+    /// What you carry while the gate is closed on you: the icon, and the one penalty the
+    /// game will only take through a status effect.
     ///
-    /// It earns its place anyway: without it, "you cannot eat" is a message that flashes
-    /// once and then a mystery, and the tooltip is the only thing in the mod that can say
-    /// which boss you are missing.
+    /// It was pure signage first, and the drain and the refusals still live in the patches -
+    /// they are edits to timers and to answers, and doing them from here would mean two
+    /// places to look when a number is wrong. Health regeneration is different in kind.
+    /// Player.UpdateFood asks SEMan for a multiplier and applies it (see
+    /// ModifyHealthRegen below), so the seam vanilla offers is an effect, and a patch would
+    /// be reimplementing a hook that already exists.
+    ///
+    /// It earns its keep as signage too: without it, "you cannot eat" is a message that
+    /// flashes once and then a mystery, and the tooltip is the only thing in the mod that can
+    /// say which boss you are missing.
     /// </summary>
     internal sealed class UtangardMarker : StatusEffect
     {
+        /// <summary>
+        /// No wounds close here.
+        ///
+        /// Valheim's only passive healing is food: UpdateFood adds up every meal's
+        /// m_foodRegen every ten seconds, asks SEMan to modify it, and heals you by the
+        /// result. So this multiplies exactly the healing the food you are not allowed to eat
+        /// would have given, which is why it is the same rule rather than a second one - the
+        /// biome that will not feed you does not mend you either.
+        ///
+        /// Multiplied in alongside every other effect's, like Sapped's stamina figure, so it
+        /// composes with vanilla rather than overriding it.
+        /// </summary>
+        public override void ModifyHealthRegen(ref float regenMultiplier)
+        {
+            regenMultiplier *= Mathf.Clamp01(UtangardConfig.HealthRegenMultiplier.Value);
+        }
+
         /// <summary>
         /// Ends the moment the player leaves. The gate re-adds it every tick while inside,
         /// so this is the whole lifecycle: exists in a gated biome, gone anywhere else.
@@ -25,6 +48,25 @@ namespace Utangard
         public override string GetIconText()
         {
             return "";
+        }
+
+        /// <summary>
+        /// The tooltip, plus a line about healing when healing is actually being denied.
+        ///
+        /// Built here rather than baked into m_tooltip at construction because the multiplier
+        /// is a live config value: a server that syncs a different one, or a player who
+        /// changes it in ConfigurationManager, would otherwise read a description of a rule
+        /// that is no longer in force. Vanilla asks for this string every time it draws the
+        /// tooltip, so there is nothing to invalidate.
+        /// </summary>
+        public override string GetTooltipString()
+        {
+            float regen = Mathf.Clamp01(UtangardConfig.HealthRegenMultiplier.Value);
+            if (regen >= 1f) return m_tooltip;
+
+            return m_tooltip + "\n" + (regen <= 0f
+                ? "Wounds do not close here."
+                : "Wounds close slowly here.");
         }
     }
 
