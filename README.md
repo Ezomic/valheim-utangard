@@ -329,9 +329,9 @@ all nine gate rows against the world's own creature prefabs.
 - **Attendee credit with more than one player.** Solo you own the boss ZDO and credit yourself
   either way. The loop is identical for one player or five; what is unproven is whether other
   players' objects are instantiated on the owning client at fight range.
-- The healing block with `ShowStatusEffects = false`. The marker effect carries that rule and
-  used to be skipped entirely when hidden, so this is the one path the change could still be
-  wrong on.
+- Nothing else. Everything added on 2026-08-19 has been played, including the healing block
+  with `ShowStatusEffects = false` - the path where a presentation toggle could have switched
+  off a rule.
 
 ---
 

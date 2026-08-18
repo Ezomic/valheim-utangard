@@ -88,10 +88,11 @@ is a supported thing to want.
 
 ### Played
 
-All of the above except one path: the border margin refusing a player standing three metres
-outside a gated biome, the healing block, the compendium page, and the announcement firing on
-the transition. Still unplayed: the healing block with `ShowStatusEffects = false`, which is
-the one path the marker's new job could be wrong on.
+All of it, on a live world: the border margin refusing a player standing three metres outside
+a gated biome, the healing block, the compendium page, the announcement firing on the
+transition, and the healing block again with `ShowStatusEffects = false` - where the gate
+still refused food and held healing at zero with both icons hidden, and regeneration returned
+on leaving. A presentation toggle does not switch off a rule.
 
 ## [1.1.0] - 2026-08-17
 
