@@ -3,6 +3,36 @@
 Notable changes to Utangard. Format follows [Keep a Changelog](https://keepachangelog.com),
 and the mod uses [semantic versioning](https://semver.org).
 
+## [Unreleased]
+
+### Only the people at the frontier hold a gate shut
+
+A character now counts towards a boss's gate only once it has the boss before it in the table.
+
+The case that forced it: a group has cleared Eikthyr, somebody kills The Elder, and the Swamp
+stays shut - held by a character who has killed nothing at all. That is a person two steps
+behind the frontier deciding when the people at it may move, and there was nothing they or
+anyone else could usefully do about it except wait out the catch-up deadline. The gate exists
+to make fetching your friend worth doing, not to stop a group at the boss its newest member
+has not reached.
+
+They still count for the boss they are actually next in line for, so the gate that holds a
+group together is the one nearest the person who is behind - which is the one where helping
+them is a single evening rather than a campaign. And every biome the group has already earned
+stays open to them, because the latch is a fact about the group and not about who is standing
+in it today.
+
+Two decisions inside that are worth naming. It tests the member's own credit rather than
+whether the previous gate is open: a gate that is open is open for everyone the moment it
+latches, so testing that would exclude nobody and the rule would do nothing. And it is the
+immediate predecessor rather than the whole chain, because somebody carrying The Elder without
+Eikthyr is at the Swamp's frontier by any honest reading.
+
+It lands in `Counts`, the one seam the gate asks through, so the verdict, what gets latched and
+the names in "still owed by" all follow it together rather than two of the three.
+
+`Gate.RequirePreviousBoss`, default on, host-synced like every other rule.
+
 ## [1.2.0] - 2026-08-19
 
 ### The border is a band, and wounds do not close

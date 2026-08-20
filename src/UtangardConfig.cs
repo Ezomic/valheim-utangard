@@ -39,6 +39,7 @@ namespace Utangard
         public static ConfigEntry<float> CreditRadius;
         public static ConfigEntry<string> ExcludePlayerIds;
         public static ConfigEntry<float> BorderMargin;
+        public static ConfigEntry<bool> RequirePreviousBoss;
 
         // One row per biome. A global key name, or empty for "this biome is not gated".
         public static ConfigEntry<string> KeyMeadows;
@@ -189,6 +190,16 @@ namespace Utangard
                 + "manual override for a character that has to keep playing but should not "
                 + "hold the gate. IDs rather than names, because global keys are lowercased "
                 + "and two characters can share a name. The roster dump on spawn prints both.");
+
+            RequirePreviousBoss = config.Bind(SecGate, "RequirePreviousBoss", true,
+                "A character only counts towards a boss's gate once it has the boss before it "
+                + "in this table. Without it, somebody who has killed nothing at all holds the "
+                + "Swamp shut for a group that has cleared Eikthyr and is waiting on The "
+                + "Elder - a person two steps behind the frontier deciding when the people at "
+                + "it may move. They still count for the boss they are actually next in line "
+                + "for, so the gate that holds a group together is the one nearest them, and "
+                + "biomes the group has already earned stay open regardless. Off restores "
+                + "'every living character counts for every gate'.");
 
             BorderMargin = config.Bind(SecGate, "BorderMargin", 5f,
                 "How far the gate reaches past the edge of a gated biome, in metres. Without "
@@ -384,6 +395,17 @@ namespace Utangard
             NeverBlock.SettingChanged += (s, e) => InvalidateNameSets();
             BlockRested.SettingChanged += (s, e) => BlockedEffects.Rebuild();
             ExcludePlayerIds.SettingChanged += (s, e) => _excludedIds = null;
+
+            // The gate order is read off the Key_ rows, so a row that moves has to invalidate
+            // it or the prerequisite chain describes the table as it was at startup. Through
+            // the file's own event rather than each entry's: SettingChanged is declared on
+            // ConfigEntry<T>, and GateKeyEntries hands back ConfigEntryBase.
+            config.SettingChanged += (s, e) =>
+            {
+                if (e.ChangedSetting != null
+                    && e.ChangedSetting.Definition.Key.StartsWith("Key_", StringComparison.Ordinal))
+                    _order = null;
+            };
         }
 
         private static ConfigEntry<string> BindKey(
@@ -444,6 +466,56 @@ namespace Utangard
                 string key = RequiredKeyFor(biome);
                 if (key != null && seen.Add(key)) yield return key;
             }
+        }
+
+        /// <summary>
+        /// The gate's keys in table order, cached until a row changes.
+        ///
+        /// Rebuilt rather than recomputed per call because the prerequisite check runs inside
+        /// the roster loop, which itself runs several times a frame - and AllGateKeys
+        /// allocates a set every time it is enumerated.
+        /// </summary>
+        private static List<string> _order;
+
+        private static List<string> Order()
+        {
+            if (_order != null) return _order;
+
+            _order = new List<string>(9);
+            foreach (string key in AllGateKeys()) _order.Add(key);
+
+            return _order;
+        }
+
+        /// <summary>
+        /// The key immediately before this one in the gate table, or null if it is the first.
+        ///
+        /// Table order and not a hardcoded boss list, for the same reason the gate itself is a
+        /// table: a row pointed somewhere else, or blanked, changes what "the one before" means
+        /// and this has to follow it. Two rows sharing a key are one step, because AllGateKeys
+        /// is distinct - the Meadows and the Ocean being ungated does not insert a blank step.
+        ///
+        /// The immediate predecessor only, rather than the whole chain behind it. Somebody who
+        /// somehow has The Elder without Eikthyr is at the Swamp's frontier by any honest
+        /// reading, and walking the chain would exclude them from a gate they have plainly
+        /// earned a say in.
+        /// </summary>
+        public static string PreviousGateKey(string bossKey)
+        {
+            if (string.IsNullOrEmpty(bossKey)) return null;
+
+            List<string> order = Order();
+            for (int i = 0; i < order.Count; i++)
+            {
+                if (!string.Equals(order[i], bossKey, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                return i == 0 ? null : order[i - 1];
+            }
+
+            // A key the table does not name at all - asked about by another mod through the
+            // API, most likely. Nothing to be next in line for.
+            return null;
         }
 
         /// <summary>

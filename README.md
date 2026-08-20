@@ -78,6 +78,11 @@ This is a rule for a group that all runs it, not an anti-cheat. If you want that
   when a boss dies is not enough on its own.
 - **Credit is earned by being there.** When a boss dies, everyone within **100 m** of the body
   is credited. You do not have to land the killing blow, and you do not have to be the host.
+- **Only the people at that frontier count.** A character has a say about a boss once it has
+  the boss before it. Somebody who has killed nothing does not hold the Swamp shut for a group
+  that cleared Eikthyr and is waiting on The Elder - they count for Eikthyr, the gate they are
+  actually next in line for, and nothing beyond it. They still get every biome the group has
+  already earned, because that is a fact about the group.
 - **Joining late does not undo anything.** Once the group has cleared a boss, that biome is
   open **permanently**. A friend arriving with a fresh character gates only what the group has
   *not* yet cleared.
@@ -117,6 +122,7 @@ Every value here is the shipped default and every one is configurable.
 | Roster absence before you stop counting | **14 real days** |
 | Catch-up deadline | **1 day for Eikthyr, +1 per boss after** |
 | Gate basis | **the whole group**, not the world |
+| Who counts for a boss | **those who have the boss before it** |
 | Already-earned biomes | **never re-lock** |
 
 ---
@@ -247,6 +253,7 @@ gate; it does not get to pick your phrasing or your log level.
 | `Enabled` | `true` | Master switch. Off leaves the game completely untouched. |
 | `GateOnGroup` | `true` | Gate on whether everyone has personally done the boss. Off restores "one kill opens it for all". |
 | `GateNeverRegresses` | `true` | Once the group clears a boss, that biome stays open forever. Off makes the gate strictly weakest-link at all times. |
+| `RequirePreviousBoss` | `true` | A character only counts towards a boss once it has the boss before it in the table. Off, every living character counts for every gate. |
 | `RosterDays` | `14` | Real days a character counts for after it was last seen. |
 | `RosterDaysPerBoss` | *(empty)* | Per-boss overrides, as `key:days` pairs. E.g. `defeated_eikthyr:7, defeated_fader:60` |
 | `BackfillFromCharacter` | `true` | Credit a character from its own file, for a boss this world has already seen die. The migration path for existing worlds. |

@@ -335,16 +335,43 @@ namespace Utangard
         }
 
         /// <summary>
-        /// Whether this character is recent enough to have a say about this boss.
+        /// Whether this character has a say about this boss: recent enough, and far enough
+        /// along to be at that frontier.
         ///
         /// Future dates count rather than being discarded. A client with its clock set forward
         /// writes one, and silently dropping that player from the roster would quietly open
         /// the gate for everybody - failing open on a bad clock is the wrong direction.
+        ///
+        /// The second half is the frontier rule, and it is what stops the group gate from
+        /// being a trap. Somebody who has killed nothing at all was holding the Swamp shut for
+        /// a group that had cleared Eikthyr and was waiting on The Elder: a person two steps
+        /// behind deciding when the people at the frontier may move, with no way to help
+        /// themselves that anybody could name. Under this rule they count for exactly one
+        /// boss - the one they are actually next in line for - and the biomes the group has
+        /// already earned stay open to them anyway, because the latch is a group fact.
+        ///
+        /// It is deliberately about the member's own credit rather than about whether the
+        /// previous gate is open. The gate being open is a fact about the group, true for
+        /// everybody the moment it latches, so testing it would exclude nobody and this whole
+        /// rule would do nothing.
+        ///
+        /// This is the single seam the gate asks through - GroupHasKey, the latch and the
+        /// "still owed by" list all funnel here - so the frontier rule lands in the verdict,
+        /// in what gets latched, and in the names on screen at once, rather than in two of
+        /// the three.
         /// </summary>
         private static bool Counts(RosterEntry member, string bossKey)
         {
             long window = (long)Math.Max(1f, UtangardConfig.RosterDaysFor(bossKey));
-            return Today() - member.LastSeenDay <= window;
+            if (Today() - member.LastSeenDay > window) return false;
+
+            if (!UtangardConfig.RequirePreviousBoss.Value) return true;
+
+            string previous = UtangardConfig.PreviousGateKey(bossKey);
+            if (previous == null) return true;   // the first gate: everybody has a say
+
+            ZoneSystem zone = ZoneSystem.instance;
+            return zone != null && Has(zone, DoneKey(member.Id, previous));
         }
 
         /// <summary>

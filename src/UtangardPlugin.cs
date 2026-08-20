@@ -120,6 +120,7 @@ namespace Utangard
                 UtangardConfig.CreditRadius,
                 UtangardConfig.ExcludePlayerIds,
                 UtangardConfig.BorderMargin,
+                UtangardConfig.RequirePreviousBoss,
                 UtangardConfig.FoodDrainMultiplier,
                 UtangardConfig.BlockEating,
                 UtangardConfig.HealthRegenMultiplier,
