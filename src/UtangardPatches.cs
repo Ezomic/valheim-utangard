@@ -197,6 +197,58 @@ namespace Utangard
         /// join a server. Rebuilding on only one leaves the buff set and the borrowed icons
         /// pointing at a database that no longer exists.
         /// </summary>
+        /// <summary>
+        /// Hold a flag across the world's key list being rebuilt.
+        ///
+        /// ZoneSystem.RPC_GlobalKeys clears every global key and re-adds them one at a time,
+        /// and it runs on every client every time anyone sets any key, because SetGlobalKey
+        /// ends in SendGlobalKeys(Everybody). For the length of that loop the dictionary this
+        /// mod reads its roster and its credits out of is incomplete.
+        ///
+        /// Vanilla never notices, because the refill is synchronous and no frame boundary
+        /// falls inside it. A Harmony postfix on GlobalKeyAdd does notice, and Yoke has one -
+        /// it hooks there deliberately, to catch the bulk list a server sends on connect - so
+        /// every key in that list makes Yoke ask this mod whether the group has cleared a
+        /// boss, while the answer is built from whatever fraction has arrived.
+        ///
+        /// A prefix and a postfix rather than a wrapper: RPC_GlobalKeys is private and takes
+        /// a List&lt;string&gt;, and the flag has to be down again even if something inside
+        /// throws, which is what finally would buy in a wrapper and what the postfix buys
+        /// here.
+        /// </summary>
+        [HarmonyPrefix]
+        [HarmonyPatch(typeof(ZoneSystem), "RPC_GlobalKeys")]
+        private static void KeysStartArriving()
+        {
+            Progression.Settling = true;
+        }
+
+        [HarmonyPostfix]
+        [HarmonyPatch(typeof(ZoneSystem), "RPC_GlobalKeys")]
+        private static void KeysFinishedArriving()
+        {
+            Progression.Settling = false;
+
+            // The list that was just installed is a different world state from the one the
+            // cached roster was built against, whatever it was built from.
+            Progression.InvalidateRoster();
+        }
+
+        /// <summary>
+        /// Any key at all changes the answer this mod caches, so the cache goes.
+        ///
+        /// It is one field assignment, and it fires for every key in the game rather than
+        /// only ours - which is still far cheaper than the alternative, a roster that
+        /// outlives the world state it describes by up to two seconds. That is exactly how
+        /// long one frame of half-filled keys needed to survive in order to reach the latch.
+        /// </summary>
+        [HarmonyPostfix]
+        [HarmonyPatch(typeof(ZoneSystem), "GlobalKeyAdd", new[] { typeof(string), typeof(bool) })]
+        private static void OnGlobalKeyAdd()
+        {
+            Progression.InvalidateRoster();
+        }
+
         [HarmonyPostfix]
         [HarmonyPatch(typeof(ObjectDB), "Awake")]
         private static void OnObjectDbAwake()

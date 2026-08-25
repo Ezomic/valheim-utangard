@@ -33,6 +33,47 @@ the names in "still owed by" all follow it together rather than two of the three
 
 `Gate.RequirePreviousBoss`, default on, host-synced like every other rule.
 
+## [1.2.1] - 2026-08-25
+
+**A gate could latch open off a half-loaded world.** It did, on the live server: the Swamp
+opened permanently while seven of the nine characters on the roster had never met the Elder.
+
+### The bug
+
+`ZoneSystem.RPC_GlobalKeys` clears every global key and re-adds them **one at a time**, and it
+runs on every client every time anybody sets any key, because `SetGlobalKey` ends in
+`SendGlobalKeys(Everybody)`. For the length of that loop the dictionary this mod reads its
+roster and its credits out of is incomplete.
+
+Vanilla never notices - the refill is synchronous, no frame boundary falls inside it. A
+Harmony postfix on `GlobalKeyAdd` does notice, and Yoke has one, hooked there deliberately so
+it catches the bulk list a server sends on connect. So every key in that list made Yoke ask
+this mod whether the group had cleared a boss, once per key, while the answer was built from
+whatever fraction had arrived.
+
+With a partial roster the counted members can be exactly the ones who hold the key - the two
+who had just killed the Elder, whose credits were already in - and `LatchIfGroupCleared` then
+finds a group that has cleared it. The `!anyCounted` guard only ever caught a **completely**
+empty roster; a partial one walked straight through it. The open key is permanent by design,
+`RPC_SetGlobalKey` has no permission check, and so one client's half-loaded view became
+everyone's, for good.
+
+The two-second roster cache is what let one frame of that outlive itself.
+
+### Fixed
+
+- **The latch refuses to run while the world's keys are settling.** A prefix and postfix on
+  `RPC_GlobalKeys` hold a flag across the rebuild; while it is up, nothing latches. This is
+  the irreversible half of the mod, so it is the half that must decline to answer early
+  rather than answer wrongly.
+- **The roster is never cached from a half-filled key list**, and is invalidated on every key
+  that arrives rather than only on a publish. A cache can no longer outlive the world state it
+  was built from.
+
+Nothing here changes a rule, a number or a saved value. A gate already latched open stays
+open - that is what "never regresses" means, and unpicking it after the fact would be a worse
+promise than the one that was broken.
+
 ## [1.2.0] - 2026-08-19
 
 ### The border is a band, and wounds do not close

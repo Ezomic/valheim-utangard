@@ -445,6 +445,11 @@ namespace Utangard
         {
             if (!UtangardConfig.GateNeverRegresses.Value) return;
 
+            // Never off a half-filled key list. This is the irreversible half of the mod -
+            // the open key is permanent by design and by config - so it is the one place that
+            // must refuse to answer rather than answer early. See Settling.
+            if (Settling) return;
+
             string openKey = OpenKey(bossKey);
             if (Has(zone, openKey)) return;
 
@@ -553,8 +558,30 @@ namespace Utangard
         /// far below any rate at which the answer can change - a roster changes when somebody
         /// logs in or kills a boss - and far above a frame.
         /// </summary>
+        /// <summary>
+        /// True while ZoneSystem is rebuilding the world's key list and the dictionary this
+        /// class reads is therefore incomplete.
+        ///
+        /// RPC_GlobalKeys does `ClearGlobalKeys()` and then re-adds every key ONE AT A TIME,
+        /// and it runs on every client every time anybody anywhere sets a global key, because
+        /// SetGlobalKey ends in SendGlobalKeys(Everybody). Nothing in the game observes that
+        /// window - the refill is synchronous - but a Harmony postfix on GlobalKeyAdd does,
+        /// and Yoke has one, so it asks this class the group question once per key while the
+        /// answer is half true.
+        ///
+        /// On 2026-08-25 that opened the Swamp on the live server permanently: two of nine
+        /// characters held the Elder, their keys happened to be in the dictionary already,
+        /// the rest had not arrived, and the latch below saw a group that had cleared it.
+        /// </summary>
+        internal static bool Settling;
+
         public static List<RosterEntry> Roster()
         {
+            // Never serve, and never store, a roster built from a half-filled key list. Two
+            // seconds of remembering the wrong answer is what let one frame of partial state
+            // outlive itself and reach the latch.
+            if (Settling) return BuildRoster();
+
             if (_roster != null && Time.realtimeSinceStartup - _rosterBuiltAt < RosterCacheSeconds)
                 return _roster;
 
