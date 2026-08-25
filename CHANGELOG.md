@@ -3,7 +3,13 @@
 Notable changes to Utangard. Format follows [Keep a Changelog](https://keepachangelog.com),
 and the mod uses [semantic versioning](https://semver.org).
 
-## [Unreleased]
+## [1.2.1] - 2026-08-25 (second half)
+
+Everything below shipped in 1.2.1 alongside the latch fix above. It sat under Unreleased
+while the code was already in the release, which is the kind of drift that makes a changelog
+worth less than no changelog - the README carried it, so the package page was right and only
+this file was wrong.
+
 
 ### Only the people at the frontier hold a gate shut
 
