@@ -16,13 +16,40 @@ namespace Utangard
     /// </summary>
     internal static class UtangardTick
     {
-        private static readonly AccessTools.FieldRef<Player, List<Player.Food>> FoodsOf =
-            AccessTools.FieldRefAccess<Player, List<Player.Food>>("m_foods");
+        // Both of these are bound on first use, inside a try/catch, never in a static
+        // initialiser - see Reflect. A throwing initialiser here would not have cost the food
+        // drain, it would have poisoned this class for the rest of the session, and the
+        // symptom would have been something else entirely going wrong in Player.log.
+
+        private static AccessTools.FieldRef<Player, List<Player.Food>> _foodsOf;
+        private static bool _foodsBound;
+
+        private static AccessTools.FieldRef<Player, List<Player.Food>> FoodsOf()
+        {
+            if (_foodsBound) return _foodsOf;
+            _foodsBound = true;
+
+            _foodsOf = Reflect.Field<Player, List<Player.Food>>(
+                "m_foods", "the faster food burn in a gated biome");
+
+            return _foodsOf;
+        }
 
         // m_time is protected on StatusEffect. The Sapped effect gets at its own copy by
         // inheriting; draining somebody else's needs the field directly.
-        private static readonly AccessTools.FieldRef<StatusEffect, float> TimeOf =
-            AccessTools.FieldRefAccess<StatusEffect, float>("m_time");
+        private static AccessTools.FieldRef<StatusEffect, float> _timeOf;
+        private static bool _timeBound;
+
+        private static AccessTools.FieldRef<StatusEffect, float> TimeOf()
+        {
+            if (_timeBound) return _timeOf;
+            _timeBound = true;
+
+            _timeOf = Reflect.Field<StatusEffect, float>(
+                "m_time", "the faster burn on buffs already running");
+
+            return _timeOf;
+        }
 
         /// <summary>Last gate state, so the two messages fire on the edge and not per frame.</summary>
         private static bool _wasWithered;
@@ -105,7 +132,11 @@ namespace Utangard
             float extra = (UtangardConfig.FoodDrainMultiplier.Value - 1f) * dt;
             if (extra <= 0f) return;
 
-            List<Player.Food> foods = FoodsOf(player);
+            // A lost binding costs this drain and nothing else. Reflect has already said so.
+            AccessTools.FieldRef<Player, List<Player.Food>> foodsOf = FoodsOf();
+            if (foodsOf == null) return;
+
+            List<Player.Food> foods = foodsOf(player);
             if (foods == null) return;
 
             for (int i = 0; i < foods.Count; i++)
@@ -131,6 +162,9 @@ namespace Utangard
             SEMan seman = player.GetSEMan();
             if (seman == null) return;
 
+            AccessTools.FieldRef<StatusEffect, float> timeOf = TimeOf();
+            if (timeOf == null) return;
+
             List<StatusEffect> effects = seman.GetStatusEffects();
             for (int i = 0; i < effects.Count; i++)
             {
@@ -138,7 +172,7 @@ namespace Utangard
                 if (effect == null || effect.m_ttl <= 0f) continue;
                 if (!BlockedEffects.IsBlocked(effect)) continue;
 
-                TimeOf(effect) += extra;
+                timeOf(effect) += extra;
             }
         }
 

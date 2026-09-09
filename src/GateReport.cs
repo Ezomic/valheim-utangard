@@ -128,6 +128,17 @@ namespace Utangard
             if (!UtangardConfig.Enabled.Value)
                 return "Utangard is switched off. Every biome behaves as vanilla.";
 
+            // Said before anything else, because the rest of this page describes gates that
+            // are not currently being enforced and a reader has no other way to know that.
+            // The rows below stay honest about what is shut - the mod has simply stopped
+            // acting on it, rather than pretending the world has changed.
+            if (!Seams.PenaltyIsEscapable())
+                text.Append("<color=#c27e7e>Utangard is not enforcing anything right now.</color>\n"
+                    + "A game update has moved the code that records boss kills, so a biome "
+                    + "shut here could never open again. Nothing below is withering you until "
+                    + "the mod is updated. The gate is described anyway, because it is still "
+                    + "what the world thinks.\n\n");
+
             text.Append("A biome your group has not earned will not feed you. "
                 + "Food burns faster there, nothing you eat or drink takes hold, "
                 + "and you leave Sapped.\n\n");

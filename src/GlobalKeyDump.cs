@@ -16,8 +16,24 @@ namespace Utangard
     /// </summary>
     internal static class GlobalKeyDump
     {
-        private static readonly AccessTools.FieldRef<ZoneSystem, HashSet<string>> KeysOf =
-            AccessTools.FieldRefAccess<ZoneSystem, HashSet<string>>("m_globalKeys");
+        // Bound on first use inside a try/catch, never in a static initialiser - see Reflect.
+        // This class carries no Harmony patches of its own, so the blast radius was smaller
+        // here than elsewhere, but the rule is the rule and an unbindable field should cost
+        // one line of a diagnostics dump rather than throw out of the spawn patch that calls
+        // it.
+        private static AccessTools.FieldRef<ZoneSystem, HashSet<string>> _keysOf;
+        private static bool _keysBound;
+
+        private static AccessTools.FieldRef<ZoneSystem, HashSet<string>> KeysOf()
+        {
+            if (_keysBound) return _keysOf;
+            _keysBound = true;
+
+            _keysOf = Reflect.Field<ZoneSystem, HashSet<string>>(
+                "m_globalKeys", "the raw world-key list in the diagnostics dump");
+
+            return _keysOf;
+        }
 
         public static void Log()
         {
@@ -28,19 +44,32 @@ namespace Utangard
                 return;
             }
 
-            HashSet<string> keys = KeysOf(zone);
-            var sorted = new List<string>(keys ?? new HashSet<string>());
-            sorted.Sort();
-
-            var line = new StringBuilder();
-            for (int i = 0; i < sorted.Count; i++)
+            // The flattened "key value" set is the only part of this dump that needs a
+            // private field. Everything below reads m_globalKeysValues, which is public, so
+            // losing the binding costs the first line and not the report.
+            AccessTools.FieldRef<ZoneSystem, HashSet<string>> keysOf = KeysOf();
+            if (keysOf == null)
             {
-                if (i > 0) line.Append(", ");
-                line.Append(sorted[i]);
+                UtangardPlugin.Log.LogWarning(
+                    "World global keys: unavailable - ZoneSystem.m_globalKeys could not be "
+                    + "bound. The gate table below is unaffected.");
             }
+            else
+            {
+                HashSet<string> keys = keysOf(zone);
+                var sorted = new List<string>(keys ?? new HashSet<string>());
+                sorted.Sort();
 
-            UtangardPlugin.Log.LogInfo("World global keys (" + sorted.Count + "): "
-                + (sorted.Count == 0 ? "(none)" : line.ToString()));
+                var line = new StringBuilder();
+                for (int i = 0; i < sorted.Count; i++)
+                {
+                    if (i > 0) line.Append(", ");
+                    line.Append(sorted[i]);
+                }
+
+                UtangardPlugin.Log.LogInfo("World global keys (" + sorted.Count + "): "
+                    + (sorted.Count == 0 ? "(none)" : line.ToString()));
+            }
 
             LogRoster();
 

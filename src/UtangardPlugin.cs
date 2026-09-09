@@ -55,7 +55,14 @@ namespace Utangard
             TryRegisterWithCore();
 
             _harmony = new Harmony(PluginGuid);
-            _harmony.PatchAll(typeof(UtangardPatches));
+
+            // Seam by seam, each under its own try/catch, rather than one PatchAll over one
+            // class. A single PatchAll stops dead at the first target it cannot resolve, and
+            // on the Valheim 1.0 launch that made the whole mod inert - silently, and while
+            // it went on registering with Core's gate below and refusing mismatched clients
+            // on behalf of something that was not running. Seams also decides whether the
+            // penalty may be enforced at all given what actually went on.
+            Seams.Apply(_harmony);
 
             Log.LogInfo(PluginName + " " + PluginVersion + " by " + PluginAuthor + " - ready.");
         }

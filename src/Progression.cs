@@ -129,8 +129,36 @@ namespace Utangard
         // m_uniques is private, and HaveUniqueKey is an exact match. Reading the set directly
         // allows a case-insensitive compare, so a config key typed as Defeated_Eikthyr still
         // finds the defeated_eikthyr the game recorded.
-        private static readonly AccessTools.FieldRef<Player, HashSet<string>> UniquesOf =
-            AccessTools.FieldRefAccess<Player, HashSet<string>>("m_uniques");
+        //
+        // Bound on first use rather than in a static initialiser, which is where it used to
+        // live. A FieldRefAccess that throws at type-init poisons the whole class: from then
+        // on every Harmony patch declared in it throws TypeInitializationException instead of
+        // running, mid-frame, into Player.log rather than into LogOutput. See Reflect.
+        private static AccessTools.FieldRef<Player, HashSet<string>> _uniquesOf;
+        private static bool _uniquesBound;
+
+        /// <summary>
+        /// True once the binding has been tried and failed, so the backfill cannot work at
+        /// all this session.
+        ///
+        /// Read by Seams, which will not enforce a starvation penalty a group has no way out
+        /// of: the backfill is one of only two doors credit ever comes through, and if this
+        /// is the surviving one then a lost field is the difference between a hard gate and
+        /// a permanent one.
+        /// </summary>
+        internal static bool BackfillUnavailable;
+
+        private static AccessTools.FieldRef<Player, HashSet<string>> UniquesOf()
+        {
+            if (_uniquesBound) return _uniquesOf;
+            _uniquesBound = true;
+
+            _uniquesOf = Reflect.Field<Player, HashSet<string>>(
+                "m_uniques", "the backfill of boss credit from character history");
+
+            BackfillUnavailable = _uniquesOf == null;
+            return _uniquesOf;
+        }
 
         /// <summary>
         /// Whole days since the epoch, in UTC.
@@ -184,7 +212,12 @@ namespace Utangard
             // there when it died, or you do not have it.
             if (!UtangardConfig.BackfillFromCharacter.Value) return;
 
-            HashSet<string> uniques = UniquesOf(player);
+            // No binding means no backfill, and nothing else in this method is reachable
+            // without it. Reflect has already said so once, loudly.
+            AccessTools.FieldRef<Player, HashSet<string>> uniquesOf = UniquesOf();
+            if (uniquesOf == null) return;
+
+            HashSet<string> uniques = uniquesOf(player);
             if (uniques == null) return;
 
             foreach (string bossKey in UtangardConfig.AllGateKeys())

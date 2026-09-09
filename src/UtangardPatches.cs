@@ -1,29 +1,57 @@
 using System.Collections.Generic;
+using System.Reflection;
 using HarmonyLib;
 
 namespace Utangard
 {
     /// <summary>
-    /// Every patch the mod installs. Five of them, and each one is a single seam that the
-    /// game funnels a whole category of behaviour through.
+    /// Every patch the mod installs, one nested class per seam.
+    ///
+    /// The nesting is isolation, not filing. All of this used to be one class put on with a
+    /// single PatchAll, and on the day Valheim 1.0 shipped that cost the whole mod: one
+    /// changed signature threw out of PatchAll and every patch declared after it never went
+    /// on. Seams.Apply now patches each class under its own try/catch, so a method the game
+    /// has moved costs exactly the feature standing on it. The full account is in Seams.
+    ///
+    /// Two rules follow from that day and are enforced here rather than remembered:
+    ///
+    ///   - No patch argument is bound by the vanilla parameter's NAME. Harmony injects by
+    ///     name, an unmatched name is a throw, and renaming a parameter is cheaper for a
+    ///     studio than changing a signature. Positional __0 / __1 cannot be renamed. The four
+    ///     patches that took `dt`, `forceUpdate`, `item`, `statusEffect` and `nameHash` by
+    ///     name were also the four declared first, so every one of them stood in front of the
+    ///     rest of the mod.
+    ///   - No overload is pinned by its full argument list where that list can grow. See
+    ///     NewBuffs.Target, which is the exact failure that happened.
+    ///
+    /// The classes are internal rather than private because Seams names each of them.
     /// </summary>
     internal static class UtangardPatches
     {
+        // ------------------------------------------------------------------ the tick -----
+
         /// <summary>
         /// The tick. Private in Player, which Harmony does not mind, so it is named by
         /// string rather than nameof.
         /// </summary>
-        [HarmonyPostfix]
         [HarmonyPatch(typeof(Player), "UpdateFood")]
-        private static void OnUpdateFood(Player __instance, float dt, bool forceUpdate)
+        internal static class FoodTick
         {
-            // forceUpdate is the recompute EatFood triggers after a bite; dt is zero and it
-            // is not a tick. Draining on it would be harmless today and wrong the moment
-            // anything else starts calling it.
-            if (forceUpdate) return;
+            /// <param name="__0">dt. Positional, so a rename cannot unseat it.</param>
+            /// <param name="__1">forceUpdate.</param>
+            [HarmonyPostfix]
+            private static void Postfix(Player __instance, float __0, bool __1)
+            {
+                // forceUpdate is the recompute EatFood triggers after a bite; dt is zero and
+                // it is not a tick. Draining on it would be harmless today and wrong the
+                // moment anything else starts calling it.
+                if (__1) return;
 
-            UtangardTick.Run(__instance, dt);
+                UtangardTick.Run(__instance, __0);
+            }
         }
+
+        // ---------------------------------------------------------------- the refusals ---
 
         /// <summary>
         /// Refuse the bite and the drink.
@@ -41,37 +69,32 @@ namespace Utangard
         /// its callers are real attempts rather than hover prompts, so a message here fires
         /// once per try and not once per frame.
         /// </summary>
-        [HarmonyPrefix]
         [HarmonyPatch(typeof(Player), nameof(Player.CanConsumeItem))]
-        private static bool OnCanConsumeItem(
-            Player __instance, ItemDrop.ItemData item, ref bool __result)
+        internal static class Eating
         {
-            if (item == null || item.m_shared == null) return true;
-            if (!BiomeGate.IsWithered(__instance)) return true;
+            /// <param name="__0">The item. Positional: vanilla calls it `item` today.</param>
+            [HarmonyPrefix]
+            private static bool Prefix(
+                Player __instance, ItemDrop.ItemData __0, ref bool __result)
+            {
+                if (__0 == null || __0.m_shared == null) return true;
+                if (!BiomeGate.IsWithered(__instance)) return true;
 
-            bool isFood = item.m_shared.m_food > 0f
-                || item.m_shared.m_foodStamina > 0f
-                || item.m_shared.m_foodEitr > 0f;
+                bool isFood = __0.m_shared.m_food > 0f
+                    || __0.m_shared.m_foodStamina > 0f
+                    || __0.m_shared.m_foodEitr > 0f;
 
-            if (isFood && UtangardConfig.BlockEating.Value)
-                return Refuse(__instance, ref __result, UtangardConfig.EatBlockedMessage.Value);
+                if (isFood && UtangardConfig.BlockEating.Value)
+                    return Refuse(__instance, ref __result, UtangardConfig.EatBlockedMessage.Value);
 
-            // A potion whose effect would be refused a moment later is a potion thrown away.
-            // Stopping it here is the difference between a rule and a punishment.
-            if (UtangardConfig.BlockNewBuffs.Value
-                && BlockedEffects.IsBlocked(item.m_shared.m_consumeStatusEffect))
-                return Refuse(__instance, ref __result, UtangardConfig.BuffBlockedMessage.Value);
+                // A potion whose effect would be refused a moment later is a potion thrown
+                // away. Stopping it here is the difference between a rule and a punishment.
+                if (UtangardConfig.BlockNewBuffs.Value
+                    && BlockedEffects.IsBlocked(__0.m_shared.m_consumeStatusEffect))
+                    return Refuse(__instance, ref __result, UtangardConfig.BuffBlockedMessage.Value);
 
-            return true;
-        }
-
-        private static bool Refuse(Player player, ref bool __result, string message)
-        {
-            if (!string.IsNullOrEmpty(message))
-                player.Message(MessageHud.MessageType.Center, message);
-
-            __result = false;
-            return false;
+                return true;
+            }
         }
 
         /// <summary>
@@ -82,33 +105,65 @@ namespace Utangard
         /// goes through the hash overload. So one patch covers potions, guardian powers,
         /// equipment effects, and anything a future update routes through SEMan.
         ///
-        /// It does not cover the refresh case. See OnInternalAddStatusEffect below.
+        /// It does not cover the refresh case. See BuffRefresh below.
         /// </summary>
-        // Valheim 1.0 added a trailing `short variant = -1`, so the four-type signature no
-        // longer names a method. That is not a quiet failure: an unresolved target throws
-        // ArgumentException out of PatchAll, which took every patch in this class with it and
-        // left Utangard registered on Core's gate while doing nothing at all. It also went to
-        // Player.log rather than LogOutput, so the log everyone reads was clean.
-        //
-        // The parameter is not taken as an argument below because this prefix does not use it -
-        // Harmony matches on the target's signature, not on what the patch chooses to receive.
-        [HarmonyPrefix]
-        [HarmonyPatch(typeof(SEMan), nameof(SEMan.AddStatusEffect),
-            typeof(StatusEffect), typeof(bool), typeof(int), typeof(float), typeof(short))]
-        private static bool OnAddStatusEffect(
-            SEMan __instance, StatusEffect statusEffect, ref StatusEffect __result)
+        [HarmonyPatch]
+        internal static class NewBuffs
         {
-            if (!UtangardConfig.BlockNewBuffs.Value) return true;
-            if (statusEffect == null) return true;
-            if (!BlockedEffects.IsBlocked(statusEffect)) return true;
+            /// <summary>
+            /// The overload taking a StatusEffect, found by its FIRST parameter rather than
+            /// by its whole signature.
+            ///
+            /// SEMan has two AddStatusEffect overloads, so the target cannot be named by
+            /// string alone. Pinning the full argument list is what broke on 1.0: the game
+            /// added a trailing `short variant = -1`, four pinned types stopped matching
+            /// anything, and the ArgumentException that came out of PatchAll took the whole
+            /// mod down with it. What actually distinguishes the two overloads is the first
+            /// parameter and nothing else, so that is all this asks about - and a sixth
+            /// optional argument in some later update costs nothing.
+            /// </summary>
+            [HarmonyTargetMethod]
+            private static MethodBase Target()
+            {
+                foreach (MethodInfo method in AccessTools.GetDeclaredMethods(typeof(SEMan)))
+                {
+                    if (method.Name != nameof(SEMan.AddStatusEffect)) continue;
 
-            if (!BiomeGate.IsWithered(CharacterOf(__instance) as Player)) return true;
+                    ParameterInfo[] args = method.GetParameters();
+                    if (args.Length > 0 && args[0].ParameterType == typeof(StatusEffect))
+                        return method;
+                }
 
-            if (UtangardConfig.Verbose.Value)
-                UtangardPlugin.Log.LogInfo("Refused status effect " + statusEffect.name);
+                // Returning null makes Harmony throw, and Seams.Apply catches that and reports
+                // the seam as broken. Saying it here as well names the thing that moved, which
+                // the generic patch failure cannot.
+                UtangardPlugin.Log.LogError(
+                    "SEMan has no AddStatusEffect(StatusEffect, ...) any more - new buffs will "
+                    + "not be refused in a gated biome.");
 
-            __result = null;
-            return false;
+                return null;
+            }
+
+            /// <param name="__0">The effect being applied.</param>
+            [HarmonyPrefix]
+            private static bool Prefix(
+                SEMan __instance, StatusEffect __0, ref StatusEffect __result)
+            {
+                if (!UtangardConfig.BlockNewBuffs.Value) return true;
+                if (__0 == null) return true;
+                if (!BlockedEffects.IsBlocked(__0)) return true;
+
+                AccessTools.FieldRef<SEMan, Character> characterOf = CharacterOf();
+                if (characterOf == null) return true;
+
+                if (!BiomeGate.IsWithered(characterOf(__instance) as Player)) return true;
+
+                if (UtangardConfig.Verbose.Value)
+                    UtangardPlugin.Log.LogInfo("Refused status effect " + __0.name);
+
+                __result = null;
+                return false;
+            }
         }
 
         /// <summary>
@@ -123,18 +178,28 @@ namespace Utangard
         ///
         /// Classified by hash, because at this point the effect has not been resolved to an
         /// object yet and resolving it just to ask would be doing ObjectDB's lookup twice.
+        ///
+        /// Named by string with no argument list: it is private, so there is only one of it,
+        /// and leaving the list off is what lets it survive another added parameter.
         /// </summary>
-        [HarmonyPrefix]
         [HarmonyPatch(typeof(SEMan), "Internal_AddStatusEffect")]
-        private static bool OnInternalAddStatusEffect(
-            SEMan __instance, int nameHash, ref StatusEffect __result)
+        internal static class BuffRefresh
         {
-            if (!UtangardConfig.BlockNewBuffs.Value) return true;
-            if (!BlockedEffects.IsBlockedHash(nameHash)) return true;
-            if (!BiomeGate.IsWithered(CharacterOf(__instance) as Player)) return true;
+            /// <param name="__0">nameHash.</param>
+            [HarmonyPrefix]
+            private static bool Prefix(SEMan __instance, int __0, ref StatusEffect __result)
+            {
+                if (!UtangardConfig.BlockNewBuffs.Value) return true;
+                if (!BlockedEffects.IsBlockedHash(__0)) return true;
 
-            __result = null;
-            return false;
+                AccessTools.FieldRef<SEMan, Character> characterOf = CharacterOf();
+                if (characterOf == null) return true;
+
+                if (!BiomeGate.IsWithered(characterOf(__instance) as Player)) return true;
+
+                __result = null;
+                return false;
+            }
         }
 
         /// <summary>
@@ -148,28 +213,39 @@ namespace Utangard
         /// It defers to the same classification as everything else, so putting a GP_ name in
         /// NeverBlock leaves that power usable here too.
         /// </summary>
-        [HarmonyPrefix]
         [HarmonyPatch(typeof(Player), nameof(Player.StartGuardianPower))]
-        private static bool OnStartGuardianPower(Player __instance, ref bool __result)
+        internal static class GuardianPowers
         {
-            if (!UtangardConfig.BlockNewBuffs.Value) return true;
-            if (!BiomeGate.IsWithered(__instance)) return true;
+            [HarmonyPrefix]
+            private static bool Prefix(Player __instance, ref bool __result)
+            {
+                if (!UtangardConfig.BlockNewBuffs.Value) return true;
+                if (!BiomeGate.IsWithered(__instance)) return true;
 
-            StatusEffect power = GuardianSeOf(__instance);
-            if (!BlockedEffects.IsBlocked(power)) return true;
+                AccessTools.FieldRef<Player, StatusEffect> guardianSeOf = GuardianSeOf();
+                if (guardianSeOf == null) return true;
 
-            // BuffBlockedMessage, not EatBlockedMessage. This said "the land will not feed you
-            // here" when a guardian power was refused, which is the food refusal wearing the
-            // wrong hat - the message was written before the buff one existed and did not
-            // follow it when it arrived.
-            return Refuse(__instance, ref __result, UtangardConfig.BuffBlockedMessage.Value);
+                StatusEffect power = guardianSeOf(__instance);
+                if (!BlockedEffects.IsBlocked(power)) return true;
+
+                // BuffBlockedMessage, not EatBlockedMessage. This said "the land will not feed
+                // you here" when a guardian power was refused, which is the food refusal
+                // wearing the wrong hat - the message was written before the buff one existed
+                // and did not follow it when it arrived.
+                return Refuse(__instance, ref __result, UtangardConfig.BuffBlockedMessage.Value);
+            }
         }
 
-        private static readonly AccessTools.FieldRef<SEMan, Character> CharacterOf =
-            AccessTools.FieldRefAccess<SEMan, Character>("m_character");
+        private static bool Refuse(Player player, ref bool __result, string message)
+        {
+            if (!string.IsNullOrEmpty(message))
+                player.Message(MessageHud.MessageType.Center, message);
 
-        private static readonly AccessTools.FieldRef<Player, StatusEffect> GuardianSeOf =
-            AccessTools.FieldRefAccess<Player, StatusEffect>("m_guardianSE");
+            __result = false;
+            return false;
+        }
+
+        // --------------------------------------------------------------- the progress ----
 
         /// <summary>
         /// Credit everyone at the kill, the moment a boss dies.
@@ -187,24 +263,24 @@ namespace Utangard
         /// Position comes from the transform rather than from a cached value because a
         /// postfix runs before ZNetScene.Destroy has taken effect - the object is still where
         /// it died.
+        ///
+        /// This is one of the two doors credit comes through, so whether it went on decides
+        /// whether the mod is allowed to wither anybody at all. See Seams.PenaltyIsEscapable.
         /// </summary>
-        [HarmonyPostfix]
         [HarmonyPatch(typeof(Character), "OnDeath")]
-        private static void OnCharacterDeath(Character __instance)
+        internal static class KillCredit
         {
-            if (!UtangardConfig.Enabled.Value || !UtangardConfig.GateOnGroup.Value) return;
-            if (__instance == null) return;
+            [HarmonyPostfix]
+            private static void Postfix(Character __instance)
+            {
+                if (!UtangardConfig.Enabled.Value || !UtangardConfig.GateOnGroup.Value) return;
+                if (__instance == null) return;
 
-            Progression.CreditAttendees(
-                __instance.transform.position, __instance.m_defeatSetGlobalKey);
+                Progression.CreditAttendees(
+                    __instance.transform.position, __instance.m_defeatSetGlobalKey);
+            }
         }
 
-        /// <summary>
-        /// Both ObjectDB entry points, because both really happen: Awake builds the database
-        /// for a local world, and CopyOtherDB replaces it wholesale with the host's when you
-        /// join a server. Rebuilding on only one leaves the buff set and the borrowed icons
-        /// pointing at a database that no longer exists.
-        /// </summary>
         /// <summary>
         /// Hold a flag across the world's key list being rebuilt.
         ///
@@ -222,24 +298,34 @@ namespace Utangard
         /// A prefix and a postfix rather than a wrapper: RPC_GlobalKeys is private and takes
         /// a List&lt;string&gt;, and the flag has to be down again even if something inside
         /// throws, which is what finally would buy in a wrapper and what the postfix buys
-        /// here.
+        /// here. Both halves live in one class so they go on or stay off together, and the
+        /// prefix checks that they did - see Seams.KeyArrival.
         /// </summary>
-        [HarmonyPrefix]
         [HarmonyPatch(typeof(ZoneSystem), "RPC_GlobalKeys")]
-        private static void KeysStartArriving()
+        internal static class KeyArrival
         {
-            Progression.Settling = true;
-        }
+            [HarmonyPrefix]
+            private static void Prefix()
+            {
+                // Never raise a flag whose only way down might not have been installed.
+                // Harmony puts a class's patches on one method at a time, so the postfix
+                // failing while this succeeded would strand Settling at true for the life of
+                // the process, which permanently disables the latch and the roster cache and
+                // looks exactly like nothing being wrong.
+                if (!Seams.KeyArrival) return;
 
-        [HarmonyPostfix]
-        [HarmonyPatch(typeof(ZoneSystem), "RPC_GlobalKeys")]
-        private static void KeysFinishedArriving()
-        {
-            Progression.Settling = false;
+                Progression.Settling = true;
+            }
 
-            // The list that was just installed is a different world state from the one the
-            // cached roster was built against, whatever it was built from.
-            Progression.InvalidateRoster();
+            [HarmonyPostfix]
+            private static void Postfix()
+            {
+                Progression.Settling = false;
+
+                // The list that was just installed is a different world state from the one
+                // the cached roster was built against, whatever it was built from.
+                Progression.InvalidateRoster();
+            }
         }
 
         /// <summary>
@@ -250,25 +336,44 @@ namespace Utangard
         /// outlives the world state it describes by up to two seconds. That is exactly how
         /// long one frame of half-filled keys needed to survive in order to reach the latch.
         /// </summary>
-        [HarmonyPostfix]
         [HarmonyPatch(typeof(ZoneSystem), "GlobalKeyAdd", new[] { typeof(string), typeof(bool) })]
-        private static void OnGlobalKeyAdd()
+        internal static class KeyChange
         {
-            Progression.InvalidateRoster();
+            [HarmonyPostfix]
+            private static void Postfix()
+            {
+                Progression.InvalidateRoster();
+            }
         }
 
-        [HarmonyPostfix]
+        // ------------------------------------------------------------------ the rest -----
+
+        /// <summary>
+        /// Both ObjectDB entry points really happen, and they are two seams rather than one.
+        /// Awake builds the database for a local world; CopyOtherDB replaces it wholesale
+        /// with the host's when you join a server. Rebuilding on only one leaves the buff set
+        /// and the borrowed icons pointing at a database that no longer exists - so they are
+        /// patched separately, and losing one no longer costs the other.
+        /// </summary>
         [HarmonyPatch(typeof(ObjectDB), "Awake")]
-        private static void OnObjectDbAwake()
+        internal static class EffectsLocal
         {
-            RebuildFromObjectDb();
+            [HarmonyPostfix]
+            private static void Postfix()
+            {
+                RebuildFromObjectDb();
+            }
         }
 
-        [HarmonyPostfix]
+        /// <summary>The host's database, handed over on connect. See EffectsLocal.</summary>
         [HarmonyPatch(typeof(ObjectDB), nameof(ObjectDB.CopyOtherDB))]
-        private static void OnObjectDbCopy()
+        internal static class EffectsJoined
         {
-            RebuildFromObjectDb();
+            [HarmonyPostfix]
+            private static void Postfix()
+            {
+                RebuildFromObjectDb();
+            }
         }
 
         private static void RebuildFromObjectDb()
@@ -276,13 +381,6 @@ namespace Utangard
             BlockedEffects.Rebuild();
             UtangardEffectsRegistry.Build();
         }
-
-        /// <summary>
-        /// m_texts is private, and there is no other way in. TextInfo itself is public, so
-        /// only the list needs reaching for.
-        /// </summary>
-        private static readonly AccessTools.FieldRef<TextsDialog, List<TextsDialog.TextInfo>>
-            TextsOf = AccessTools.FieldRefAccess<TextsDialog, List<TextsDialog.TextInfo>>("m_texts");
 
         /// <summary>
         /// A Utangard page in the compendium, beside Logs and Active Effects.
@@ -298,40 +396,47 @@ namespace Utangard
         /// Inserted at the front because the question it answers - why is this biome shut and
         /// who am I waiting on - is the one a player opens this screen to ask.
         /// </summary>
-        [HarmonyPostfix]
         [HarmonyPatch(typeof(TextsDialog), "UpdateTextsList")]
-        private static void OnUpdateTextsList(TextsDialog __instance)
+        internal static class CompendiumPage
         {
-            if (!UtangardConfig.Enabled.Value || !UtangardConfig.ShowCompendiumPage.Value) return;
-
-            List<TextsDialog.TextInfo> texts = TextsOf(__instance);
-            if (texts == null)
+            [HarmonyPostfix]
+            private static void Postfix(TextsDialog __instance)
             {
-                UtangardPlugin.Log.LogWarning("Compendium: no m_texts list to add to.");
-                return;
-            }
+                if (!UtangardConfig.Enabled.Value
+                    || !UtangardConfig.ShowCompendiumPage.Value) return;
 
-            string topic = UtangardConfig.CompendiumTopic.Value;
-            if (string.IsNullOrEmpty(topic)) topic = UtangardPlugin.PluginName;
+                AccessTools.FieldRef<TextsDialog, List<TextsDialog.TextInfo>> textsOf = TextsOf();
+                if (textsOf == null) return;
 
-            // Wrapped, and not because the body looks risky. This runs inside somebody
-            // else's UI build: a throw here leaves vanilla's own list half-built, so the
-            // failure would present as "the compendium is broken" rather than as "a mod is".
-            // Unity swallows the stack in a UI callback often enough that it is worth saying
-            // so in our own log rather than hoping it lands in the game's.
-            try
-            {
-                texts.Insert(0, new TextsDialog.TextInfo(topic, GateReport.Page()));
+                List<TextsDialog.TextInfo> texts = textsOf(__instance);
+                if (texts == null)
+                {
+                    UtangardPlugin.Log.LogWarning("Compendium: no m_texts list to add to.");
+                    return;
+                }
 
-                // Behind Verbose: this fires every time the screen is opened, and a line
-                // per glance at the compendium buries the ones worth reading.
-                if (UtangardConfig.Verbose.Value)
-                    UtangardPlugin.Log.LogInfo("Compendium: added '" + topic + "' ("
-                        + texts.Count + " entries in the list).");
-            }
-            catch (System.Exception e)
-            {
-                UtangardPlugin.Log.LogError("Compendium page failed to build: " + e);
+                string topic = UtangardConfig.CompendiumTopic.Value;
+                if (string.IsNullOrEmpty(topic)) topic = UtangardPlugin.PluginName;
+
+                // Wrapped, and not because the body looks risky. This runs inside somebody
+                // else's UI build: a throw here leaves vanilla's own list half-built, so the
+                // failure would present as "the compendium is broken" rather than as "a mod
+                // is". Unity swallows the stack in a UI callback often enough that it is
+                // worth saying so in our own log rather than hoping it lands in the game's.
+                try
+                {
+                    texts.Insert(0, new TextsDialog.TextInfo(topic, GateReport.Page()));
+
+                    // Behind Verbose: this fires every time the screen is opened, and a line
+                    // per glance at the compendium buries the ones worth reading.
+                    if (UtangardConfig.Verbose.Value)
+                        UtangardPlugin.Log.LogInfo("Compendium: added '" + topic + "' ("
+                            + texts.Count + " entries in the list).");
+                }
+                catch (System.Exception e)
+                {
+                    UtangardPlugin.Log.LogError("Compendium page failed to build: " + e);
+                }
             }
         }
 
@@ -341,14 +446,17 @@ namespace Utangard
         /// earlier reads as an empty world with no bosses dead. Which is also the failure
         /// this dump exists to catch, so it has to be late enough to be true.
         /// </summary>
-        [HarmonyPostfix]
         [HarmonyPatch(typeof(Player), nameof(Player.OnSpawned))]
-        private static void OnPlayerSpawned(Player __instance)
+        internal static class Spawn
         {
-            if (__instance != Player.m_localPlayer) return;
-            if (UtangardConfig.LogGlobalKeys.Value) GlobalKeyDump.Log();
+            [HarmonyPostfix]
+            private static void Postfix(Player __instance)
+            {
+                if (__instance != Player.m_localPlayer) return;
+                if (UtangardConfig.LogGlobalKeys.Value) GlobalKeyDump.Log();
 
-            WarnIfGateIsUnenforceable();
+                WarnIfGateIsUnenforceable();
+            }
         }
 
         /// <summary>
@@ -379,6 +487,64 @@ namespace Utangard
                 + "Nothing can refuse a player who does not have Utangard, so anyone without it "
                 + "is not gated at all. Install Core on the server and every client to enforce "
                 + "it, or set GateOnGroup = false to gate on the world instead.");
+        }
+
+        // ------------------------------------------------------------- private fields ----
+        //
+        // Bound on first use and never in a static initialiser - see Reflect for why that
+        // distinction is the difference between losing one feature and poisoning every patch
+        // in the class that declares it. Each keeps its own "already tried" flag so a field a
+        // game update removed is reported once rather than every frame.
+
+        private static AccessTools.FieldRef<SEMan, Character> _characterOf;
+        private static bool _characterBound;
+
+        /// <summary>
+        /// SEMan.m_character - whose SEMan this is. Without it neither buff refusal can tell
+        /// the local player from a greydwarf, so both stand aside rather than guess.
+        /// </summary>
+        private static AccessTools.FieldRef<SEMan, Character> CharacterOf()
+        {
+            if (_characterBound) return _characterOf;
+            _characterBound = true;
+
+            _characterOf = Reflect.Field<SEMan, Character>(
+                "m_character", "refusing buffs in a gated biome");
+
+            return _characterOf;
+        }
+
+        private static AccessTools.FieldRef<Player, StatusEffect> _guardianSeOf;
+        private static bool _guardianBound;
+
+        /// <summary>Player.m_guardianSE - which power the forsaken altar gave this character.</summary>
+        private static AccessTools.FieldRef<Player, StatusEffect> GuardianSeOf()
+        {
+            if (_guardianBound) return _guardianSeOf;
+            _guardianBound = true;
+
+            _guardianSeOf = Reflect.Field<Player, StatusEffect>(
+                "m_guardianSE", "refusing guardian powers in a gated biome");
+
+            return _guardianSeOf;
+        }
+
+        private static AccessTools.FieldRef<TextsDialog, List<TextsDialog.TextInfo>> _textsOf;
+        private static bool _textsBound;
+
+        /// <summary>
+        /// TextsDialog.m_texts is private and there is no other way in. TextInfo itself is
+        /// public, so only the list needs reaching for.
+        /// </summary>
+        private static AccessTools.FieldRef<TextsDialog, List<TextsDialog.TextInfo>> TextsOf()
+        {
+            if (_textsBound) return _textsOf;
+            _textsBound = true;
+
+            _textsOf = Reflect.Field<TextsDialog, List<TextsDialog.TextInfo>>(
+                "m_texts", "the Utangard page in the compendium");
+
+            return _textsOf;
         }
     }
 }

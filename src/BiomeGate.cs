@@ -72,6 +72,16 @@ namespace Utangard
             if (player == null || !UtangardConfig.Enabled.Value) return null;
             if (player != Player.m_localPlayer) return null;
 
+            // Never wither somebody who has no way to stop being withered.
+            //
+            // This is the single choke point the drain, both refusals, Sapped, the marker and
+            // the entry message all hang off, so one answer here turns the punishing half of
+            // the mod off without touching the reporting half - the compendium page and the
+            // openings watcher read Earned directly and go on telling the truth about the
+            // gate. Which is the shape this failure needs: say what is shut, stop starving
+            // people over it. See Seams.PenaltyIsEscapable for when and why.
+            if (!Seams.PenaltyIsEscapable()) return null;
+
             // No world yet means nothing to ask. Fail open: an unanswerable question must
             // not starve someone on a loading screen.
             ZoneSystem zone = ZoneSystem.instance;
