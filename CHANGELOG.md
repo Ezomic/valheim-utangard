@@ -3,6 +3,21 @@
 Notable changes to Utangard. Format follows [Keep a Changelog](https://keepachangelog.com),
 and the mod uses [semantic versioning](https://semver.org).
 
+## [1.3.0] - 2026-09-09
+
+Rebuilt for Valheim 1.0. This version does not run on pre-1.0 Valheim, and the previous
+one does not run on 1.0.
+
+### Fixed
+
+- **The mod works again.** Valheim 1.0 added a trailing parameter to `SEMan.AddStatusEffect`,
+  so the patch no longer named a method - and an unresolved target throws out of `PatchAll`,
+  which took all twelve patches in the class with it. Utangard did nothing at all while still
+  registering on Core's gate and still refusing mismatched clients on behalf of a mod that was
+  not running. It was nearly invisible: the log carried one warning and no error, because the
+  exception went to `Player.log` rather than BepInEx's own log. The tell was the absence of the
+  `ready.` line.
+
 ## [1.2.1] - 2026-08-25 (second half)
 
 Everything below shipped in 1.2.1 alongside the latch fix above. It sat under Unreleased
