@@ -84,9 +84,17 @@ namespace Utangard
         ///
         /// It does not cover the refresh case. See OnInternalAddStatusEffect below.
         /// </summary>
+        // Valheim 1.0 added a trailing `short variant = -1`, so the four-type signature no
+        // longer names a method. That is not a quiet failure: an unresolved target throws
+        // ArgumentException out of PatchAll, which took every patch in this class with it and
+        // left Utangard registered on Core's gate while doing nothing at all. It also went to
+        // Player.log rather than LogOutput, so the log everyone reads was clean.
+        //
+        // The parameter is not taken as an argument below because this prefix does not use it -
+        // Harmony matches on the target's signature, not on what the patch chooses to receive.
         [HarmonyPrefix]
         [HarmonyPatch(typeof(SEMan), nameof(SEMan.AddStatusEffect),
-            typeof(StatusEffect), typeof(bool), typeof(int), typeof(float))]
+            typeof(StatusEffect), typeof(bool), typeof(int), typeof(float), typeof(short))]
         private static bool OnAddStatusEffect(
             SEMan __instance, StatusEffect statusEffect, ref StatusEffect __result)
         {
