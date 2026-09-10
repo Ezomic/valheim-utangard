@@ -5,6 +5,6 @@
   "website_url": "https://github.com/Ezomic/valheim-utangard",
   "description": "Biomes nobody in your group has earned starve you: food burns away, buffs are refused, and the land leaves you sapped.",
   "dependencies": [
-    "denikson-BepInExPack_Valheim-5.4.2333"
+    "denikson-BepInExPack_Valheim-5.4.2350"
   ]
 }
