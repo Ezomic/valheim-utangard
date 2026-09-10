@@ -24,6 +24,14 @@ outdir = "./build"
 source = "./package/BepInEx/plugins/Utangard"
 target = "plugins/Utangard"
 
+[[build.copy]]
+source = "./LICENSE"
+target = "plugins/Utangard/LICENSE"
+
+[[build.copy]]
+source = "./CHANGELOG.md"
+target = "CHANGELOG.md"
+
 [publish]
 repository = "https://thunderstore.io"
 communities = [ "valheim" ]
