@@ -170,7 +170,7 @@ with those bosses down: the prefab is enough.
 Single DLL, no asset bundle. Built for **BepInEx 5.4.23.3** on **net462**.
 
 1. Install [BepInExPack Valheim](https://thunderstore.io/c/valheim/p/denikson/BepInExPack_Valheim/)
-   **5.4.2333**. It is the only required dependency.
+   **5.4.2350**. It is the only required dependency.
 2. Drop `Utangard.dll` into `BepInEx/plugins/`.
 3. Launch once. The config file is written to
    `BepInEx/config/ezomic.valheim.utangard.cfg`.
