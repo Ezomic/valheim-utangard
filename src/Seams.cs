@@ -69,6 +69,9 @@ namespace Utangard
         /// <summary>Player.OnSpawned - the diagnostics dump and the unenforceable-gate warning.</summary>
         internal static bool Spawn;
 
+        /// <summary>Terminal.InitTerminal - the `utangard` console command.</summary>
+        internal static bool Console;
+
         /// <summary>What did not go on, in the words the log will use.</summary>
         private static readonly List<string> Broken = new List<string>();
 
@@ -112,6 +115,9 @@ namespace Utangard
 
             Spawn = Patch(harmony, typeof(UtangardPatches.Spawn),
                 "the diagnostics dump on spawn (Player.OnSpawned)");
+
+            Console = Patch(harmony, typeof(DevConsole.Hook),
+                "the utangard console command (Terminal.InitTerminal)");
 
             Report();
         }
