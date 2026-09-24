@@ -354,6 +354,19 @@ namespace Utangard
             Say(term, shared == 0
                 ? "utangard creatures: every creature has a token of its own."
                 : "utangard creatures: " + shared + " token(s) shared - those creatures cannot be scored apart.");
+
+            // The rule applied, so what the tables actually pay is visible beside what they say.
+            var dropped = 0;
+            foreach (var entry in Foothold.Resolve(scene))
+            {
+                if (string.IsNullOrEmpty(entry.Dropped)) continue;
+                dropped++;
+                Say(term, "utangard creatures: DROPPED " + entry.Biome + " " + entry.Prefab + " - " + entry.Dropped);
+            }
+
+            Say(term, dropped == 0
+                ? "utangard creatures: after the shared-name rule, every entry in the tables counts."
+                : "utangard creatures: after the shared-name rule, " + dropped + " entr(ies) do not count.");
         }
 
         private static string Describe(ZNetScene scene, string prefabName, Dictionary<string, float> kills,

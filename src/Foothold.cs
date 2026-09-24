@@ -27,6 +27,20 @@ namespace Utangard
     /// `utangard creatures` checks.
     ///
     /// Plain strings, one per biome, so they can become config lines with no change of shape.
+    ///
+    /// <b>A shared token counts only in the earliest biome that lists it.</b> Measured with
+    /// `utangard creatures` on 2026-09-24: eight tokens are shared between prefabs. The frozen
+    /// greydwarf, frozen skeleton and frozen shaman of the Deep North are filed under the Black
+    /// Forest ones' names, Swamp skeletons under the Black Forest skeleton's, and the Ashlands
+    /// dvergr under the Mistlands rogue's - so as first written, a player could have filled the
+    /// Deep North bar by killing greydwarves at home. Robbin's rule, the same day: the earliest
+    /// biome in progression order keeps the name and every later biome loses it. What leaks after
+    /// that only ever leaks into a biome that is already open by the time the later creature can
+    /// be reached, because the gate opens biomes in order. Those entries are gone from the lines
+    /// below, and Resolve() enforces the rule anyway, so a later edit cannot bring a leak back.
+    ///
+    /// The three Mistlands dvergr mages are one token, $enemy_dvergr_mage, so they cannot be
+    /// scored apart either: support, fire and ice are all 3, Robbin's call.
     /// </summary>
     internal static class Foothold
     {
@@ -43,19 +57,80 @@ namespace Utangard
             Pair(Heightmap.Biome.Plains,
                 "Deathsquito:1, Goblin:1, BlobTar:1, GoblinShaman:2, Lox:3, GoblinBrute:4, Unbjorn:5"),
             Pair(Heightmap.Biome.Mistlands,
-                "Seeker:1, Tick:1, Dverger:2, DvergerMageSupport:2, DvergerMageFire:3, DvergerMageIce:3, SeekerBrute:4, Gjall:5"),
+                "Seeker:1, Tick:1, Dverger:2, DvergerMageSupport:3, DvergerMageFire:3, DvergerMageIce:3, SeekerBrute:4, Gjall:5"),
             Pair(Heightmap.Biome.AshLands,
-                "Charred_Archer:1, Charred_Twitcher:1, Volture:1, BlobLava:1, Charred_Melee:2, Asksvin:2, DvergerAshlands:2, "
+                "Charred_Archer:1, Charred_Twitcher:1, Volture:1, BlobLava:1, Charred_Melee:2, Asksvin:2, "
                 + "Charred_Mage:3, BonemawSerpent:4, FallenValkyrie:5, Morgen:5, Morgen_NonSleeping:5, Charred_Melee_Dyrnwyn:5"),
             Pair(Heightmap.Biome.DeepNorth,
-                "Greydwarf_Frozen:1, Skeleton_DeepNorth:1, Greydwarf_Shaman_Frozen:2, GoblinDeepNorth:2, Elaking:2, "
-                + "ElakingLantern:2, ElakingMole:2, DvergerDeepNorth:2, Moose:3, ShadowPerson:3, JotunWitch:4, "
-                + "JotunWarrior:5, JotunWarriorDualWield:5, Barka:5"),
+                "GoblinDeepNorth:2, Elaking:2, ElakingLantern:2, ElakingMole:2, DvergerDeepNorth:2, Moose:3, "
+                + "ShadowPerson:3, JotunWitch:4, JotunWarrior:5, JotunWarriorDualWield:5, Barka:5"),
         };
 
         private static KeyValuePair<Heightmap.Biome, string> Pair(Heightmap.Biome biome, string line)
         {
             return new KeyValuePair<Heightmap.Biome, string>(biome, line);
+        }
+
+        /// <summary>One table entry once its prefab has been resolved against the running game.</summary>
+        internal sealed class Entry
+        {
+            internal Heightmap.Biome Biome;
+            internal string Prefab;
+            internal string Token;
+            internal int Points;
+
+            /// <summary>Empty when it counts; otherwise why it does not.</summary>
+            internal string Dropped = "";
+        }
+
+        /// <summary>
+        /// Every table entry resolved to the token the kill tally files it under, with the shared
+        /// token rule applied: the earliest biome in progression order (the order of Defaults)
+        /// keeps a token, and a later biome that lists it again is marked dropped. Within one
+        /// biome the first entry for a token keeps it, since two points values for one token
+        /// cannot both be true.
+        /// </summary>
+        internal static List<Entry> Resolve(ZNetScene scene)
+        {
+            var result = new List<Entry>();
+            var claimed = new Dictionary<string, Entry>();
+
+            foreach (var pair in Defaults)
+            {
+                foreach (var e in Parse(pair.Value))
+                {
+                    var entry = new Entry { Biome = pair.Key, Prefab = e.Key, Points = e.Value };
+                    result.Add(entry);
+
+                    var go = scene != null ? scene.GetPrefab(e.Key) : null;
+                    Character character;
+                    if (go == null || !go.TryGetComponent(out character))
+                    {
+                        entry.Dropped = "no such creature";
+                        continue;
+                    }
+
+                    entry.Token = character.m_name ?? "";
+
+                    Entry owner;
+                    if (claimed.TryGetValue(entry.Token, out owner))
+                    {
+                        // Two looks of one creature in one biome at one value - both morgen, both
+                        // elaking, the three mages - are aliases, not a conflict: the tally cannot
+                        // tell them apart and does not need to.
+                        if (owner.Biome == entry.Biome && owner.Points == entry.Points) continue;
+
+                        entry.Dropped = owner.Biome == entry.Biome
+                            ? "shares " + entry.Token + " with " + owner.Prefab + ", which sets it at " + owner.Points
+                            : "shares " + entry.Token + " with " + owner.Prefab + ", which counts in " + owner.Biome;
+                        continue;
+                    }
+
+                    claimed[entry.Token] = entry;
+                }
+            }
+
+            return result;
         }
 
         /// <summary>
