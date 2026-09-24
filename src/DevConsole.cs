@@ -76,8 +76,10 @@ namespace Utangard
 
             var what = args.Length > 1 ? args[1].ToLowerInvariant() : "";
             if (what == "biomes") { Biomes(term); return; }
+            if (what == "creatures") { Creatures(term); return; }
 
             term.AddString("utangard biomes - per biome: its creatures and your kills of each, and how much of it you have explored");
+            term.AddString("utangard creatures - every creature in the foothold tables, checked against the game");
         }
 
         private static readonly Heightmap.Biome[] Order =
@@ -287,6 +289,98 @@ namespace Utangard
             return "Map " + size + "x" + size + " at " + metres.ToString("0.#", CultureInfo.InvariantCulture)
                    + " m a pixel, explore radius " + map.m_exploreRadius.ToString("0", CultureInfo.InvariantCulture) + " m"
                    + (explored == null ? ", and the explored bits could not be read." : ".");
+        }
+
+        /// <summary>
+        /// Prefabs deliberately left out of the foothold tables, checked alongside them so the
+        /// prey reading can be compared with Robbin's calls. Two spellings where the game files
+        /// carry both and only one of them is the creature.
+        /// </summary>
+        private static readonly string[] LeftOut =
+        {
+            "Deer", "Bat", "Hare", "SeekerBrood", "Seal", "Seal_Pup", "Seal_pup", "Moose_calf",
+            "Asksvin_hatchling", "AsksvinHatchling", "Skeleton_Swamps",
+        };
+
+        /// <summary>
+        /// Every creature in Foothold's tables, resolved against the running game: whether the
+        /// prefab exists, the token the kill tally will file it under, its health, its faction,
+        /// and whether its brain is a monster's or an animal's. Answers three questions before
+        /// any of LHM-26 is built on the tables:
+        ///
+        ///   which of the new creatures the game treats as prey - an AnimalAI, or the AnimalsVeg
+        ///   faction - since prey is meant to be worth nothing, as deer are;
+        ///
+        ///   which prefabs share a token, since the tally cannot tell them apart and they cannot
+        ///   then be given different points, or be counted in one biome and not another;
+        ///
+        ///   the health of the camp and town creatures the spawn tables never showed.
+        /// </summary>
+        private static void Creatures(Terminal term)
+        {
+            var scene = ZNetScene.instance;
+            if (scene == null) { Say(term, "utangard creatures: no world loaded yet."); return; }
+
+            var profile = Game.instance != null ? Game.instance.GetPlayerProfile() : null;
+            var kills = profile != null ? profile.m_playerStats[0].m_enemyStats[0] : null;
+
+            var byToken = new Dictionary<string, List<string>>();
+
+            foreach (var pair in Foothold.Defaults)
+            {
+                var entries = Foothold.Parse(pair.Value);
+                var total = 0;
+                foreach (var e in entries) total += e.Value;
+
+                Say(term, "utangard creatures: " + pair.Key + ", " + entries.Count + " kinds, full bar " + Foothold.FullBar
+                          + ", no kind above " + (Foothold.FullBar / 2) + ".");
+
+                foreach (var e in entries)
+                    Say(term, "    " + e.Value + " pt  " + Describe(scene, e.Key, kills, byToken, pair.Key + " " + e.Key + "=" + e.Value));
+            }
+
+            Say(term, "utangard creatures: left out on purpose -");
+            foreach (var name in LeftOut)
+                Say(term, "    -     " + Describe(scene, name, kills, byToken, "left out " + name));
+
+            var shared = 0;
+            foreach (var pair in byToken)
+            {
+                if (pair.Value.Count < 2) continue;
+                shared++;
+                Say(term, "utangard creatures: SHARED TOKEN " + pair.Key + " - " + string.Join("; ", pair.Value.ToArray()));
+            }
+
+            Say(term, shared == 0
+                ? "utangard creatures: every creature has a token of its own."
+                : "utangard creatures: " + shared + " token(s) shared - those creatures cannot be scored apart.");
+        }
+
+        private static string Describe(ZNetScene scene, string prefabName, Dictionary<string, float> kills,
+                                       Dictionary<string, List<string>> byToken, string label)
+        {
+            var go = scene.GetPrefab(prefabName);
+            if (go == null) return prefabName + " - NOT FOUND in ZNetScene";
+
+            Character character;
+            if (!go.TryGetComponent(out character)) return prefabName + " - not a creature";
+
+            string brain = "no AI";
+            if (go.GetComponent<MonsterAI>() != null) brain = "monster";
+            else if (go.GetComponent<AnimalAI>() != null) brain = "ANIMAL";
+
+            var tame = go.GetComponent<Tameable>() != null ? ", tameable" : "";
+            var prey = brain == "ANIMAL" || character.m_faction == Character.Faction.AnimalsVeg ? "  <- prey" : "";
+
+            var token = character.m_name ?? "";
+            if (!byToken.TryGetValue(token, out var list)) byToken[token] = list = new List<string>();
+            list.Add(label);
+
+            var n = 0f;
+            if (kills != null) kills.TryGetValue(token, out n);
+
+            return prefabName + " " + token + " " + character.m_health.ToString("0", CultureInfo.InvariantCulture) + "hp "
+                   + character.m_faction + " " + brain + tame + ", your kills " + n.ToString("0", CultureInfo.InvariantCulture) + prey;
         }
 
         /// <summary>To the console and the log, so a run leaves the numbers on disk.</summary>
