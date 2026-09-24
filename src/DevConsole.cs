@@ -91,8 +91,9 @@ namespace Utangard
         {
             internal string Prefab;
             internal string Token;
+            internal float Health;
             internal bool Unconditional;
-            internal string Gate = "";
+            internal readonly List<string> Rows = new List<string>();
         }
 
         private static void Biomes(Terminal term)
@@ -133,7 +134,8 @@ namespace Utangard
                     kills.TryGetValue(c.Token, out var n);
                     if (c.Unconditional) kinds++;
                     if (n > 0f) { killed++; sum += n; }
-                    parts.Add(c.Prefab + (c.Unconditional ? "" : "*") + " " + n.ToString("0", CultureInfo.InvariantCulture));
+                    parts.Add(c.Prefab + (c.Unconditional ? "" : "*") + " " + c.Health.ToString("0", CultureInfo.InvariantCulture)
+                              + "hp x" + n.ToString("0", CultureInfo.InvariantCulture));
                 }
 
                 Say(term, biome + ": " + totalKm2.ToString("0.0", CultureInfo.InvariantCulture) + " km2 on this map, you explored "
@@ -144,8 +146,27 @@ namespace Utangard
                 if (parts.Count > 0) Say(term, "    " + string.Join(", ", parts.ToArray()));
             }
 
-            Say(term, "utangard biomes: * = only spawns behind a world key or a weather. Spawn tables only - "
-                      + "creatures a dungeon or a camp places itself are not in them. Kills include assists.");
+            Say(term, "utangard biomes: * = only spawns behind a world key, a weather or a persistent event. "
+                      + "Spawn tables only - creatures a dungeon or a camp places itself are not in them. "
+                      + "Each entry is health, then your kills. Kills include assists.");
+
+            // A creature in most biomes' tables is either a real wanderer or a row gated by
+            // something this does not read. Print its raw rows so which one is decidable.
+            var seenIn = new Dictionary<string, Creature>();
+            var count = new Dictionary<string, int>();
+            foreach (var pair in creatures)
+                foreach (var c in pair.Value.Values)
+                {
+                    seenIn[c.Prefab] = c;
+                    count.TryGetValue(c.Prefab, out var k);
+                    count[c.Prefab] = k + 1;
+                }
+
+            foreach (var pair in count.Where(p => p.Value >= 5).OrderBy(p => p.Key, StringComparer.Ordinal))
+            {
+                Say(term, "  in " + pair.Value + " biomes: " + pair.Key + ", rows:");
+                foreach (var row in seenIn[pair.Key].Rows) Say(term, "    " + row);
+            }
         }
 
         /// <summary>
@@ -173,8 +194,18 @@ namespace Utangard
                     if (!row.m_prefab.TryGetComponent(out character)) continue;
                     if (character.IsBoss()) continue;
 
+                    // Three gates, not two. m_requiredPersistentEvent was missed at first, and it
+                    // is what put Elaking and the Jotun in every biome's list, Meadows included.
                     var conditional = !string.IsNullOrEmpty(row.m_requiredGlobalKey)
+                                      || !string.IsNullOrEmpty(row.m_requiredPersistentEvent)
                                       || (row.m_requiredEnvironments != null && row.m_requiredEnvironments.Count > 0);
+
+                    var describe = "'" + row.m_name + "' biomes=" + row.m_biome + " area=" + row.m_biomeArea
+                                   + " key='" + row.m_requiredGlobalKey + "' event='" + row.m_requiredPersistentEvent
+                                   + "' env=" + (row.m_requiredEnvironments != null ? row.m_requiredEnvironments.Count : 0)
+                                   + " chance=" + row.m_spawnChance.ToString("0.#", CultureInfo.InvariantCulture)
+                                   + " max=" + row.m_maxSpawned
+                                   + " day=" + row.m_spawnAtDay + " night=" + row.m_spawnAtNight;
 
                     foreach (var biome in Order)
                     {
@@ -184,9 +215,13 @@ namespace Utangard
                             result[biome] = inBiome = new Dictionary<string, Creature>();
 
                         if (!inBiome.TryGetValue(row.m_prefab.name, out var c))
-                            inBiome[row.m_prefab.name] = c = new Creature { Prefab = row.m_prefab.name, Token = character.m_name };
+                            inBiome[row.m_prefab.name] = c = new Creature
+                            {
+                                Prefab = row.m_prefab.name, Token = character.m_name, Health = character.m_health,
+                            };
 
                         if (!conditional) c.Unconditional = true;
+                        if (!c.Rows.Contains(describe)) c.Rows.Add(describe);
                     }
                 }
             }
