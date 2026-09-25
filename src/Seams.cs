@@ -69,6 +69,9 @@ namespace Utangard
         /// <summary>Player.OnSpawned - the diagnostics dump and the unenforceable-gate warning.</summary>
         internal static bool Spawn;
 
+        /// <summary>OfferingBowl.InitiateSpawnBoss - no boss at an altar in a locked biome.</summary>
+        internal static bool Altars;
+
         /// <summary>Terminal.InitTerminal - the `utangard` console command.</summary>
         internal static bool Console;
 
@@ -115,6 +118,9 @@ namespace Utangard
 
             Spawn = Patch(harmony, typeof(UtangardPatches.Spawn),
                 "the diagnostics dump on spawn (Player.OnSpawned)");
+
+            Altars = Patch(harmony, typeof(BossAltars),
+                "the refusal to summon a boss in a locked biome (OfferingBowl.InitiateSpawnBoss)");
 
             Console = Patch(harmony, typeof(DevConsole.Hook),
                 "the utangard console command (Terminal.InitTerminal)");

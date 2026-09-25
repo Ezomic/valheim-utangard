@@ -3,6 +3,19 @@
 Notable changes to Utangard. Format follows [Keep a Changelog](https://keepachangelog.com),
 and the mod uses [semantic versioning](https://semver.org).
 
+## [Unreleased]
+
+### Added
+
+- **A boss will not come to an altar in a biome the group has not earned.** Before, one player
+  could carry an egg into the locked Mountains, kill Moder there, and start the Plains deadline
+  for everybody while the rest were still on Bonemass. A refused offering uses nothing up. Each
+  altar stands in the biome the boss before it opens, so it answers as soon as that biome opens,
+  by kills or by the deadline. `BlockBossSummons` turns it off. The Queen is not summoned at an
+  altar, so her door is not covered by this.
+- `utangard biomes`, a console command listing each biome's creatures, your kills of each and how
+  much of it you have explored.
+
 ## [1.3.1] - 2026-09-12
 
 ### Changed

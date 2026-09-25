@@ -40,6 +40,8 @@ namespace Utangard
         public static ConfigEntry<string> ExcludePlayerIds;
         public static ConfigEntry<float> BorderMargin;
         public static ConfigEntry<bool> RequirePreviousBoss;
+        public static ConfigEntry<bool> BlockBossSummons;
+        public static ConfigEntry<string> BossBlockedMessage;
 
         // One row per biome. A global key name, or empty for "this biome is not gated".
         public static ConfigEntry<string> KeyMeadows;
@@ -209,6 +211,18 @@ namespace Utangard
                 + "and the biome you can see from is still the biome you are in. Costs eight "
                 + "biome lookups a step, cached, so it is not free but it is close. 0 turns "
                 + "it off and puts the gate exactly on the border.");
+
+            BlockBossSummons = config.Bind(SecGate, "BlockBossSummons", true,
+                "Refuse to summon a boss at an altar standing in a biome the group has not "
+                + "earned. Without it one player can carry an egg into the locked Mountains, "
+                + "kill Moder there, and start the Plains deadline for everybody while the rest "
+                + "are still on Bonemass. Nothing is used up by a refused offering. It can never "
+                + "lock a boss away for good: each altar stands in the biome the boss before it "
+                + "opens, so it answers as soon as that biome does, by kills or by the deadline.");
+
+            BossBlockedMessage = config.Bind(SecGate, "BossBlockedMessage",
+                "The land will not answer an offering here",
+                "Shown centre-screen when an altar refuses.");
 
             // The defaults are the vanilla progression, offset by one: the key that lets you
             // into a biome is the boss of the biome before it. Note this walls off the Black
