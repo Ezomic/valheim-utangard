@@ -156,8 +156,10 @@ appears to do nothing, check the cfg first.
 | `CatchUpDaysPerBoss` | `defeated_eikthyr:1, defeated_gdking:2, defeated_bonemass:3, defeated_dragon:4, defeated_goblinking:5, defeated_queen:6, defeated_fader:7` | Days the group has to catch up once the first player clears a boss. The clock starts at the first credit recorded in this world and is never moved. |
 | `CreditRadius` | `100` | Metres from a dying boss to be credited. |
 | `BorderMargin` | `5` | Metres the gate reaches past the edge of a gated biome. `0` puts it exactly on the border. |
-| `BlockBossSummons` | `true` | An altar in a biome the group has not earned will not summon its boss, and the offering is not used up. Each altar stands in the biome the boss before it opens, so it answers as soon as that biome does. |
+| `BlockBossSummons` | `true` | An altar in a biome the group has not earned will not summon its boss, and the offering is not used up. It also covers the Queen's door, below. Each altar stands in the biome the boss before it opens, so it answers as soon as that biome does. |
 | `BossBlockedMessage` | `The land will not answer an offering here` | Shown when an altar refuses. |
+| `BossDoorKeys` | `DvergrKey` | Doors opened with these keys stay sealed while their biome is locked. The Sealbreaker opens the Queen's door, the one boss not summoned at an altar. The key is not used up, and an open door stays open. Empty turns it off. |
+| `BossDoorBlockedMessage` | `The seal will not break here yet` | Shown when a boss door stays shut. |
 | `ExcludePlayerIds` | *(empty)* | Comma-separated character IDs that never count towards the gate. IDs, not names; the roster dump on spawn prints both. |
 | `Key_Meadows` … `Key_Ocean` | see the table above | The global key that opens each biome. Blank means never gated. |
 

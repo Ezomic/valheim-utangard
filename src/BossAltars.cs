@@ -1,5 +1,6 @@
 using System;
 using HarmonyLib;
+using UnityEngine;
 
 namespace Utangard
 {
@@ -30,12 +31,38 @@ namespace Utangard
     /// refusing here spawns nothing and costs nothing: the trophies stay in the bag and the
     /// bells stay on their stands.
     ///
-    /// Not covered: a boss that is placed rather than summoned. The Queen waits behind a door
-    /// in the Mistlands and never goes near an OfferingBowl.
+    /// A boss that is placed rather than summoned never goes near an OfferingBowl. The Queen
+    /// waits behind a sealed door in the Mistlands, so BossDoors asks the same question at the
+    /// door, through Unearned below.
     /// </summary>
     internal static class BossAltars
     {
         private static bool _saidFailure;
+
+        /// <summary>
+        /// The key the biome at this spot still needs, or null when the group has earned it -
+        /// and null too when the rule is off or the gate cannot be escaped. Shared with
+        /// BossDoors, so an altar and the Queen's door cannot disagree about one biome.
+        /// </summary>
+        internal static string Unearned(Vector3 position)
+        {
+            if (!UtangardConfig.Enabled.Value || !UtangardConfig.BlockBossSummons.Value) return null;
+
+            // Fail open the way the penalties do: if a game update has broken the code that
+            // records boss kills, a shut biome could never open again, and refusing its
+            // altar as well would make that permanent.
+            if (!Seams.PenaltyIsEscapable()) return null;
+
+            var zone = ZoneSystem.instance;
+            if (zone == null) return null;
+
+            // FindBiome compares X and Z only, so an altar under a roof or inside a dungeon
+            // answers for the biome above it, which is the biome that owns it.
+            var key = UtangardConfig.RequiredKeyFor(Heightmap.FindBiome(position));
+            if (key == null || BiomeGate.Earned(zone, key)) return null;
+
+            return key;
+        }
 
         [HarmonyPrefix]
         [HarmonyPatch(typeof(OfferingBowl), "InitiateSpawnBoss")]
@@ -43,20 +70,10 @@ namespace Utangard
         {
             try
             {
-                if (!UtangardConfig.Enabled.Value || !UtangardConfig.BlockBossSummons.Value) return true;
+                if (__instance == null) return true;
 
-                // Fail open the way the penalties do: if a game update has broken the code that
-                // records boss kills, a shut biome could never open again, and refusing its
-                // altar as well would make that permanent.
-                if (!Seams.PenaltyIsEscapable()) return true;
-
-                var zone = ZoneSystem.instance;
-                if (zone == null || __instance == null) return true;
-
-                // FindBiome compares X and Z only, so an altar under a roof or inside a dungeon
-                // answers for the biome above it, which is the biome that owns it.
-                var key = UtangardConfig.RequiredKeyFor(Heightmap.FindBiome(__instance.transform.position));
-                if (key == null || BiomeGate.Earned(zone, key)) return true;
+                var key = Unearned(__instance.transform.position);
+                if (key == null) return true;
 
                 var player = Player.m_localPlayer;
                 if (player != null)
