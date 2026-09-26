@@ -76,10 +76,10 @@ one biome at a time.
 Every locked biome has two bars for each character.
 
 - **Fighting** fills from kills of that biome's creatures. Each kind is worth a set number of
-  points, 1 for the common ones up to 5 for the biggest threat, and the bar is full at 100. One
-  kind of creature can put in 50 at most, so you cannot fill it on trolls alone. Kills come from
-  the game's own kill tally for your character. That means they count wherever the kill
-  happened, helping with a kill counts, and kills from before this version count too.
+  points, 1 or 2 for the common ones up to 5 for the biggest threat, and the bar is full at
+  100. One kind of creature can put in 50 at most, so you cannot fill it on trolls alone. Kills
+  come from the game's own kill tally for your character. That means they count wherever the
+  kill happened, helping with a kill counts, and kills from before this version count too.
 - **Discovery** fills from the part of that biome's map you uncovered yourself. It is full at
   0.5 km², the same in every biome. What a map table shares with you does not count. Each piece
   of the map counts once, so walking back and forth over the same ground earns nothing.
@@ -89,8 +89,8 @@ the normal rate. The rest of the lock stays as it is: meads, powers and Rested a
 refused, food and buffs still burn faster, and you still leave Sapped.
 
 The bars are yours alone. They only lift the rules in the biome they were earned for, so a full
-bar in the Swamp does nothing for you in the Mountains, and they never open a biome for the
-group. That still takes the boss.
+bar in the Swamp does nothing for you in the Mountains. They never open a biome for the group
+either. That still takes the boss, or the catch-up deadline.
 
 A refused meal tells you how far your Fighting bar has got. `utangard foothold` in the console
 (F5) shows both bars for every biome and what each kind of creature has added. What each

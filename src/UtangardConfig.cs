@@ -517,8 +517,8 @@ namespace Utangard
             string line = Foothold.DefaultLine(biome);
 
             string note = line.Length > 0
-                ? "The defaults were set by hand: the common creature is worth 1 and the biggest "
-                  + "threat 5."
+                ? "The defaults were set by hand: the common creatures are worth 1 or 2 and the "
+                  + "biggest threat 5."
                 : "Empty because this biome is not gated by default. Fill it in if you gate it, "
                   + "or nobody can build a foothold there.";
 
