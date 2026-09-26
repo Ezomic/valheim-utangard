@@ -1,0 +1,55 @@
+# Utangard - no boss comes to an altar in a biome the group has not earned.
+#
+# The Deep North, because it is the last biome and the one a dev world is least likely to have
+# earned - and the scenario makes sure by clearing every record that could open it: the boss
+# key the world falls back on, the latch GateNeverRegresses writes (and its pre-rename wither_
+# spelling), the catch-up clock, and this character's own attendance. The one thing it cannot
+# clear is another character in this world's roster who is marked present at Fader; if the run
+# fails at the first `count`, look there first.
+#
+# The altar is Eikthyr's, spawned where the Deep North is. The rule reads the biome an altar
+# stands in, not which boss it belongs to, so any altar in a locked biome is the test, and
+# Eikthyr's is the cheapest offering there is.
+#
+# Two halves. Shut: the offering is refused, the refusal is said, no boss comes, and the
+# trophies are still in the pack. Open: latch the Deep North the way a Fader kill would, and the
+# same altar with the same offering brings him. Without the second half a broken altar would
+# pass the first.
+
+clear
+god
+ghost
+
+unkey defeated_fader
+unkey utangard_open_defeated_fader
+unkey wither_open_defeated_fader
+unkey utangard_first_defeated_fader
+unkey utangard_p_$player_defeated_fader
+wait 1
+
+biome DeepNorth
+wait 3
+location Eikthyrnir
+wait 3
+banish Eikthyr 80
+give TrophyDeer:4
+
+# Shut.
+centre The land will not answer no
+offer TrophyDeer
+centre The land will not answer an offering here yes
+wait 8
+count Eikthyr 0 80
+carrying TrophyDeer 4
+
+# Open, the way the group's Fader kill would leave it.
+key utangard_open_defeated_fader
+wait 1
+offer TrophyDeer
+centre The land will not answer no
+wait 8
+count Eikthyr 1 80
+carrying TrophyDeer 2
+
+banish Eikthyr 80
+unkey utangard_open_defeated_fader

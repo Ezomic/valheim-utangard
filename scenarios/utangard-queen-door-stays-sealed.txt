@@ -1,0 +1,58 @@
+# Utangard - the Queen's door stays sealed while its biome is locked.
+#
+# Same premise as utangard-altar-in-a-locked-biome, and the same keys cleared: the Deep North,
+# shut on purpose. The Queen's entrance is spawned there, because the rule reads the biome the
+# door stands in, not which boss is behind it.
+#
+# A keyed door opens two ways and vanilla spends the key inside both before the door moves: the
+# key used from the hotbar (Door.UseItem) and E with the key in the pack (Door.Interact). So both
+# are tried, and after each the door is still shut and the Sealbreaker is still carried.
+#
+# Two things here are asset data nobody had seen when this was written: the location's name and
+# the door's. If `location` fails, its note lists the names the world does know. If `door` finds
+# nothing, the door is not called DvergerBossDoor, and Utangard's log line on world load -
+# "Boss doors kept sealed in a locked biome: ..." - names what it guards.
+
+clear
+god
+ghost
+
+unkey defeated_fader
+unkey utangard_open_defeated_fader
+unkey wither_open_defeated_fader
+unkey utangard_first_defeated_fader
+unkey utangard_p_$player_defeated_fader
+wait 1
+
+biome DeepNorth
+wait 3
+location Mistlands_DvergrBossEntrance1 30
+wait 3
+give DvergrKey:1
+dooris DvergerBossDoor shut 60
+
+# Shut: the key from the hotbar.
+centre The seal will not break no
+door DvergerBossDoor DvergrKey 60
+centre The seal will not break here yet yes
+wait 1
+dooris DvergerBossDoor shut 60
+carrying DvergrKey 1
+
+# Shut: E, with the key in the pack.
+door DvergerBossDoor 60
+centre The seal will not break here yet yes
+wait 1
+dooris DvergerBossDoor shut 60
+carrying DvergrKey 1
+
+# Open, the way the group's Fader kill would leave it. Whether the key is spent now is the
+# door's own m_consumeKey, vanilla's business, so it is not asserted.
+key utangard_open_defeated_fader
+wait 1
+door DvergerBossDoor 60
+centre The seal will not break no
+wait 2
+dooris DvergerBossDoor open 60
+
+unkey utangard_open_defeated_fader
