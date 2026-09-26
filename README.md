@@ -18,8 +18,10 @@ Everything here is a default and everything is configurable.
 - Eating and drinking are refused, with a message on screen. The item is never consumed or
   destroyed. Food is refused by `Food.BlockEating`; potions and meads are refused by
   `Buffs.BlockNewBuffs`, at the moment you drink them rather than after the effect is wasted.
+  Eating comes back once you have fought enough in that biome (see
+  [Earning a foothold](#earning-a-foothold)).
 - Health regeneration is set to zero. Food is Valheim's only passive healing, so damage taken
-  in a gated biome is damage you carry home.
+  in a gated biome is damage you carry home, until you have a full foothold there.
 - Buffs already running burn 5x faster, and new ones are refused. Guardian powers are refused
   before the cooldown is spent, so yours is still there when you leave.
 - Rested and Resting count as buffs, so a fire and a roof buy you nothing inside. This is the
@@ -63,6 +65,36 @@ Dungeons take the biome above them, so a Swamp crypt withers you exactly like th
   is the first spawn after installing, the gate answers from the world's own defeat keys.
 - **The gate is one answer about the group.** If the roster has not all cleared Moder, the
   Plains withers you too, even if you landed the kill.
+
+## Earning a foothold
+
+Pidgey put the problem with the lock plainly while playing on Longhouse: a locked biome was a
+wall, not a challenge, and the inability to eat was the problem. You could not stay long enough
+to do anything there, so there was no reason to go. A character can now earn part of it back,
+one biome at a time.
+
+Every locked biome has two bars for each character.
+
+- **Fighting** fills from kills of that biome's creatures. Each kind is worth a set number of
+  points, 1 for the common ones up to 5 for the biggest threat, and the bar is full at 100. One
+  kind of creature can put in 50 at most, so you cannot fill it on trolls alone. Kills come from
+  the game's own kill tally for your character. That means they count wherever the kill
+  happened, helping with a kill counts, and kills from before this version count too.
+- **Discovery** fills from the part of that biome's map you uncovered yourself. It is full at
+  0.5 km², the same in every biome. What a map table shares with you does not count. Each piece
+  of the map counts once, so walking back and forth over the same ground earns nothing.
+
+At 50% Fighting you can eat in that biome again. With both bars full your wounds heal there at
+the normal rate. The rest of the lock stays as it is: meads, powers and Rested are still
+refused, food and buffs still burn faster, and you still leave Sapped.
+
+The bars are yours alone. They only lift the rules in the biome they were earned for, so a full
+bar in the Swamp does nothing for you in the Mountains, and they never open a biome for the
+group. That still takes the boss.
+
+A refused meal tells you how far your Fighting bar has got. `utangard foothold` in the console
+(F5) shows both bars for every biome and what each kind of creature has added. What each
+creature is worth is in the config, one line per biome, under **Foothold**.
 
 ## Biome table
 
@@ -121,8 +153,9 @@ once if it finds the group gate running in a multiplayer session with no Core.
 
 Settings that decide a rule are synced from the host: all of **Gate**, including the biome keys
 and the border margin; the drains and blocks under **Food** and **Buffs**, including the healing
-multiplier; and both **Sapped** values. Settings that decide wording stay yours: the two blocked
-messages, all of **Presentation**, and all of **Diagnostics**.
+multiplier; both **Sapped** values; and all of **Foothold**, including the points lines.
+Settings that decide wording stay yours: the two blocked messages, all of **Presentation**, and
+all of **Diagnostics**.
 
 Persistence:
 
@@ -134,6 +167,8 @@ Persistence:
 - Your character file is read, never written.
 - Food timers and status effects belong to the owning client. Nothing here reaches into another
   player's character.
+- A foothold is read from your own character on your own machine: its kill tally, and the map
+  it has explored in this world. Nothing about it is sent to the server or saved in the world.
 
 ## Configuration
 
@@ -190,6 +225,34 @@ appears to do nothing, check the cfg first.
 | `StaminaRegenMultiplier` | `0.25` | Stamina regeneration while Sapped, as a fraction of normal. |
 | `MaxSeconds` | `30` | Ceiling on how much Sapped you can bank, and so how long you must stand in the biome to reach the full penalty. |
 
+### Foothold
+
+| Setting | Default | What it does |
+| --- | --- | --- |
+| `FootholdEnabled` | `true` | Let a character earn eating and healing back in a locked biome. Off puts the lock back exactly as it was. |
+| `EatAtFighting` | `50` | Fighting points, out of 100, at which you may eat again. Food only; meads and potions stay refused. Above 100 means never. |
+| `DiscoveryFullKm2` | `0.5` | How much of a biome's map, in km², you have to uncover yourself for a full Discovery bar. `0` means no walking is needed. |
+| `MaxFromOneKind` | `50` | The most one kind of creature can add to a Fighting bar. |
+| `Points_Meadows` … `Points_Ocean` | see below | What each kill is worth there, as `Prefab:points` pairs. A creature that is not listed is worth nothing in that biome. |
+
+The points lines, as they ship. The Meadows and the Ocean are empty because neither is gated by
+default.
+
+| Biome | Points |
+| --- | --- |
+| Black Forest | `Greydwarf:1, Skeleton:1, Greydwarf_Shaman:2, Greydwarf_Elite:3, Bjorn:4, Troll:5` |
+| Swamp | `Draugr:1, Blob:1, Leech:1, Surtling:1, BlobElite:2, Wraith:2, Draugr_Elite:3, Writhan:3, Abomination:5` |
+| Mountains | `Wolf:1, Ulv:1, Hatchling:2, Fenring_Cultist:2, Fenring:3, StoneGolem:5` |
+| Plains | `Deathsquito:1, Goblin:1, BlobTar:1, GoblinShaman:2, Lox:3, GoblinBrute:4, Unbjorn:5` |
+| Mistlands | `Seeker:1, Tick:1, Dverger:2, DvergerMageSupport:3, DvergerMageFire:3, DvergerMageIce:3, SeekerBrute:4, Gjall:5` |
+| Ashlands | `Charred_Archer:1, Charred_Twitcher:1, Volture:1, BlobLava:1, Charred_Melee:2, Asksvin:2, Charred_Mage:3, BonemawSerpent:4, FallenValkyrie:5, Morgen:5, Morgen_NonSleeping:5, Charred_Melee_Dyrnwyn:5` |
+| Deep North | `GoblinDeepNorth:2, Elaking:2, ElakingLantern:2, ElakingMole:2, DvergerDeepNorth:2, Moose:3, ShadowPerson:3, JotunWitch:4, JotunWarrior:5, JotunWarriorDualWield:5, Barka:5` |
+
+Prey is left out on purpose, and so are Swamp skeletons. Some creatures share one name in the
+game's kill tally, like the frozen greydwarves of the Deep North and the ones at home, so a name
+listed in two biomes only counts in the earlier one. The three dvergr mages are one name as well,
+which is why they are all worth 3. `utangard creatures` checks every line against the game.
+
 ### Presentation
 
 | Setting | Default | What it does |
@@ -201,6 +264,7 @@ appears to do nothing, check the cfg first.
 | `LeaveMessage` | `The land loosens its grip` | Shown once on leaving. Blank to say nothing. |
 | `NameTheBlockers` | `true` | Name the characters the biome is still waiting on, and how long is left on the deadline. |
 | `BlockedByPrefix` | `Still owed by:` | Prefix for that list. |
+| `EatProgressLine` | `Fighting here {fighting}%. You can eat at {eat}%.` | Added under a refused meal. `{fighting}`, `{eat}` and `{biome}` are filled in. Blank to say nothing. |
 | `AnnounceOpenings` | `true` | Say so, wherever you are, when a biome opens. Covers openings nobody killed anything for, such as a deadline expiring. |
 | `OpenedMessage` | `{biome} opens to you` | That message. `{biome}` becomes the biome's name, or both names when one boss opens two. |
 | `ShowCompendiumPage` | `true` | Add the Utangard page to the compendium's text list. |
@@ -259,7 +323,10 @@ boss, the biome-opened announcement fires on the transition, and the defeat-key 
 all nine rows against the world's own creature prefabs. Running standalone with no Core has been
 confirmed in game.
 
-One thing is untested: attendee credit with more than one player at a boss kill. Solo you own
+Footholds are new and have not been run in game yet: neither bar, the two unlocks, nor
+`utangard foothold`.
+
+One more thing is untested: attendee credit with more than one player at a boss kill. Solo you own
 the boss and credit yourself either way. The loop is identical for one player or five; what is
 unproven is whether other players' objects are instantiated on the owning client at fight range.
 

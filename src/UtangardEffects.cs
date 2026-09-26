@@ -30,9 +30,16 @@ namespace Utangard
         ///
         /// Multiplied in alongside every other effect's, like Sapped's stamina figure, so it
         /// composes with vanilla rather than overriding it.
+        ///
+        /// Left alone entirely for a character with a full foothold in the biome whose rules
+        /// apply here (LHM-26): both bars full means multiplier 1, normal healing. The rest of
+        /// the marker's work goes on. Asked once per regen, which vanilla does every ten
+        /// seconds, so the kill tally and the map count are read that often and no more.
         /// </summary>
         public override void ModifyHealthRegen(ref float regenMultiplier)
         {
+            if (Foothold.HealingAllowed(m_character as Player)) return;
+
             regenMultiplier *= Mathf.Clamp01(UtangardConfig.HealthRegenMultiplier.Value);
         }
 
@@ -51,22 +58,35 @@ namespace Utangard
         }
 
         /// <summary>
-        /// The tooltip, plus a line about healing when healing is actually being denied.
+        /// The tooltip, plus a line for each rule that is actually in force on this character.
         ///
-        /// Built here rather than baked into m_tooltip at construction because the multiplier
-        /// is a live config value: a server that syncs a different one, or a player who
-        /// changes it in ConfigurationManager, would otherwise read a description of a rule
-        /// that is no longer in force. Vanilla asks for this string every time it draws the
-        /// tooltip, so there is nothing to invalidate.
+        /// Built here rather than baked into m_tooltip at construction because every line is
+        /// live: a server that syncs a different multiplier, a player who changes one in
+        /// ConfigurationManager, and since LHM-26 a character whose foothold has just filled,
+        /// would otherwise read a description of a rule that no longer applies to them. Vanilla
+        /// asks for this string every time it draws the tooltip, so there is nothing to
+        /// invalidate.
         /// </summary>
         public override string GetTooltipString()
         {
-            float regen = Mathf.Clamp01(UtangardConfig.HealthRegenMultiplier.Value);
-            if (regen >= 1f) return m_tooltip;
+            Player player = m_character as Player;
+            var text = new System.Text.StringBuilder(m_tooltip);
 
-            return m_tooltip + "\n" + (regen <= 0f
-                ? "Wounds do not close here."
-                : "Wounds close slowly here.");
+            if (UtangardConfig.BlockEating.Value)
+                text.Append('\n').Append(Foothold.EatingAllowed(player)
+                    ? "You have fought enough here to eat."
+                    : "Nothing you eat will take hold here.");
+
+            if (UtangardConfig.BlockNewBuffs.Value)
+                text.Append('\n').Append("Meads and powers will not take hold here.");
+
+            float regen = Mathf.Clamp01(UtangardConfig.HealthRegenMultiplier.Value);
+            if (regen < 1f)
+                text.Append('\n').Append(Foothold.HealingAllowed(player)
+                    ? "You know this place well enough that your wounds close."
+                    : regen <= 0f ? "Wounds do not close here." : "Wounds close slowly here.");
+
+            return text.ToString();
         }
     }
 

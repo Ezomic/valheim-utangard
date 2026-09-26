@@ -78,6 +78,15 @@ namespace Utangard
         /// <summary>Terminal.InitTerminal - the `utangard` console command.</summary>
         internal static bool Console;
 
+        /// <summary>
+        /// Minimap.Explore(int, int), and SetMapData, Reset and ExploreAll - the Discovery bar of
+        /// a foothold. True only when both halves went on: counting new pixels without knowing
+        /// when the map was rewritten would count some twice and miss others, and a bar that
+        /// disagrees with the map is worse than an empty one. Off, Discovery reads as unavailable
+        /// and healing stays locked, which is the lock as it was before footholds.
+        /// </summary>
+        internal static bool MapExplore;
+
         /// <summary>What did not go on, in the words the log will use.</summary>
         private static readonly List<string> Broken = new List<string>();
 
@@ -130,6 +139,13 @@ namespace Utangard
 
             Console = Patch(harmony, typeof(DevConsole.Hook),
                 "the utangard console command (Terminal.InitTerminal)");
+
+            // Both halves are tried whatever the first one did, with & rather than &&, so a
+            // broken seam is reported in full rather than stopping at the first failure.
+            MapExplore = Patch(harmony, typeof(Discovery.Uncover),
+                    "counting newly explored map for footholds (Minimap.Explore)")
+                & Patch(harmony, typeof(Discovery.Rewrite),
+                    "noticing the explored map being loaded or reset (Minimap.SetMapData, Reset, ExploreAll)");
 
             Report();
         }

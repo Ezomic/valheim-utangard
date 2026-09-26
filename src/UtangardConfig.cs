@@ -25,6 +25,7 @@ namespace Utangard
         private const string SecFood = "Food";
         private const string SecBuffs = "Buffs";
         private const string SecSapped = "Sapped";
+        private const string SecFoothold = "Foothold";
         private const string SecShow = "Presentation";
         private const string SecDiag = "Diagnostics";
 
@@ -71,6 +72,15 @@ namespace Utangard
         public static ConfigEntry<float> SappedStaminaRegen;
         public static ConfigEntry<float> SappedMaxSeconds;
 
+        public static ConfigEntry<bool> FootholdEnabled;
+        public static ConfigEntry<int> EatAtFighting;
+        public static ConfigEntry<float> DiscoveryFullKm2;
+        public static ConfigEntry<int> MaxFromOneKind;
+
+        /// <summary>One points line per gateable biome, in GateableBiomes order.</summary>
+        private static readonly Dictionary<Heightmap.Biome, ConfigEntry<string>> PointsLines =
+            new Dictionary<Heightmap.Biome, ConfigEntry<string>>();
+
         public static ConfigEntry<bool> ShowStatusEffects;
         public static ConfigEntry<string> MarkIconFrom;
         public static ConfigEntry<string> SappedIconFrom;
@@ -78,6 +88,7 @@ namespace Utangard
         public static ConfigEntry<string> LeaveMessage;
         public static ConfigEntry<bool> NameTheBlockers;
         public static ConfigEntry<string> BlockedByPrefix;
+        public static ConfigEntry<string> EatProgressLine;
         public static ConfigEntry<bool> AnnounceOpenings;
         public static ConfigEntry<string> OpenedMessage;
         public static ConfigEntry<bool> ShowCompendiumPage;
@@ -278,7 +289,9 @@ namespace Utangard
             BlockEating = config.Bind(SecFood, "BlockEating", true,
                 "Refuse to eat anything at all in a gated biome. This is the 'force' half: "
                 + "the drain alone can be beaten by carrying more food, and the block is "
-                + "what makes the timer real.");
+                + "what makes the timer real.\n"
+                + "A character who has fought enough in that biome may eat there again. See "
+                + "the Foothold section.");
 
             EatBlockedMessage = config.Bind(SecFood, "EatBlockedMessage",
                 "The land will not feed you here",
@@ -292,7 +305,9 @@ namespace Utangard
                 + "the food you are not allowed to eat would have given. Healing that comes "
                 + "from an effect you were carrying is drained by the Buffs section instead. "
                 + "1 leaves healing alone, which makes a gated biome survivable in a way "
-                + "resting off a bad fight makes it liveable.");
+                + "resting off a bad fight makes it liveable.\n"
+                + "A character with both foothold bars full in that biome heals at the normal "
+                + "rate there. See the Foothold section.");
 
             BuffDrainMultiplier = config.Bind(SecBuffs, "BuffDrainMultiplier", 5f,
                 "How much faster an already-running buff burns down in a gated biome. Only "
@@ -346,6 +361,48 @@ namespace Utangard
                 + "biome before the penalty is at full length'. It keeps ticking down after "
                 + "you leave, which is the point - a dash in and out still costs you.");
 
+            // LHM-26. The reasoning lives on FootholdEnabled because that is the entry a server
+            // owner reads first, and in Foothold.cs for whoever reads the code.
+            FootholdEnabled = config.Bind(SecFoothold, "FootholdEnabled", true,
+                "Let a character earn eating and healing back in a biome the group has not opened "
+                + "yet, by fighting there and by exploring it.\n"
+                + "Without this a locked biome is a wall. You cannot eat there, so you cannot stay "
+                + "long enough to do anything. A player on Longhouse put it plainly: the inability "
+                + "to eat is the problem.\n"
+                + "Each character gets two bars per locked biome. Fighting fills from kills of that "
+                + "biome's creatures, using the points lines below. Discovery fills from the map "
+                + "you uncover there yourself. Eating comes back at EatAtFighting, and healing goes "
+                + "back to normal when both bars are full. The bars belong to your character and "
+                + "only lift the rules in the biome they were earned for.\n"
+                + "The rest of the lock stays. Meads, powers and Rested are still refused, food and "
+                + "buffs still burn faster, you still leave Sapped, and the biome does not open for "
+                + "the group.\n"
+                + "Off puts the lock back exactly as it was.");
+
+            EatAtFighting = config.Bind(SecFoothold, "EatAtFighting", 50,
+                "Fighting points at which you may eat again in a locked biome. The bar holds 100, "
+                + "so this is also its percent. Only food: meads and potions are still refused. "
+                + "Above 100 means eating never comes back this way.");
+
+            DiscoveryFullKm2 = config.Bind(SecFoothold, "DiscoveryFullKm2", 0.5f,
+                "How much of a biome's map you have to uncover yourself before its Discovery bar is "
+                + "full, in square kilometres. The same for every biome, so a small Swamp asks as "
+                + "much walking as a wide Plains.\n"
+                + "Only fog you lifted yourself counts. What a map table shares with you does not, "
+                + "and a piece of map counts once, so walking back and forth over the same ground "
+                + "earns nothing. Each map pixel is filed under the biome at its centre, which "
+                + "means walking along a border uncovers a little of the biome next door as well.\n"
+                + "0 means no walking is needed, and healing then waits on the Fighting bar alone.");
+
+            MaxFromOneKind = config.Bind(SecFoothold, "MaxFromOneKind", 50,
+                "The most one kind of creature can put into a Fighting bar. At 50, killing trolls "
+                + "alone gets you eating but never healing, so the second half has to come from "
+                + "something else that lives there. A kind is one name in the game's kill tally, "
+                + "which is why the three dvergr mages count as one.");
+
+            foreach (Heightmap.Biome biome in GateableBiomes)
+                PointsLines[biome] = BindPoints(config, biome);
+
             ShowStatusEffects = config.Bind(SecShow, "ShowStatusEffects", true,
                 "Show the two effects on the HUD. Off makes the mod invisible, which is "
                 + "atmospheric and also completely baffling to a new player.");
@@ -378,6 +435,13 @@ namespace Utangard
 
             BlockedByPrefix = config.Bind(SecShow, "BlockedByPrefix", "Still owed by:",
                 "Prefix for that list of names.");
+
+            EatProgressLine = config.Bind(SecShow, "EatProgressLine",
+                "Fighting here {fighting}%. You can eat at {eat}%.",
+                "Added under the refused-meal message, so a player learns there is a way back at "
+                + "the moment they need one. {fighting} is your Fighting bar in the biome refusing "
+                + "you, {eat} is where eating comes back, both in percent, and {biome} is the "
+                + "biome's name. Blank to say nothing.");
 
             AnnounceOpenings = config.Bind(SecShow, "AnnounceOpenings", true,
                 "Say so, wherever you are, when a biome opens. Without it the only way to "
@@ -432,10 +496,80 @@ namespace Utangard
             // ConfigEntry<T>, and GateKeyEntries hands back ConfigEntryBase.
             config.SettingChanged += (s, e) =>
             {
-                if (e.ChangedSetting != null
-                    && e.ChangedSetting.Definition.Key.StartsWith("Key_", StringComparison.Ordinal))
-                    _order = null;
+                if (e.ChangedSetting == null) return;
+
+                string changed = e.ChangedSetting.Definition.Key;
+                if (changed.StartsWith("Key_", StringComparison.Ordinal)) _order = null;
+
+                // The points tables are resolved once per world and cached, so an edited line, or
+                // the host's arriving through Core, has to say so or it waits for the next world.
+                if (changed.StartsWith("Points_", StringComparison.Ordinal)) Foothold.Invalidate();
             };
+        }
+
+        /// <summary>
+        /// One biome's points line. Named after the biome exactly as the Key_ rows are, so the two
+        /// tables read side by side in the file.
+        /// </summary>
+        private static ConfigEntry<string> BindPoints(ConfigFile config, Heightmap.Biome biome)
+        {
+            string name = ReadableName(biome);
+            string line = Foothold.DefaultLine(biome);
+
+            string note = line.Length > 0
+                ? "The defaults were set by hand: the common creature is worth 1 and the biggest "
+                  + "threat 5."
+                : "Empty because this biome is not gated by default. Fill it in if you gate it, "
+                  + "or nobody can build a foothold there.";
+
+            return config.Bind(SecFoothold, "Points_" + biome, line,
+                "What each kill is worth towards the Fighting bar in the " + name + ", as "
+                + "Prefab:points pairs separated by commas. The bar is full at 100. " + note + "\n"
+                + "Kills are read from your character's own kill tally, so they count wherever "
+                + "they happened, and helping with a kill counts as well.\n"
+                + "A creature that is not listed is worth nothing here, which is how deer, hares "
+                + "and other prey are kept out. A creature listed in two biomes only counts in the "
+                + "earlier one: some creatures share a name in the kill tally, and a greydwarf "
+                + "killed at home must not fill the Deep North's bar. Run 'utangard creatures' in "
+                + "the console to check every name against the game.");
+        }
+
+        private static string ReadableName(Heightmap.Biome biome)
+        {
+            switch (biome)
+            {
+                case Heightmap.Biome.BlackForest: return "Black Forest";
+                case Heightmap.Biome.Mountain: return "Mountains";
+                case Heightmap.Biome.AshLands: return "Ashlands";
+                case Heightmap.Biome.DeepNorth: return "Deep North";
+                default: return biome.ToString();
+            }
+        }
+
+        /// <summary>
+        /// A biome's live points line, or empty. Read off the entry each time the table is built,
+        /// which is once per world or per edit, never per frame.
+        /// </summary>
+        public static string PointsLineFor(Heightmap.Biome biome)
+        {
+            ConfigEntry<string> entry;
+            return PointsLines.TryGetValue(biome, out entry) && entry != null ? entry.Value ?? "" : "";
+        }
+
+        /// <summary>
+        /// Every points line, for handing to Core's config sync. A table that differed between
+        /// host and client would let two players with the same kills stand in the same biome and
+        /// one of them eat.
+        /// </summary>
+        public static ConfigEntryBase[] PointsEntries()
+        {
+            var entries = new List<ConfigEntryBase>();
+            foreach (Heightmap.Biome biome in GateableBiomes)
+            {
+                ConfigEntry<string> entry;
+                if (PointsLines.TryGetValue(biome, out entry) && entry != null) entries.Add(entry);
+            }
+            return entries.ToArray();
         }
 
         private static ConfigEntry<string> BindKey(

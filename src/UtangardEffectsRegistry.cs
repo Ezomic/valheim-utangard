@@ -40,9 +40,11 @@ namespace Utangard
                 _marker = ScriptableObject.CreateInstance<UtangardMarker>();
                 _marker.name = MarkerName;
                 _marker.m_name = "Denied";
+                // Only what is always true. Eating, meads and healing each depend on a switch,
+                // and eating and healing on the character's foothold as well, so those lines are
+                // added live by GetTooltipString.
                 _marker.m_tooltip =
-                    "This land does not recognise you. Nothing you eat or drink will take "
-                    + "hold here, and what you carry is burning away.";
+                    "This land does not recognise you. What you carry is burning away.";
 
                 // Nothing in the game owns this object, so without the flag a scene load can
                 // collect it and every player quietly stops being gated.

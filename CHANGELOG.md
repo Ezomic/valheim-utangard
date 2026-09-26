@@ -7,6 +7,25 @@ and the mod uses [semantic versioning](https://semver.org).
 
 ### Added
 
+- **You can earn eating and healing back in a locked biome.** Pidgey said it on Longhouse: a
+  locked biome was a wall, not a challenge, and the inability to eat was the problem. Each
+  character now has two bars in every locked biome. Fighting fills from kills of that biome's
+  creatures, and at 50% you can eat there again. Discovery fills from the map you uncover there
+  yourself, and once both bars are full your wounds heal at the normal rate. Meads, powers and
+  Rested are still refused, food and buffs still burn faster and you still leave Sapped. The bars
+  are yours, they only count in their own biome, and they never open it for the group.
+- Fighting reads the game's own kill tally for your character, so kills from before this version
+  count, assists count, and it does not matter where the kill happened. Each kind of creature is
+  worth 1 to 5 points and the bar is full at 100. No single kind can put in more than 50.
+- Discovery only counts fog you lifted yourself, not what a map table shares. It is full at
+  0.5 km² in every biome, and a piece of map counts once.
+- A new **Foothold** config section: `FootholdEnabled`, `EatAtFighting`, `DiscoveryFullKm2`,
+  `MaxFromOneKind`, and a `Points_` line per biome saying what each creature is worth there. All of
+  it is synced from the host.
+- A refused meal now says how far your Fighting bar has got. The wording is
+  `Presentation.EatProgressLine`.
+- `utangard foothold` in the console shows both bars for every biome, what each kind of creature
+  put in, where the cap stopped it, and what is unlocked.
 - **A boss will not come to an altar in a biome the group has not earned.** Before, one player
   could carry an egg into the locked Mountains, kill Moder there, and start the Plains deadline
   for everybody while the rest were still on Bonemass. A refused offering uses nothing up. Each
@@ -17,6 +36,11 @@ and the mod uses [semantic versioning](https://semver.org).
   already open stays open. `BossDoorKeys` lists which keys count.
 - `utangard biomes`, a console command listing each biome's creatures, your kills of each and how
   much of it you have explored.
+
+### Changed
+
+- The tooltip on the in-biome icon lists only the rules that apply to you right now, so it says
+  when you may eat or heal there.
 
 ## [1.3.1] - 2026-09-12
 

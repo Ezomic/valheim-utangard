@@ -102,6 +102,12 @@ namespace Utangard
 
             Openings.Check(player, dt);
 
+            // The foothold's map count, one time slice per tick until this world's map has been
+            // read once, and a handful of flag checks a tick after that. Here rather than in its
+            // own Update for the reasons at the top of this class, plus one: it only matters while
+            // there is a local character to have walked anywhere.
+            Discovery.Step();
+
             bool withered = BiomeGate.IsWithered(player);
 
             if (withered != _wasWithered)

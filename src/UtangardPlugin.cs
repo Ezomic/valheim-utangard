@@ -137,9 +137,17 @@ namespace Utangard
                 UtangardConfig.AlsoBlock,
                 UtangardConfig.NeverBlock,
                 UtangardConfig.SappedStaminaRegen,
-                UtangardConfig.SappedMaxSeconds);
+                UtangardConfig.SappedMaxSeconds,
+                UtangardConfig.FootholdEnabled,
+                UtangardConfig.EatAtFighting,
+                UtangardConfig.DiscoveryFullKm2,
+                UtangardConfig.MaxFromOneKind);
 
             Suite.Sync(UtangardConfig.GateKeyEntries());
+
+            // The foothold's points tables are rules like the gate table: the host's numbers
+            // decide who may eat where, on every client.
+            Suite.Sync(UtangardConfig.PointsEntries());
         }
 
         private void OnDestroy()

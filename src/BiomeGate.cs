@@ -47,6 +47,13 @@ namespace Utangard
         private static readonly List<string> _sampledKeys = new List<string>(2);
 
         /// <summary>
+        /// The biome each sampled key came from, index for index. Kept since LHM-26, because a
+        /// foothold belongs to a biome and not to a key: two rows of the table may share a key,
+        /// and "the rules being applied here" has to name the ground they came from.
+        /// </summary>
+        private static readonly List<Heightmap.Biome> _sampledBiomes = new List<Heightmap.Biome>(2);
+
+        /// <summary>
         /// How far the player may move before the margin is sampled again. A quarter of a
         /// metre is a few frames of walking and far less than the margin itself, so the
         /// error it can introduce is a fraction of a step at the very edge of the band.
@@ -69,6 +76,24 @@ namespace Utangard
         /// </summary>
         public static string GatingKey(Player player)
         {
+            Heightmap.Biome ignored;
+            return GatingKey(player, out ignored);
+        }
+
+        /// <summary>
+        /// GatingKey, and the biome whose rules are being applied: the locked biome underfoot, or
+        /// the one whose border margin the player is standing in. Biome.None when nothing gates.
+        ///
+        /// A player's foothold (LHM-26) is asked about this biome and no other, so the relief and
+        /// the rule it relieves always come from the same ground. The obvious shortcut, the
+        /// player's own current biome, is wrong in exactly the margin: standing in an open Black
+        /// Forest three metres from a locked Swamp, the rules are the Swamp's, and the Black
+        /// Forest's bars say nothing about them.
+        /// </summary>
+        public static string GatingKey(Player player, out Heightmap.Biome biome)
+        {
+            biome = Heightmap.Biome.None;
+
             if (player == null || !UtangardConfig.Enabled.Value) return null;
             if (player != Player.m_localPlayer) return null;
 
@@ -87,13 +112,18 @@ namespace Utangard
             ZoneSystem zone = ZoneSystem.instance;
             if (zone == null) return null;
 
-            string key = UtangardConfig.RequiredKeyFor(player.GetCurrentBiome());
-            if (key != null && !Earned(zone, key)) return key;
+            Heightmap.Biome underfoot = player.GetCurrentBiome();
+            string key = UtangardConfig.RequiredKeyFor(underfoot);
+            if (key != null && !Earned(zone, key))
+            {
+                biome = underfoot;
+                return key;
+            }
 
             // The margin is asked second, and only when the ground underfoot is allowed,
             // because inside a gated biome it can only ever agree - and it costs eight
             // heightmap lookups to say so.
-            return NearbyGatingKey(player, zone);
+            return NearbyGatingKey(player, zone, out biome);
         }
 
         /// <summary>True while the gate is closed on this player.</summary>
@@ -145,8 +175,10 @@ namespace Utangard
         /// itself exactly as the main gate does: a crypt interior sits above its entrance and
         /// samples the biome that entrance is in.
         /// </summary>
-        private static string NearbyGatingKey(Player player, ZoneSystem zone)
+        private static string NearbyGatingKey(Player player, ZoneSystem zone, out Heightmap.Biome biome)
         {
+            biome = Heightmap.Biome.None;
+
             float margin = UtangardConfig.BorderMargin.Value;
             if (margin <= 0f) return null;
 
@@ -157,34 +189,47 @@ namespace Utangard
             // walking gets a fresh one every quarter of a metre.
             if (margin == _sampledMargin
                 && (here - _sampledAt).sqrMagnitude < ResampleDistance * ResampleDistance)
-                return FirstUnearned(zone);
+                return FirstUnearned(zone, out biome);
 
             _sampledAt = here;
             _sampledMargin = margin;
             _sampledKeys.Clear();
+            _sampledBiomes.Clear();
 
             for (int i = 0; i < Compass.Length; i++)
             {
                 Vector3 point = new Vector3(
                     here.x + Compass[i].x * margin, here.y, here.z + Compass[i].y * margin);
 
-                string key = UtangardConfig.RequiredKeyFor(Heightmap.FindBiome(point));
+                Heightmap.Biome sampled = Heightmap.FindBiome(point);
+                string key = UtangardConfig.RequiredKeyFor(sampled);
 
                 // Distinct by hand rather than with a HashSet: eight samples land on one or
                 // two biomes in every case that is not a three-way corner, and a linear scan
-                // of a list that short beats allocating anything.
-                if (key != null && !_sampledKeys.Contains(key)) _sampledKeys.Add(key);
+                // of a list that short beats allocating anything. Distinct by biome rather
+                // than by key since LHM-26, so each entry still says which ground it is from.
+                if (key != null && !_sampledBiomes.Contains(sampled))
+                {
+                    _sampledKeys.Add(key);
+                    _sampledBiomes.Add(sampled);
+                }
             }
 
-            return FirstUnearned(zone);
+            return FirstUnearned(zone, out biome);
         }
 
-        /// <summary>The first of the sampled keys the group has not earned, or null.</summary>
-        private static string FirstUnearned(ZoneSystem zone)
+        /// <summary>The first sampled key the group has not earned, and its biome, or null.</summary>
+        private static string FirstUnearned(ZoneSystem zone, out Heightmap.Biome biome)
         {
             for (int i = 0; i < _sampledKeys.Count; i++)
-                if (!Earned(zone, _sampledKeys[i])) return _sampledKeys[i];
+            {
+                if (Earned(zone, _sampledKeys[i])) continue;
 
+                biome = _sampledBiomes[i];
+                return _sampledKeys[i];
+            }
+
+            biome = Heightmap.Biome.None;
             return null;
         }
     }

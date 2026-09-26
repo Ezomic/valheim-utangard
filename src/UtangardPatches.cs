@@ -84,8 +84,13 @@ namespace Utangard
                     || __0.m_shared.m_foodStamina > 0f
                     || __0.m_shared.m_foodEitr > 0f;
 
-                if (isFood && UtangardConfig.BlockEating.Value)
-                    return Refuse(__instance, ref __result, UtangardConfig.EatBlockedMessage.Value);
+                // A character who has fought enough in this biome may eat here (LHM-26). Earned
+                // eating is exactly BlockEating off for that biome and that character, nothing
+                // wider: a food that also carries a blocked buff still meets the buff rule below,
+                // as it always has with BlockEating off. Asked only once the meal would have been
+                // refused, so the kill tally is never read for a bite nobody was stopping.
+                if (isFood && UtangardConfig.BlockEating.Value && !Foothold.EatingAllowed(__instance))
+                    return Refuse(__instance, ref __result, EatRefusal(__instance));
 
                 // A potion whose effect would be refused a moment later is a potion thrown
                 // away. Stopping it here is the difference between a rule and a punishment.
@@ -234,6 +239,21 @@ namespace Utangard
                 // and did not follow it when it arrived.
                 return Refuse(__instance, ref __result, UtangardConfig.BuffBlockedMessage.Value);
             }
+        }
+
+        /// <summary>
+        /// The refused-meal message, with a line under it saying how far this character's
+        /// Fighting bar has got here. The moment a bite is refused is the moment a player wants
+        /// to know what would change that, and nothing else in the world tells them the bar
+        /// exists.
+        /// </summary>
+        private static string EatRefusal(Player player)
+        {
+            string message = UtangardConfig.EatBlockedMessage.Value;
+            string hint = Foothold.EatingHint(player);
+
+            if (string.IsNullOrEmpty(hint)) return message;
+            return string.IsNullOrEmpty(message) ? hint : message + "\n" + hint;
         }
 
         private static bool Refuse(Player player, ref bool __result, string message)

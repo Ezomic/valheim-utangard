@@ -141,7 +141,15 @@ namespace Utangard
 
             text.Append("A biome your group has not earned will not feed you. "
                 + "Food burns faster there, nothing you eat or drink takes hold, "
-                + "and you leave Sapped.\n\n");
+                + "and you leave Sapped.");
+
+            // Said here so the page stays true now that eating can be earned back, one biome and
+            // one character at a time. The bars themselves are `utangard foothold`.
+            if (UtangardConfig.FootholdEnabled.Value)
+                text.Append(" Fighting there earns eating back, and fighting and exploring "
+                    + "together earn healing back, for you and only in that biome.");
+
+            text.Append("\n\n");
 
             List<Row> rows = Rows();
             if (rows.Count == 0)
@@ -244,10 +252,140 @@ namespace Utangard
         /// location sets rather than a creature, and printing nothing there would leave the
         /// panel saying a biome is shut for no stated reason.
         /// </summary>
-        private static string BossName(string key)
+        internal static string BossName(string key)
         {
             string name = DefeatKeys.NameFor(key);
             return string.IsNullOrEmpty(name) ? key : name;
+        }
+
+        /// <summary>The row for one biome, or a blank ungated one when there is no world.</summary>
+        internal static Row RowFor(Heightmap.Biome biome)
+        {
+            foreach (Row row in Rows())
+                if (row.Biome == biome) return row;
+
+            return new Row { Biome = biome, Open = true, SecondsLeft = -1L };
+        }
+
+        /// <summary>
+        /// One sentence on who a biome is waiting on and until when, or that it is open, for the
+        /// line under a biome's title in the compendium panel (LHM-26, panel C). Built from the
+        /// same Row the page and the log read, so the three cannot disagree.
+        ///
+        /// "You" goes first when the local character owes it too, because that is the part of
+        /// the sentence a player can do something about tonight. Names come out of the world's
+        /// global keys, which the game lowercases, so they read in lower case; underscores are
+        /// turned back into the spaces Progression swapped out.
+        /// </summary>
+        internal static string WaitingLine(Row row)
+        {
+            if (row.Key == null) return "This biome is never locked.";
+
+            string boss = BossName(row.Key);
+
+            if (!UtangardConfig.GateOnGroup.Value)
+                return row.Open
+                    ? "Open. " + boss + " has died in this world."
+                    : "Waiting on " + boss + ". One kill opens it for everybody.";
+
+            if (row.Open)
+                return row.Latched
+                    ? "Open for good. The group has cleared " + boss + "."
+                    : "Open. Everyone has " + boss + ".";
+
+            if (row.RosterEmpty)
+                return "Waiting on " + boss + ". Nobody has published progress here yet.";
+
+            var names = new List<string>();
+
+            // Two reads of one list, with and without the local character. When they differ the
+            // local character is on it, and saying "you" beats hoping they recognise their own
+            // name in lower case.
+            string everyone = Progression.BlockersFor(row.Key);
+            string others = Progression.BlockersFor(row.Key, excludeSelf: true);
+            if (everyone != others) names.Add("you");
+
+            if (!string.IsNullOrEmpty(others))
+                foreach (string name in others.Split(new[] { ", " }, System.StringSplitOptions.RemoveEmptyEntries))
+                    names.Add(name.Replace('_', ' '));
+
+            var text = new StringBuilder("Waiting on ").Append(boss);
+            if (names.Count > 0) text.Append(" from ").Append(JoinAnd(names));
+            text.Append('.');
+
+            if (row.SecondsLeft >= 0L)
+                text.Append(" Opens anyway in ").Append(Span(row.SecondsLeft)).Append('.');
+
+            return text.ToString();
+        }
+
+        /// <summary>
+        /// What a locked biome does to you, built from the rules actually in force, for the last
+        /// line of the compendium panel. So on Longhouse it says food burns 3x faster and wounds
+        /// heal at a fifth, rather than the defaults. Each rule that is switched off drops out.
+        ///
+        /// Eating is left out on purpose: the Fighting box above it says whether you may eat.
+        /// </summary>
+        internal static string RulesLine()
+        {
+            var parts = new List<string>();
+            var inv = System.Globalization.CultureInfo.InvariantCulture;
+
+            float food = UtangardConfig.FoodDrainMultiplier.Value;
+            if (food > 1f) parts.Add("Food burns " + food.ToString("0.#", inv) + "x faster");
+
+            if (UtangardConfig.BlockNewBuffs.Value)
+                parts.Add(UtangardConfig.BlockRested.Value ? "no meads, powers or Rested" : "no meads or powers");
+
+            float regen = UnityEngine.Mathf.Clamp01(UtangardConfig.HealthRegenMultiplier.Value);
+            if (regen < 1f) parts.Add(regen <= 0f ? "wounds do not heal" : "wounds heal at " + Fraction(regen));
+
+            if (UtangardConfig.SappedStaminaRegen.Value < 1f && UtangardConfig.SappedMaxSeconds.Value > 0f)
+                parts.Add("you leave Sapped");
+
+            if (parts.Count == 0) return "";
+
+            // Capitalised whichever rule ends up first.
+            string line = string.Join(" · ", parts.ToArray());
+            return char.ToUpperInvariant(line[0]) + line.Substring(1);
+        }
+
+        /// <summary>"a fifth" for 0.2, and the like; a percentage when there is no plain word.</summary>
+        private static string Fraction(float value)
+        {
+            if (UnityEngine.Mathf.Approximately(value, 0.5f)) return "half speed";
+            if (UnityEngine.Mathf.Approximately(value, 0.25f)) return "a quarter";
+            if (UnityEngine.Mathf.Approximately(value, 0.2f)) return "a fifth";
+            if (UnityEngine.Mathf.Approximately(value, 0.1f)) return "a tenth";
+            if (UnityEngine.Mathf.Abs(value - 1f / 3f) < 0.005f) return "a third";
+
+            return (value * 100f).ToString("0", System.Globalization.CultureInfo.InvariantCulture) + "% of the normal rate";
+        }
+
+        /// <summary>"1 day 4 hours", "5 hours 10 minutes", "12 minutes".</summary>
+        internal static string Span(long seconds)
+        {
+            long days = seconds / 86400L;
+            long hours = seconds % 86400L / 3600L;
+            long minutes = seconds % 3600L / 60L;
+
+            if (days > 0L) return Count(days, "day") + (hours > 0L ? " " + Count(hours, "hour") : "");
+            if (hours > 0L) return Count(hours, "hour") + (minutes > 0L ? " " + Count(minutes, "minute") : "");
+            if (minutes > 0L) return Count(minutes, "minute");
+            return "less than a minute";
+        }
+
+        private static string Count(long n, string unit)
+        {
+            return n + " " + unit + (n == 1L ? "" : "s");
+        }
+
+        private static string JoinAnd(List<string> items)
+        {
+            if (items.Count == 1) return items[0];
+
+            return string.Join(", ", items.GetRange(0, items.Count - 1).ToArray())
+                + " and " + items[items.Count - 1];
         }
 
         /// <summary>

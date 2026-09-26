@@ -9,8 +9,9 @@ using UnityEngine;
 namespace Utangard
 {
     /// <summary>
-    /// `utangard`, the console command. One verb for now: `biomes`, the raw material for
-    /// per-character reliefs in a gated biome.
+    /// `utangard`, the console command. Three verbs: `foothold`, the local character's two bars
+    /// in every biome as the unlocks read them; and `biomes` and `creatures`, the raw material
+    /// the foothold tables were written from.
     ///
     /// The design Robbin settled on 2026-09-24 is that a character earns back eating and health
     /// regeneration in a biome that is still gated, one biome at a time, by fighting there and
@@ -65,7 +66,7 @@ namespace Utangard
             _registered = true;
 
             new Terminal.ConsoleCommand("utangard",
-                "utangard biomes - per biome: its creatures and your kills of each, and how much of it you have explored",
+                "utangard foothold | biomes | creatures - your foothold in each locked biome, and the raw numbers behind it",
                 OnCommand, isCheat: false);
         }
 
@@ -75,11 +76,93 @@ namespace Utangard
             if (term == null) return;
 
             var what = args.Length > 1 ? args[1].ToLowerInvariant() : "";
+            if (what == "foothold") { FootholdReport(term); return; }
             if (what == "biomes") { Biomes(term); return; }
             if (what == "creatures") { Creatures(term); return; }
 
+            term.AddString("utangard foothold - per biome: your Fighting and Discovery bars, what each kind of creature put in, and what is unlocked");
             term.AddString("utangard biomes - per biome: its creatures and your kills of each, and how much of it you have explored");
             term.AddString("utangard creatures - every creature in the foothold tables, checked against the game");
+        }
+
+        /// <summary>
+        /// `utangard foothold`: the local character's two bars in every biome, the way the unlocks
+        /// read them. Read through Foothold.Read, the same call the compendium panel makes, so the
+        /// console and the panel cannot disagree about a number.
+        ///
+        /// Every kind is listed, killed or not, with the cap shown where it bit: "why is my bar
+        /// stuck at 50" is nearly always one kind at its cap, and that is only visible beside the
+        /// kinds that have not been touched yet.
+        /// </summary>
+        private static void FootholdReport(Terminal term)
+        {
+            var player = Player.m_localPlayer;
+            if (player == null)
+            {
+                Say(term, "utangard foothold: no character in a world yet.");
+                return;
+            }
+
+            var inv = CultureInfo.InvariantCulture;
+            var full = Discovery.FullPixels();
+            var pixelKm2 = Discovery.PixelKm2();
+
+            Say(term, "utangard foothold: " + player.GetPlayerName() + ". "
+                      + (UtangardConfig.FootholdEnabled.Value ? "" : "FootholdEnabled is OFF, so nothing below unlocks anything. ")
+                      + "Eating at " + UtangardConfig.EatAtFighting.Value + " fighting, healing at "
+                      + Foothold.FullBar + " fighting and full discovery. No kind above "
+                      + UtangardConfig.MaxFromOneKind.Value + ".");
+
+            if (!Discovery.Available())
+                Say(term, "utangard foothold: the explored map cannot be read this session, so every Discovery bar is empty.");
+            else
+                Say(term, "utangard foothold: full discovery is "
+                          + UtangardConfig.DiscoveryFullKm2.Value.ToString("0.##", inv) + " km2 = " + full + " map pixels of "
+                          + (pixelKm2 * 1000000f).ToString("0", inv) + " m2. "
+                          + (Discovery.Counting()
+                              ? "Still counting this world's map (" + (Discovery.Progress() * 100f).ToString("0", inv)
+                                + "%), so discovery can only go up from here."
+                              : "Map counted. " + Discovery.Describe()));
+
+            foreach (var s in Foothold.ReadAll())
+            {
+                if (!s.Gated && s.Kinds.Count == 0) continue;
+
+                var state = !s.Gated ? "ungated" : s.Locked ? "LOCKED" : "open";
+                if (s.Here) state += ", its rules apply to you now";
+
+                var unlocked = !s.Locked
+                    ? "nothing to unlock"
+                    : (s.CanEat ? "eating allowed" : "eating at " + s.EatAt + "%")
+                      + ", " + (s.CanHeal ? "healing allowed" : "healing needs both full");
+
+                var fighting = s.FightingAvailable
+                    ? s.Fighting + "/" + Foothold.FullBar + " (" + s.FightingPercent.ToString("0", inv) + "%)"
+                    : "unreadable";
+
+                var discovery = s.DiscoveryAvailable
+                    ? s.Discovered + "/" + s.DiscoveryFull + " px (" + s.DiscoveryPercent.ToString("0", inv) + "%"
+                      + (s.DiscoveryCounting ? ", still counting" : "") + ")"
+                    : "unreadable";
+
+                Say(term, s.Biome + " (" + state + "): fighting " + fighting + ", discovery " + discovery + " - " + unlocked + ".");
+
+                if (s.Kinds.Count == 0)
+                {
+                    Say(term, "    no creatures on this biome's points line, so its Fighting bar cannot fill.");
+                    continue;
+                }
+
+                var parts = new List<string>();
+                foreach (var k in s.Kinds)
+                {
+                    var part = k.Name + " " + k.Points + "pt x" + k.Kills + " = " + k.Contribution;
+                    if (k.Capped) part += " (capped at " + s.KindCap + ", " + k.Earned + " earned)";
+                    parts.Add(part);
+                }
+
+                Say(term, "    " + string.Join(", ", parts.ToArray()));
+            }
         }
 
         private static readonly Heightmap.Biome[] Order =
@@ -326,17 +409,17 @@ namespace Utangard
 
             var byToken = new Dictionary<string, List<string>>();
 
-            foreach (var pair in Foothold.Defaults)
+            // The live Points_ lines, not the defaults in code, so this checks what the bar pays.
+            foreach (var biome in UtangardConfig.GateableBiomes)
             {
-                var entries = Foothold.Parse(pair.Value);
-                var total = 0;
-                foreach (var e in entries) total += e.Value;
+                var entries = Foothold.Parse(UtangardConfig.PointsLineFor(biome));
+                if (entries.Count == 0) continue;
 
-                Say(term, "utangard creatures: " + pair.Key + ", " + entries.Count + " kinds, full bar " + Foothold.FullBar
-                          + ", no kind above " + (Foothold.FullBar / 2) + ".");
+                Say(term, "utangard creatures: " + biome + ", " + entries.Count + " kinds, full bar " + Foothold.FullBar
+                          + ", no kind above " + UtangardConfig.MaxFromOneKind.Value + ".");
 
                 foreach (var e in entries)
-                    Say(term, "    " + e.Value + " pt  " + Describe(scene, e.Key, kills, byToken, pair.Key + " " + e.Key + "=" + e.Value));
+                    Say(term, "    " + e.Value + " pt  " + Describe(scene, e.Key, kills, byToken, biome + " " + e.Key + "=" + e.Value));
             }
 
             Say(term, "utangard creatures: left out on purpose -");
