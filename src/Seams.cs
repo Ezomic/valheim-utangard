@@ -72,6 +72,9 @@ namespace Utangard
         /// <summary>OfferingBowl.InitiateSpawnBoss - no boss at an altar in a locked biome.</summary>
         internal static bool Altars;
 
+        /// <summary>Door.Interact and Door.UseItem - the Queen's door stays sealed in a locked biome.</summary>
+        internal static bool Doors;
+
         /// <summary>Terminal.InitTerminal - the `utangard` console command.</summary>
         internal static bool Console;
 
@@ -121,6 +124,9 @@ namespace Utangard
 
             Altars = Patch(harmony, typeof(BossAltars),
                 "the refusal to summon a boss in a locked biome (OfferingBowl.InitiateSpawnBoss)");
+
+            Doors = Patch(harmony, typeof(BossDoors),
+                "the sealed boss door in a locked biome (Door.Interact, Door.UseItem)");
 
             Console = Patch(harmony, typeof(DevConsole.Hook),
                 "the utangard console command (Terminal.InitTerminal)");

@@ -42,6 +42,8 @@ namespace Utangard
         public static ConfigEntry<bool> RequirePreviousBoss;
         public static ConfigEntry<bool> BlockBossSummons;
         public static ConfigEntry<string> BossBlockedMessage;
+        public static ConfigEntry<string> BossDoorKeys;
+        public static ConfigEntry<string> BossDoorBlockedMessage;
 
         // One row per biome. A global key name, or empty for "this biome is not gated".
         public static ConfigEntry<string> KeyMeadows;
@@ -214,7 +216,7 @@ namespace Utangard
 
             BlockBossSummons = config.Bind(SecGate, "BlockBossSummons", true,
                 "Refuse to summon a boss at an altar standing in a biome the group has not "
-                + "earned. Without it one player can carry an egg into the locked Mountains, "
+                + "earned, and keep the Queen's door sealed while the Mistlands are. Without it one player can carry an egg into the locked Mountains, "
                 + "kill Moder there, and start the Plains deadline for everybody while the rest "
                 + "are still on Bonemass. Nothing is used up by a refused offering. It can never "
                 + "lock a boss away for good: each altar stands in the biome the boss before it "
@@ -223,6 +225,20 @@ namespace Utangard
             BossBlockedMessage = config.Bind(SecGate, "BossBlockedMessage",
                 "The land will not answer an offering here",
                 "Shown centre-screen when an altar refuses.");
+
+            // By key rather than by door, because the key is what makes it a boss door. The
+            // Queen's is the Sealbreaker, DvergrKey. Crypt keys are left out on purpose - a
+            // crypt is loot, and Robbin asked for the Queen.
+            BossDoorKeys = config.Bind(SecGate, "BossDoorKeys", "DvergrKey",
+                "Doors that open with one of these keys (item prefab names, comma-separated) stay "
+                + "sealed while the biome they stand in is locked, under BlockBossSummons. The "
+                + "default is the Sealbreaker, which opens the Queen's door - she is not summoned "
+                + "at an altar, so the altar rule alone cannot reach her. The key is not used up "
+                + "by a refusal, and a door that is already open stays open. Empty turns this off.");
+
+            BossDoorBlockedMessage = config.Bind(SecGate, "BossDoorBlockedMessage",
+                "The seal will not break here yet",
+                "Shown centre-screen when a boss door stays shut.");
 
             // The defaults are the vanilla progression, offset by one: the key that lets you
             // into a biome is the boss of the biome before it. Note this walls off the Black
