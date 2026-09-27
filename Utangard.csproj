@@ -35,6 +35,14 @@
          noting: it is not in a 2D or UI module, it is core, and the compiler needs it
          resolvable purely to touch StatusEffect.m_icon. -->
     <Reference Include="UnityEngine.CoreModule"><HintPath>$(ManagedDir)\UnityEngine.CoreModule.dll</HintPath><Private>false</Private></Reference>
+    <!-- The compendium panel (LHM-26). The compendium's text is TextMeshPro in 1.0, and the panel
+         is uGUI built inside it: Image, Button and the layout groups are UnityEngine.UI, Canvas
+         is UIModule. Still one DLL - these are the game's own assemblies, referenced, not shipped. -->
+    <Reference Include="Unity.TextMeshPro"><HintPath>$(ManagedDir)\Unity.TextMeshPro.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.UI"><HintPath>$(ManagedDir)\UnityEngine.UI.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.UIModule"><HintPath>$(ManagedDir)\UnityEngine.UIModule.dll</HintPath><Private>false</Private></Reference>
+    <!-- TextAnchor, which the layout groups take for their alignment. -->
+    <Reference Include="UnityEngine.TextRenderingModule"><HintPath>$(ManagedDir)\UnityEngine.TextRenderingModule.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="BepInEx"><HintPath>$(BepInExCore)\BepInEx.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="0Harmony"><HintPath>$(BepInExCore)\0Harmony.dll</HintPath><Private>false</Private></Reference>
   </ItemGroup>

@@ -232,6 +232,21 @@ owns none of them. The mod's own window would have been four patches - `Player.T
 vanilla interfaces is open - plus a keybind, to end up with something that reads as a different
 game.
 
+Since LHM-26 the page is drawn as a panel, Robbin's pick from three mockups: a strip of every
+biome, the one you pick, who it waits on, your two foothold bars there and the rules of the lock.
+It is uGUI built inside the same page, not a window of its own. A postfix on
+`TextsDialog.ShowText(TextInfo)` covers the text area whenever the Utangard entry is the one
+showing and blanks the text, and hides the panel again for every other entry. So the list, the
+selection and the close behaviour above are still vanilla's. The labels are clones of the
+compendium's own text, stripped, so they wear the game's font without the mod naming it. The
+text page stays underneath as the fallback: if the patch does not go on, or the panel throws, the
+text is simply left showing.
+
+Its sizes are the mockup's pixels at 1080p, because GuiScaler makes a canvas unit one pixel
+there. What no decompile can show is whether the compendium sits under a parent that shrinks
+it, so the panel measures that on the running game, logs it, and draws itself back up when it is
+below 1. The strip's 12 px is the smallest text on the page and it stays 12 px.
+
 The report behind it is shared with the spawn-time log rather than written twice. What is worth
 not duplicating is not the wording but the three-way distinction the verdict makes:
 open-because-latched, open-because-the-whole-roster-has-it, and shut-with-an-empty-roster

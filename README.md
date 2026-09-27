@@ -35,9 +35,10 @@ Everything here is a default and everything is configurable.
   stepping back does not work.
 - Two HUD icons, a message on entering and leaving that names who the biome is still waiting on,
   and a message when a biome opens, wherever you are standing.
-- A Utangard page in the compendium (the texts screen, beside Logs and Active Effects) listing
-  every biome, whether it is open, who still owes it, and how long until the deadline opens it
-  anyway.
+- A Utangard page in the compendium (the texts screen, beside Logs and Active Effects). A row of
+  every biome runs across the top, green when open and red when locked. Pick one to see who it is
+  still waiting on and how long until the deadline opens it anyway. For a locked biome it also
+  shows your two foothold bars and the rules of the lock as your server has set them.
 
 Dungeons take the biome above them, so a Swamp crypt withers you exactly like the Swamp.
 
@@ -92,9 +93,12 @@ The bars are yours alone. They only lift the rules in the biome they were earned
 bar in the Swamp does nothing for you in the Mountains. They never open a biome for the group
 either. That still takes the boss, or the catch-up deadline.
 
-A refused meal tells you how far your Fighting bar has got. `utangard foothold` in the console
-(F5) shows both bars for every biome and what each kind of creature has added. What each
-creature is worth is in the config, one line per biome, under **Foothold**.
+The Utangard page in the compendium shows both bars for whichever biome you pick, and it opens
+on the first biome your group has not earned. Click another biome in the row to see it, or use
+left and right on the d-pad with a controller. A refused meal tells you how far your Fighting bar
+has got. `utangard foothold` in the console (F5) shows both bars for every biome and what each
+kind of creature has added. What each creature is worth is in the config, one line per biome,
+under **Foothold**.
 
 ## Biome table
 
@@ -269,6 +273,7 @@ which is why they are all worth 3. `utangard creatures` checks every line agains
 | `OpenedMessage` | `{biome} opens to you` | That message. `{biome}` becomes the biome's name, or both names when one boss opens two. |
 | `ShowCompendiumPage` | `true` | Add the Utangard page to the compendium's text list. |
 | `CompendiumTopic` | `Utangard` | What that page is called in the list. |
+| `ShowCompendiumPanel` | `true` | Draw that page as the panel with the biome row and the foothold bars. Off shows the plain text page, which also lists the roster. |
 
 ### Diagnostics
 
@@ -282,9 +287,10 @@ which is why they are all worth 3. `utangard creatures` checks every line agains
 ## Troubleshooting
 
 **A biome will not open.** Open the compendium page, or read the spawn dump in
-`BepInEx\LogOutput.log`. Both name the roster, who still owes each boss, and how long is left on
-the catch-up deadline. The usual cause is a character on the roster that has not been at that
-kill; `ExcludePlayerIds` or `RosterDays` are the way out if that character is not coming back.
+`BepInEx\LogOutput.log`. Both name who still owes each boss and how long is left on the catch-up
+deadline, and the spawn dump lists the whole roster. The usual cause is a character on the
+roster that has not been at that kill; `ExcludePlayerIds` or `RosterDays` are the way out if that
+character is not coming back.
 
 **A biome is shut and nobody is named.** The log warns when a gate row names a key no creature
 in this world sets, and lists the keys that do exist. That is either a typo in the table or a key
@@ -323,8 +329,8 @@ boss, the biome-opened announcement fires on the transition, and the defeat-key 
 all nine rows against the world's own creature prefabs. Running standalone with no Core has been
 confirmed in game.
 
-Footholds are new and have not been run in game yet: neither bar, the two unlocks, nor
-`utangard foothold`.
+Footholds are new and have not been run in game yet: neither bar, the two unlocks,
+`utangard foothold`, nor the compendium panel that shows them.
 
 One more thing is untested: attendee credit with more than one player at a boss kill. Solo you own
 the boss and credit yourself either way. The loop is identical for one player or five; what is

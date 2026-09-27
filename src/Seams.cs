@@ -66,6 +66,12 @@ namespace Utangard
         /// <summary>TextsDialog.UpdateTextsList - the compendium page.</summary>
         internal static bool CompendiumPage;
 
+        /// <summary>
+        /// TextsDialog.ShowText(TextInfo) - drawing the panel over the compendium page (LHM-26).
+        /// Off, the page is still there as plain text, which is what it was before the panel.
+        /// </summary>
+        internal static bool Panel;
+
         /// <summary>Player.OnSpawned - the diagnostics dump and the unenforceable-gate warning.</summary>
         internal static bool Spawn;
 
@@ -127,6 +133,9 @@ namespace Utangard
 
             CompendiumPage = Patch(harmony, typeof(UtangardPatches.CompendiumPage),
                 "the compendium page (TextsDialog.UpdateTextsList)");
+
+            Panel = Patch(harmony, typeof(CompendiumPanel.Show),
+                "the compendium panel with the biome strip and the foothold bars (TextsDialog.ShowText)");
 
             Spawn = Patch(harmony, typeof(UtangardPatches.Spawn),
                 "the diagnostics dump on spawn (Player.OnSpawned)");

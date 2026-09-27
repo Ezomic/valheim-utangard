@@ -39,6 +39,14 @@ and the mod uses [semantic versioning](https://semver.org).
 
 ### Changed
 
+- The Utangard page in the compendium is now a panel. A row across the top has every biome,
+  green when your group has earned it and red when it has not. It opens on the first locked one,
+  and you can click any other, or use left and right on the d-pad. Under the row it says who that
+  biome is waiting on and when it opens anyway. For a locked biome you also see your Fighting and
+  Discovery bars, what each one unlocks, and the rules of the lock as your server has them set,
+  so on Longhouse it says food burns 3x faster and wounds heal at a fifth.
+  `Presentation.ShowCompendiumPanel` turns it back into the old text page, and the text page is
+  also what you get if the panel fails to draw.
 - The tooltip on the in-biome icon lists only the rules that apply to you right now, so it says
   when you may eat or heal there.
 

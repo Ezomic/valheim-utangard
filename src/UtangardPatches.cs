@@ -422,6 +422,10 @@ namespace Utangard
             [HarmonyPostfix]
             private static void Postfix(TextsDialog __instance)
             {
+                // Forgotten first, so a page switched off since the last build is not still
+                // recognised by the panel as ours.
+                CompendiumPanel.Page = null;
+
                 if (!UtangardConfig.Enabled.Value
                     || !UtangardConfig.ShowCompendiumPage.Value) return;
 
@@ -445,7 +449,11 @@ namespace Utangard
                 // worth saying so in our own log rather than hoping it lands in the game's.
                 try
                 {
-                    texts.Insert(0, new TextsDialog.TextInfo(topic, GateReport.Page()));
+                    // Still the whole text page, even though the panel is drawn over it. The text
+                    // is what shows if the panel cannot be drawn, so it has to stay complete.
+                    var page = new TextsDialog.TextInfo(topic, GateReport.Page());
+                    texts.Insert(0, page);
+                    CompendiumPanel.Page = page;
 
                     // Behind Verbose: this fires every time the screen is opened, and a line
                     // per glance at the compendium buries the ones worth reading.

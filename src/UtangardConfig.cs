@@ -93,6 +93,7 @@ namespace Utangard
         public static ConfigEntry<string> OpenedMessage;
         public static ConfigEntry<bool> ShowCompendiumPage;
         public static ConfigEntry<string> CompendiumTopic;
+        public static ConfigEntry<bool> ShowCompendiumPanel;
 
         public static ConfigEntry<bool> Verbose;
         public static ConfigEntry<bool> LogGlobalKeys;
@@ -462,6 +463,13 @@ namespace Utangard
 
             CompendiumTopic = config.Bind(SecShow, "CompendiumTopic", "Utangard",
                 "What that page is called in the list.");
+
+            ShowCompendiumPanel = config.Bind(SecShow, "ShowCompendiumPanel", true,
+                "Draw the Utangard page as a panel: a strip of every biome, open ones in green and "
+                + "locked ones in red, and for a locked biome your Fighting and Discovery bars there "
+                + "and what each one unlocks. Click a biome to see it. Off shows the plain text page "
+                + "instead, which says less about footholds but also lists the group's roster. The "
+                + "text page is also what shows if the panel ever fails to draw.");
 
             Verbose = config.Bind(SecDiag, "Verbose", false,
                 "Log every gate transition and every blocked effect as it happens.");

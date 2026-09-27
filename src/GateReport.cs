@@ -274,8 +274,8 @@ namespace Utangard
         ///
         /// "You" goes first when the local character owes it too, because that is the part of
         /// the sentence a player can do something about tonight. Names come out of the world's
-        /// global keys, which the game lowercases, so they read in lower case; underscores are
-        /// turned back into the spaces Progression swapped out.
+        /// global keys, which the game lowercases, so each one goes through DisplayName to get
+        /// its capitals back as far as they can be known.
         /// </summary>
         internal static string WaitingLine(Row row)
         {
@@ -307,7 +307,7 @@ namespace Utangard
 
             if (!string.IsNullOrEmpty(others))
                 foreach (string name in others.Split(new[] { ", " }, System.StringSplitOptions.RemoveEmptyEntries))
-                    names.Add(name.Replace('_', ' '));
+                    names.Add(DisplayName(name));
 
             var text = new StringBuilder("Waiting on ").Append(boss);
             if (names.Count > 0) text.Append(" from ").Append(JoinAnd(names));
@@ -324,15 +324,19 @@ namespace Utangard
         /// line of the compendium panel. So on Longhouse it says food burns 3x faster and wounds
         /// heal at a fifth, rather than the defaults. Each rule that is switched off drops out.
         ///
-        /// Eating is left out on purpose: the Fighting box above it says whether you may eat.
+        /// Eating is left out unless asked for: while footholds are on, the Fighting box above the
+        /// line says whether you may eat. With footholds off there is no box, and a rules line
+        /// without the refused meal would leave out the rule people notice first.
         /// </summary>
-        internal static string RulesLine()
+        internal static string RulesLine(bool eating = false)
         {
             var parts = new List<string>();
             var inv = System.Globalization.CultureInfo.InvariantCulture;
 
             float food = UtangardConfig.FoodDrainMultiplier.Value;
             if (food > 1f) parts.Add("Food burns " + food.ToString("0.#", inv) + "x faster");
+
+            if (eating) parts.Add("no eating");
 
             if (UtangardConfig.BlockNewBuffs.Value)
                 parts.Add(UtangardConfig.BlockRested.Value ? "no meads, powers or Rested" : "no meads or powers");
@@ -348,6 +352,35 @@ namespace Utangard
             // Capitalised whichever rule ends up first.
             string line = string.Join(" · ", parts.ToArray());
             return char.ToUpperInvariant(line[0]) + line.Substring(1);
+        }
+
+        /// <summary>
+        /// A roster name as a person would write it. The roster keeps names in global keys, which
+        /// the game lowercases, with spaces turned into underscores. Anyone online right now is
+        /// matched against the server's player list and gets their name back exactly as they
+        /// spelled it. Anyone offline gets a capital at the start of each word, which is a guess,
+        /// but "Juan Pointoh" is closer to the truth than "juan_pointoh".
+        /// </summary>
+        private static string DisplayName(string stored)
+        {
+            string spaced = stored.Replace('_', ' ');
+
+            ZNet net = ZNet.instance;
+            if (net != null)
+            {
+                foreach (ZNet.PlayerInfo info in net.GetPlayerList())
+                {
+                    if (string.IsNullOrEmpty(info.m_name)) continue;
+                    if (string.Equals(info.m_name.Replace('_', ' '), spaced, System.StringComparison.OrdinalIgnoreCase))
+                        return info.m_name;
+                }
+            }
+
+            var name = spaced.ToCharArray();
+            for (int i = 0; i < name.Length; i++)
+                if (i == 0 || name[i - 1] == ' ') name[i] = char.ToUpperInvariant(name[i]);
+
+            return new string(name);
         }
 
         /// <summary>"a fifth" for 0.2, and the like; a percentage when there is no plain word.</summary>
@@ -400,13 +433,33 @@ namespace Utangard
             string token = "$biome_" + biome.ToString().ToLowerInvariant();
 
             Localization loc = Localization.instance;
-            if (loc == null) return biome.ToString();
+            if (loc == null) return English(biome);
 
             string name = loc.Localize(token);
 
-            // An unresolved token comes back as the raw word rather than as anything a player
-            // would want to read, so fall back to the enum name, which at least is English.
-            return string.IsNullOrEmpty(name) || name == token ? biome.ToString() : name;
+            // An unresolved token is nothing a player would want to read, so fall back to the
+            // English name. Localization.Translate hands a miss back as the word in brackets,
+            // "[biome_deepnorth]", not as the token itself, so both shapes count as a miss.
+            bool missed = string.IsNullOrEmpty(name) || name == token
+                || (name.StartsWith("[", System.StringComparison.Ordinal) && name.EndsWith("]", System.StringComparison.Ordinal));
+            return missed ? English(biome) : name;
+        }
+
+        /// <summary>
+        /// The enum name with its words spaced, for when the game has no name to give. The
+        /// compendium panel's biome strip would otherwise print "DeepNorth" and "AshLands", which
+        /// read as bugs.
+        /// </summary>
+        private static string English(Heightmap.Biome biome)
+        {
+            switch (biome)
+            {
+                case Heightmap.Biome.BlackForest: return "Black Forest";
+                case Heightmap.Biome.Mountain: return "Mountains";
+                case Heightmap.Biome.AshLands: return "Ashlands";
+                case Heightmap.Biome.DeepNorth: return "Deep North";
+                default: return biome.ToString();
+            }
         }
     }
 }
