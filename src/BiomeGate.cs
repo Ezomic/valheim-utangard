@@ -84,11 +84,12 @@ namespace Utangard
         /// GatingKey, and the biome whose rules are being applied: the locked biome underfoot, or
         /// the one whose border margin the player is standing in. Biome.None when nothing gates.
         ///
-        /// A player's foothold (LHM-26) is asked about this biome and no other, so the relief and
-        /// the rule it relieves always come from the same ground. The obvious shortcut, the
-        /// player's own current biome, is wrong in exactly the margin: standing in an open Black
-        /// Forest three metres from a locked Swamp, the rules are the Swamp's, and the Black
-        /// Forest's bars say nothing about them.
+        /// This names ONE biome, which is right for the drain, the refusals, Sapped and the
+        /// messages - every locked biome imposes the same rules, so any one of them will do. It is
+        /// not enough for a foothold (LHM-26), whose relief is per biome: see RulingBiomes, which
+        /// is what the unlocks ask. The obvious shortcut, the player's own current biome, is wrong
+        /// in exactly the margin: standing in an open Black Forest three metres from a locked
+        /// Swamp, the rules are the Swamp's, and the Black Forest's bars say nothing about them.
         /// </summary>
         public static string GatingKey(Player player, out Heightmap.Biome biome)
         {
@@ -124,6 +125,55 @@ namespace Utangard
             // because inside a gated biome it can only ever agree - and it costs eight
             // heightmap lookups to say so.
             return NearbyGatingKey(player, zone, out biome);
+        }
+
+        /// <summary>
+        /// Every locked biome whose rules reach this player: the one underfoot, and every one
+        /// whose border margin they are standing in. False, with the list empty, when none does.
+        ///
+        /// Why a foothold needs all of them and GatingKey's one is not enough. The margin exists
+        /// so that stepping over a line to eat and stepping back does not work. Before footholds
+        /// every locked biome refused the same meal, so which of two neighbours was named made no
+        /// difference. Once one of them can have earned eating, it does: standing one metre into
+        /// a locked Plains where you have fought enough, with a locked Mistlands one metre
+        /// behind you, GatingKey names the Plains, and the Mistlands' rule would be lifted by a
+        /// bar earned somewhere else. That made a foothold a better place to eat than an open
+        /// biome, which you have to be five metres clear of. So an unlock is asked of every biome
+        /// on this list and holds only when all of them grant it - "unlocks from one biome never
+        /// apply in another", read as the rule it is.
+        ///
+        /// Samples the margin even when the ground underfoot is locked, which GatingKey skips.
+        /// It shares GatingKey's position cache, so that costs nothing while the player stands
+        /// still, and the callers are a bite, a regen tick every ten seconds and a tooltip.
+        ///
+        /// The same guards as GatingKey, in the same order, so the two cannot disagree about
+        /// whether anything gates at all.
+        /// </summary>
+        public static bool RulingBiomes(Player player, List<Heightmap.Biome> into)
+        {
+            into.Clear();
+
+            if (player == null || !UtangardConfig.Enabled.Value) return false;
+            if (player != Player.m_localPlayer) return false;
+            if (!Seams.PenaltyIsEscapable()) return false;
+
+            ZoneSystem zone = ZoneSystem.instance;
+            if (zone == null) return false;
+
+            Heightmap.Biome underfoot = player.GetCurrentBiome();
+            string key = UtangardConfig.RequiredKeyFor(underfoot);
+            if (key != null && !Earned(zone, key)) into.Add(underfoot);
+
+            if (SampleMargin(player))
+            {
+                for (int i = 0; i < _sampledKeys.Count; i++)
+                {
+                    if (into.Contains(_sampledBiomes[i])) continue;
+                    if (!Earned(zone, _sampledKeys[i])) into.Add(_sampledBiomes[i]);
+                }
+            }
+
+            return into.Count > 0;
         }
 
         /// <summary>True while the gate is closed on this player.</summary>
@@ -178,9 +228,19 @@ namespace Utangard
         private static string NearbyGatingKey(Player player, ZoneSystem zone, out Heightmap.Biome biome)
         {
             biome = Heightmap.Biome.None;
+            if (!SampleMargin(player)) return null;
 
+            return FirstUnearned(zone, out biome);
+        }
+
+        /// <summary>
+        /// Bring the ring of samples up to date for where the player stands. False when the
+        /// margin is off, and the sampled lists then mean nothing.
+        /// </summary>
+        private static bool SampleMargin(Player player)
+        {
             float margin = UtangardConfig.BorderMargin.Value;
-            if (margin <= 0f) return null;
+            if (margin <= 0f) return false;
 
             Vector3 here = player.transform.position;
 
@@ -189,7 +249,7 @@ namespace Utangard
             // walking gets a fresh one every quarter of a metre.
             if (margin == _sampledMargin
                 && (here - _sampledAt).sqrMagnitude < ResampleDistance * ResampleDistance)
-                return FirstUnearned(zone, out biome);
+                return true;
 
             _sampledAt = here;
             _sampledMargin = margin;
@@ -215,7 +275,7 @@ namespace Utangard
                 }
             }
 
-            return FirstUnearned(zone, out biome);
+            return true;
         }
 
         /// <summary>The first sampled key the group has not earned, and its biome, or null.</summary>

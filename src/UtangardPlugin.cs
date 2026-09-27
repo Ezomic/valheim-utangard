@@ -114,7 +114,9 @@ namespace Utangard
             // The host decides the rules of the gate; clients keep their own presentation.
             // Syncing the messages or the icons would be forcing someone's wording on
             // somebody else, and syncing the diagnostics would turn a debug flag into a
-            // server-wide one.
+            // server-wide one. The list below is the rules. Registering with Core syncs the
+            // whole file anyway, so the presentation half needs saying out loud as well - see
+            // KeepPresentationLocal.
             Suite.Sync(
                 UtangardConfig.Enabled,
                 UtangardConfig.GateOnGroup,
@@ -148,6 +150,64 @@ namespace Utangard
             // The foothold's points tables are rules like the gate table: the host's numbers
             // decide who may eat where, on every client.
             Suite.Sync(UtangardConfig.PointsEntries());
+
+            try
+            {
+                KeepPresentationLocal();
+            }
+            catch (System.Exception e)
+            {
+                // A Core older than 1.1.0 has no Suite.Local. What that costs is the host's
+                // wording on this client, not the mod, and not the version gate above.
+                Log.LogWarning("Core has no Suite.Local, so the host's messages and display "
+                               + "settings apply here too. " + e.Message);
+            }
+        }
+
+        /// <summary>
+        /// The wording, the display and the logging, held back from the host.
+        ///
+        /// The comment above and the README both said these stayed each player's own, and for
+        /// all of Utangard's life neither was true. Core has synced a mod's whole config on
+        /// registering since its first release, keybinds excepted since 1.1.0, so a server
+        /// imposed its messages, its icons, its compendium panel switch and its Verbose flag
+        /// on every client, and put them back if a player edited them. Found while reviewing LHM-26,
+        /// when ShowCompendiumPanel's own text offered players a switch the host would take
+        /// away. Nothing here can desync a world: a message is a string on one screen.
+        ///
+        /// Every blocked message is here, the two in Gate included, because the rule the README
+        /// states is "wording stays yours" and a message does not stop being wording by sitting
+        /// in the Gate section.
+        ///
+        /// Its own method and never inlined, for RegisterWithCore's reason one level down: an
+        /// old Core without Suite.Local then fails this call, which the caller catches, rather
+        /// than failing the JIT of RegisterWithCore and taking the version gate with it.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void KeepPresentationLocal()
+        {
+            Suite.Local(
+                UtangardConfig.BossBlockedMessage,
+                UtangardConfig.BossDoorBlockedMessage,
+                UtangardConfig.EatBlockedMessage,
+                UtangardConfig.BuffBlockedMessage,
+                UtangardConfig.ShowStatusEffects,
+                UtangardConfig.MarkIconFrom,
+                UtangardConfig.SappedIconFrom,
+                UtangardConfig.EnterMessage,
+                UtangardConfig.LeaveMessage,
+                UtangardConfig.NameTheBlockers,
+                UtangardConfig.BlockedByPrefix,
+                UtangardConfig.EatProgressLine,
+                UtangardConfig.AnnounceOpenings,
+                UtangardConfig.OpenedMessage,
+                UtangardConfig.ShowCompendiumPage,
+                UtangardConfig.CompendiumTopic,
+                UtangardConfig.ShowCompendiumPanel,
+                UtangardConfig.Verbose,
+                UtangardConfig.LogGlobalKeys,
+                UtangardConfig.LogDefeatKeys,
+                UtangardConfig.LogBlockedEffects);
         }
 
         private void OnDestroy()

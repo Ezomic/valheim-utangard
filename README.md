@@ -3,7 +3,8 @@
 Utangard gates Valheim's biomes on boss progress. Nothing stops you walking into the Swamp on
 day two, but until your group has earned that biome your food burns away five times faster, you
 cannot eat or drink, your wounds do not close, and you leave with a stamina penalty that follows
-you out.
+you out. Your own character can win some of that back by fighting and exploring there: eating
+first, then healing (see [Earning a foothold](#earning-a-foothold)).
 
 A biome counts as earned when every character on the group's roster was personally present when
 that boss died, not when the boss has died in the world. Kill Moder yourself and the Plains
@@ -90,8 +91,20 @@ the normal rate. The rest of the lock stays as it is: meads, powers and Rested a
 refused, food and buffs still burn faster, and you still leave Sapped.
 
 The bars are yours alone. They only lift the rules in the biome they were earned for, so a full
-bar in the Swamp does nothing for you in the Mountains. They never open a biome for the group
-either. That still takes the boss, or the catch-up deadline.
+bar in the Swamp does nothing for you in the Mountains. Where two locked biomes meet you need the
+unlock in both: within 5 m of the other one, its rules reach you too. They never open a biome for
+the group either. That still takes the boss, or the catch-up deadline.
+
+Some things count that you might not expect:
+
+- The kill tally belongs to your character, not to the world. Kills from any world count,
+  singleplayer included, and so do creatures spawned with devcommands. The game does keep a
+  cheat-free tally as well, but it stops counting for good once a character has used a cheat
+  command, so it would lock out every character that ever had.
+- A tame animal counts like a wild one. Lox, wolves and asksvin are on the lists, and the game
+  records a slaughtered pet the same way as a kill in the wild.
+- The map lifts the fog in a wide circle around you, not just under your feet. Walking along a
+  border or sailing along a coast uncovers the biome on the other side, and that counts too.
 
 The Utangard page in the compendium shows both bars for whichever biome you pick, and it opens
 on the first biome your group has not earned. Click another biome in the row to see it, or use
@@ -155,11 +168,12 @@ nothing else, but a player who simply does not install the mod is not gated at a
 becomes an agreement between players rather than a rule of the server. Utangard logs a warning
 once if it finds the group gate running in a multiplayer session with no Core.
 
-Settings that decide a rule are synced from the host: all of **Gate**, including the biome keys
-and the border margin; the drains and blocks under **Food** and **Buffs**, including the healing
-multiplier; both **Sapped** values; and all of **Foothold**, including the points lines.
-Settings that decide wording stay yours: the two blocked messages, all of **Presentation**, and
-all of **Diagnostics**.
+Settings that decide a rule are synced from the host: all of **Gate** apart from its two
+messages, including the biome keys and the border margin; the drains and blocks under **Food**
+and **Buffs**, including the healing multiplier; both **Sapped** values; and all of **Foothold**,
+including the points lines. Settings that decide wording stay yours: all four blocked messages,
+all of **Presentation**, and all of **Diagnostics**. That needs Core 1.1.0 or later. On an older
+Core the host's wording applies too, and the log says so.
 
 Persistence:
 

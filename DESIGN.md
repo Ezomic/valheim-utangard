@@ -198,6 +198,16 @@ Eight points and no interior ring, because a biome border is a smooth curve tens
 across at its sharpest: at five metres the arc between neighbouring samples is under four
 metres, and a border that touches the ring at all crosses one of them.
 
+Footholds (LHM-26) broke "inside a gated biome it can only ever agree". Before them every locked
+biome refused the same meal, so naming one of two locked neighbours was as good as naming the
+other. Once a character can have earned eating in one and not the other, it is not: stand one
+metre into a locked Plains you have fought enough in, with a locked Mistlands one metre behind
+you, and the gate names the Plains and lets you eat. That made a foothold a better place to
+eat than an open biome, which the band makes you stand five metres clear of. So the unlocks ask
+`BiomeGate.RulingBiomes`, every locked biome underfoot or within the band, the ring sampled even
+when the ground underfoot is locked, and an unlock holds only when every one of them grants it.
+The drain, the refusals and Sapped still ask for one key, because for them any one will do.
+
 ### Reading the boss keys off the game
 
 The one silent failure this mod can have is a gate row naming a key nothing ever sets: it fails

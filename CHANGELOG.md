@@ -15,17 +15,24 @@ and the mod uses [semantic versioning](https://semver.org).
   Rested are still refused, food and buffs still burn faster and you still leave Sapped. The bars
   are yours, they only count in their own biome, and they never open it for the group.
 - Fighting reads the game's own kill tally for your character, so kills from before this version
-  count, assists count, and it does not matter where the kill happened. Each kind of creature is
-  worth 1 to 5 points and the bar is full at 100. No single kind can put in more than 50.
+  count, assists count, and it does not matter where the kill happened. That tally is kept in the
+  character, so kills in other worlds and in singleplayer count, and so do creatures spawned with
+  devcommands and tame animals you slaughter. Each kind of creature is worth 1 to 5 points and the
+  bar is full at 100. No single kind can put in more than 50.
 - Discovery only counts fog you lifted yourself, not what a map table shares. It is full at
-  0.5 km² in every biome, and a piece of map counts once.
+  0.5 km² in every biome, and a piece of map counts once. The fog lifts in a wide circle around
+  you, so walking a border or sailing a coast fills the biome on the other side as well.
+- Where two locked biomes meet, an unlock needs both bars. Within 5 m of the second biome its rules
+  reach you, so stepping a metre into a biome you have fought enough in does not let you eat on the
+  edge of one you have not.
 - A new **Foothold** config section: `FootholdEnabled`, `EatAtFighting`, `DiscoveryFullKm2`,
   `MaxFromOneKind`, and a `Points_` line per biome saying what each creature is worth there. All of
   it is synced from the host.
 - A refused meal now says how far your Fighting bar has got. The wording is
   `Presentation.EatProgressLine`.
 - `utangard foothold` in the console shows both bars for every biome, what each kind of creature
-  put in, where the cap stopped it, and what is unlocked.
+  put in, where the cap stopped it, and what is unlocked. `utangard creatures` checks every name
+  on the points lines against the game.
 - **A boss will not come to an altar in a biome the group has not earned.** Before, one player
   could carry an egg into the locked Mountains, kill Moder there, and start the Plains deadline
   for everybody while the rest were still on Bonemass. A refused offering uses nothing up. Each
@@ -49,6 +56,14 @@ and the mod uses [semantic versioning](https://semver.org).
   also what you get if the panel fails to draw.
 - The tooltip on the in-biome icon lists only the rules that apply to you right now, so it says
   when you may eat or heal there.
+
+### Fixed
+
+- The blocked messages and everything under Presentation and Diagnostics are yours on a server
+  now, as the README always said. They were not. Core hands every client the host's whole
+  config apart from keybinds, so the host's wording and its Verbose flag were applied on every
+  client and put back if you changed them. The two boss messages under Gate count as wording
+  too. This needs Core 1.1.0 or later.
 
 ## [1.3.1] - 2026-09-12
 

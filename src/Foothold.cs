@@ -22,10 +22,12 @@ namespace Utangard
     /// food and buffs still burn faster, and you still leave Sapped. The group gate is not
     /// touched. A full foothold changes what the land does to you, never whether it is open.
     ///
-    /// <b>Only in that biome.</b> The bars are asked about the biome whose rules are being
-    /// applied right now - the locked biome underfoot, or the one whose border margin you are
-    /// standing in, which is BiomeGate's answer - so a foothold in the Swamp buys nothing in the
-    /// Mountains.
+    /// <b>Only in that biome.</b> The bars are asked about the biomes whose rules are being
+    /// applied right now - the locked biome underfoot, and every one whose border margin you are
+    /// standing in, which is BiomeGate.RulingBiomes - so a foothold in the Swamp buys nothing in
+    /// the Mountains. Where two locked biomes meet, an unlock needs both: otherwise a foothold
+    /// one metre over a line would be a better place to eat than an open biome, which the margin
+    /// makes you stand five metres clear of.
     ///
     /// <b>No network code, and none needed.</b> Both bars read the local character's own data
     /// on the local client: the kill tally lives in the PlayerProfile, and the explored map in
@@ -302,6 +304,22 @@ namespace Utangard
         /// next save. Slot [0] of both arrays is the raw total, the one vanilla writes whatever the
         /// cheat flag and the difficulty say. Read on the client that owns the character; there is
         /// no copy of it anywhere else.
+        ///
+        /// <b>What that total takes in, said plainly because it is a choice.</b> It is saved in
+        /// the character file, not the world, so it counts kills from every world the character
+        /// has played, singleplayer included. It counts a creature spawned with devcommands, and
+        /// a tamed or bred one slaughtered at home: Character.Damage marks any player attacker on
+        /// the victim whatever it is, and OnDeath registers the kill under the same m_name.
+        ///
+        /// Slot [1] is vanilla's cheat-free copy - IncrementStatEnemy writes it only when
+        /// Achievements.CanGetAchievements passes - and it was not used, for what it costs. That
+        /// check fails for good once a character has ever run a cheat command (m_usedCheats),
+        /// on a world you host whose starting modifiers the game counts as cheated, and while
+        /// the inventory holds a cheated item. So every character that has ever typed
+        /// devcommands, every test character included, could never earn eating anywhere, with
+        /// nothing on screen to say why. The spec asked for the game's own tally, wherever the
+        /// kill happened, and the README says what that includes. A tamed kill cannot be told
+        /// apart in either slot.
         /// </summary>
         private static Dictionary<string, float> Tally()
         {
@@ -364,7 +382,10 @@ namespace Utangard
             /// <summary>Gated, and the group has not earned it. The bars only mean something here.</summary>
             public bool Locked;
 
-            /// <summary>This is the biome whose rules are being applied to you right now.</summary>
+            /// <summary>
+            /// This biome's rules are being applied to you right now. More than one biome can say
+            /// so at once where two locked biomes meet.
+            /// </summary>
             public bool Here;
 
             /// <summary>Fighting points, 0 to FullBar. The bar is 100, so this is also its percent.</summary>
@@ -436,8 +457,7 @@ namespace Utangard
                 var zone = ZoneSystem.instance;
                 s.Locked = s.Gated && zone != null && !BiomeGate.Earned(zone, key);
 
-                Heightmap.Biome here;
-                s.Here = BiomeGate.GatingKey(Player.m_localPlayer, out here) != null && here == biome;
+                s.Here = BiomeGate.RulingBiomes(Player.m_localPlayer, Ruling) && Ruling.Contains(biome);
 
                 FillFighting(s);
                 FillDiscovery(s);
@@ -544,7 +564,9 @@ namespace Utangard
 
         /// <summary>
         /// Whether the eating refusal is lifted for this player where they stand: the foothold is
-        /// on, and their Fighting bar in the biome whose rules apply here has reached EatAtFighting.
+        /// on, and their Fighting bar has reached EatAtFighting in every locked biome whose rules
+        /// reach them here. One biome short is a refusal, which is what keeps a foothold from
+        /// being an eating spot on the edge of a biome you have not earned (see RulingBiomes).
         ///
         /// Only the local player can answer yes, because only its kill tally is on this machine,
         /// and that is also the only player the refusal ever runs for.
@@ -555,11 +577,16 @@ namespace Utangard
 
             try
             {
-                Heightmap.Biome biome;
-                if (!GatedHere(player, out biome)) return false;
+                if (!BiomeGate.RulingBiomes(player, Ruling)) return false;
 
-                int fighting;
-                return FightingIn(biome, out fighting) && fighting >= EatAt();
+                int eatAt = EatAt();
+                foreach (var biome in Ruling)
+                {
+                    int fighting;
+                    if (!FightingIn(biome, out fighting) || fighting < eatAt) return false;
+                }
+
+                return true;
             }
             catch (Exception e)
             {
@@ -570,7 +597,7 @@ namespace Utangard
 
         /// <summary>
         /// Whether healing is back to normal for this player where they stand: both bars full in
-        /// the biome whose rules apply here.
+        /// every locked biome whose rules reach them here.
         /// </summary>
         internal static bool HealingAllowed(Player player)
         {
@@ -578,14 +605,18 @@ namespace Utangard
 
             try
             {
-                Heightmap.Biome biome;
-                if (!GatedHere(player, out biome)) return false;
-
-                int fighting;
-                if (!FightingIn(biome, out fighting) || fighting < FullBar) return false;
-
+                if (!BiomeGate.RulingBiomes(player, Ruling)) return false;
                 if (!Discovery.Available()) return false;
-                return Discovery.Pixels(biome) >= Discovery.FullPixels();
+
+                int full = Discovery.FullPixels();
+                foreach (var biome in Ruling)
+                {
+                    int fighting;
+                    if (!FightingIn(biome, out fighting) || fighting < FullBar) return false;
+                    if (Discovery.Pixels(biome) < full) return false;
+                }
+
+                return true;
             }
             catch (Exception e)
             {
@@ -593,6 +624,12 @@ namespace Utangard
                 return false;
             }
         }
+
+        /// <summary>
+        /// Scratch list for RulingBiomes. Every caller is on the main thread and finishes with it
+        /// before returning, so one list serves them all and a bite allocates nothing.
+        /// </summary>
+        private static readonly List<Heightmap.Biome> Ruling = new List<Heightmap.Biome>(3);
 
         /// <summary>
         /// The line added under a refused meal, saying how far the Fighting bar has got here, or
@@ -612,11 +649,25 @@ namespace Utangard
                 // Past a full bar the threshold cannot be reached, so there is nothing to aim at.
                 if (EatAt() > FullBar) return null;
 
-                Heightmap.Biome biome;
-                if (!GatedHere(player, out biome)) return null;
+                if (!BiomeGate.RulingBiomes(player, Ruling)) return null;
 
-                int fighting;
-                if (!FightingIn(biome, out fighting)) return null;
+                // The biome doing the refusing: the first one short of the mark. Where two locked
+                // biomes meet, naming the one already past it would tell a player they may eat
+                // while the bite is being refused.
+                var biome = Heightmap.Biome.None;
+                int fighting = 0;
+                foreach (var b in Ruling)
+                {
+                    int f;
+                    if (!FightingIn(b, out f)) return null;
+                    if (f >= EatAt()) continue;
+
+                    biome = b;
+                    fighting = f;
+                    break;
+                }
+
+                if (biome == Heightmap.Biome.None) return null;
 
                 // Replace rather than string.Format, so a stray brace in someone's wording cannot
                 // throw in the middle of a refusal.
@@ -630,12 +681,6 @@ namespace Utangard
                 SayFailure(e);
                 return null;
             }
-        }
-
-        /// <summary>The biome whose rules apply to this player, when one does.</summary>
-        private static bool GatedHere(Player player, out Heightmap.Biome biome)
-        {
-            return BiomeGate.GatingKey(player, out biome) != null && biome != Heightmap.Biome.None;
         }
 
         /// <summary>

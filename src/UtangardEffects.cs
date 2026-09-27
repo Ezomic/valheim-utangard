@@ -31,8 +31,8 @@ namespace Utangard
         /// Multiplied in alongside every other effect's, like Sapped's stamina figure, so it
         /// composes with vanilla rather than overriding it.
         ///
-        /// Left alone entirely for a character with a full foothold in the biome whose rules
-        /// apply here (LHM-26): both bars full means multiplier 1, normal healing. The rest of
+        /// Left alone entirely for a character with a full foothold in every locked biome whose
+        /// rules reach them here (LHM-26): both bars full means multiplier 1, normal healing. The rest of
         /// the marker's work goes on. Asked once per regen, which vanilla does every ten
         /// seconds, so the kill tally and the map count are read that often and no more.
         /// </summary>

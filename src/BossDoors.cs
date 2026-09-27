@@ -34,30 +34,38 @@ namespace Utangard
         private static string _parsedFrom;
         private static readonly HashSet<string> Keys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
+        // Arguments are positional (__0, __1) and the door's ZNetView is fetched rather than
+        // injected as ___m_nview, by the rule at the top of UtangardPatches: Harmony binds by
+        // name, a renamed parameter or private field is a throw, and a throw here costs the
+        // whole class. Door.Awake takes its m_nview with GetComponent<ZNetView>() on the same
+        // object, so asking for it the same way finds the same component, and only on a press.
+
+        /// <param name="__0">The one pressing. Positional: vanilla calls it `character` today.</param>
+        /// <param name="__1">Held, rather than tapped. Vanilla calls it `hold`.</param>
         [HarmonyPrefix]
         [HarmonyPatch(typeof(Door), nameof(Door.Interact))]
-        private static bool RefuseInteract(Door __instance, ZNetView ___m_nview, Humanoid character,
-                                           bool hold, ref bool __result)
+        private static bool RefuseInteract(Door __instance, Humanoid __0, bool __1, ref bool __result)
         {
             // Vanilla ignores a held E on a door, and so does this.
-            if (hold) return true;
-            if (!Refused(__instance, ___m_nview, character)) return true;
+            if (__1) return true;
+            if (!Refused(__instance, __0)) return true;
 
             // Handled: the player was told why, and nothing else should act on the press.
             __result = true;
             return false;
         }
 
+        /// <param name="__0">The user. Vanilla calls it `user` today.</param>
+        /// <param name="__1">The item used on the door. Vanilla calls it `item`.</param>
         [HarmonyPrefix]
         [HarmonyPatch(typeof(Door), nameof(Door.UseItem))]
-        private static bool RefuseUseItem(Door __instance, ZNetView ___m_nview, Humanoid user,
-                                          ItemDrop.ItemData item, ref bool __result)
+        private static bool RefuseUseItem(Door __instance, Humanoid __0, ItemDrop.ItemData __1, ref bool __result)
         {
             // UseItem answers false for any item that is not this door's key, and the hotbar then
             // tries the item elsewhere. Only the key itself is this file's business.
-            if (__instance == null || item == null || __instance.m_keyItem == null) return true;
-            if (item.m_shared.m_name != __instance.m_keyItem.m_itemData.m_shared.m_name) return true;
-            if (!Refused(__instance, ___m_nview, user)) return true;
+            if (__instance == null || __1 == null || __1.m_shared == null || __instance.m_keyItem == null) return true;
+            if (__1.m_shared.m_name != __instance.m_keyItem.m_itemData.m_shared.m_name) return true;
+            if (!Refused(__instance, __0)) return true;
 
             __result = true;
             return false;
@@ -102,7 +110,7 @@ namespace Utangard
         /// Whether this door must stay shut for this person right now. Shows the message and the
         /// door's own locked effect when it does.
         /// </summary>
-        private static bool Refused(Door door, ZNetView nview, Humanoid who)
+        private static bool Refused(Door door, Humanoid who)
         {
             try
             {
@@ -110,7 +118,8 @@ namespace Utangard
                 if (!Guarded(door.m_keyItem)) return false;
 
                 // Open already. Vanilla will not close a keyed door and this does not either.
-                if (nview == null || !nview.IsValid()) return false;
+                ZNetView nview;
+                if (!door.TryGetComponent(out nview) || !nview.IsValid()) return false;
                 if (nview.GetZDO().GetInt(ZDOVars.s_state) != 0) return false;
 
                 var key = BossAltars.Unearned(door.transform.position);

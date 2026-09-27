@@ -22,7 +22,13 @@ namespace Utangard
     /// The game has no exploration per biome; this works it out from what it does keep. The
     /// centre is the one Minimap.WorldToPixel implies, (x - size/2) * pixelSize, which is also
     /// what `utangard biomes` uses. Near a border the fog lifts on both sides of it, so walking the
-    /// edge of the Plains uncovers some Plains as well. That is the map's rule, not ours.
+    /// edge of the Plains uncovers some Plains as well. That is the map's rule, not ours, and it
+    /// is not small: the fog lifts in a circle of m_exploreRadius around you (100 m in the game's
+    /// code; the prefab's own value has not been read), so a walk along a border, or a sail along
+    /// a coast, uncovers about 0.1 km2 of the far side per kilometre without setting foot there,
+    /// and five kilometres of it fills a 0.5 km2 bar. The saved map keeps no record of where you
+    /// stood when a pixel lifted, so counting only ground uncovered under that biome's rules would
+    /// need a history the game does not keep. Said in the README and the cfg rather than fought.
     ///
     /// <b>A pixel counts once.</b> The bit only ever goes from clear to set, and Minimap.Explore
     /// answers true only on that change, so running back and forth over the same ground earns
@@ -75,13 +81,19 @@ namespace Utangard
         private static bool _gaveUp;
 
         /// <summary>
-        /// Whether Discovery can be read at all this session: both halves of the hook went on, and
-        /// the private bit array bound. False means the bar stays empty and healing stays locked,
-        /// which is the lock as it was.
+        /// Whether Discovery can be read at all this session: both halves of the hook went on, the
+        /// tick that runs the background count went on, and the private bit array bound. False
+        /// means the bar stays empty and healing stays locked, which is the lock as it was.
+        ///
+        /// The tick is part of it because nothing else advances the count. Step runs only from
+        /// Player.UpdateFood, and until the count has passed a pixel the Uncover postfix leaves it
+        /// alone, so without the tick every bar would sit at zero and the panel would say "still
+        /// reading your map" for the rest of the session - true in no useful sense. Saying the
+        /// map cannot be read is the honest version of the same empty bar.
         /// </summary>
         internal static bool Available()
         {
-            return Seams.MapExplore && !_gaveUp && ExploredOf() != null;
+            return Seams.MapExplore && Seams.FoodTick && !_gaveUp && ExploredOf() != null;
         }
 
         /// <summary>True while this world's background count has not finished.</summary>
