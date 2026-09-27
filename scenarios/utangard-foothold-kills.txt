@@ -1,0 +1,100 @@
+# Utangard - only a kill Utangard saw counts, and a tamed animal or devcommands never does. LHM-26.
+#
+# What it proves. Four wolves are killed by you, for real: god mode, ghost mode and debug flight
+# off, the blow from your own character, so the game marks you on the wolf and credits you when it
+# dies, exactly as it would for a sword. A wolf is worth 1 point on the Mountains' line.
+#  1. A wild wolf raises the Mountains' Fighting bar by 1. If Utangard stopped seeing kills, this
+#     is the step that fails.
+#  2. A wolf tamed first and then killed leaves the bar where it was. A build that counted tamed
+#     animals would add 1 here.
+#  3. A wild wolf killed with devcommands on leaves it where it was too. A build that ignored
+#     devcommands would add 1 here.
+#  4. A wild wolf with devcommands off again raises it by 1. So the two refusals above were the
+#     taming and the devcommands, not a tally that had stopped counting.
+# After every kill `killed` reads the game's own record, which goes up all four times. That is
+# what makes a bar that did not move mean Utangard refused the kill, and not that there was no
+# kill to count.
+#
+# The tame is the game's own, Tameable.Tame, the same call a fed animal's timer ends in. The
+# devcommands switch is the game's own command, run only when it needs changing.
+#
+# What it needs. A world you host, singleplayer included, because devcommands only work on the
+# machine that is the server, and the `devcommands` step refuses anywhere else. Default Foothold
+# settings, with Points_Mountain paying Wolf 1. It goes to the Meadows first, and nothing about
+# the Mountains being locked or open matters, because a kill counts in this world wherever it is
+# made. It turns god mode off, so you can be hurt: each wolf dies a frame or two after it appears,
+# so the worst is one bite. Devkit from 2026-09-27 or later, which has `tame`, `devcommands` and
+# `god off`. With Diagnostics.Verbose on, Utangard logs why it refused each kill.
+#
+# What it leaves behind. Use a throwaway character.
+#  - Utangard's count, in this world, of every creature on the Mountains' line: 0 for all of them
+#    except Wolf, which is left at 2. It is kept in the character, one entry per world, and the old
+#    numbers are not kept anywhere.
+#  - The game's own kill record for Wolf, set to 0 by `tally` and left at 4, and one more tamed
+#    animal on the character's statistics. Both live in the character and follow it into every
+#    world.
+#  - "devcommands" in the character's list of commands it has typed. The game does not count it as
+#    a cheat command, so the character is not marked as a cheater and Dyrr does not read it as one,
+#    but the line stays. Devcommands itself is left as it was before the run: Devkit puts it back
+#    when the run ends, and when it is stopped halfway.
+#  - You standing in the Meadows with god mode and ghost mode off.
+
+clear
+biome Meadows 20
+wait 3
+banish all 60
+
+# Nothing that makes a kill a cheat. Each of these is one of the things the game checks before it
+# marks a creature as cheated, or the one Utangard checks on top.
+god off
+ghost off
+fly off
+devcommands off
+
+# The Mountains' line all at zero, so the bar moves only by what this file kills, and the game's
+# own wolf record at zero, so `killed` can read each kill exactly.
+mod utangardtest kills Wolf 0
+mod utangardtest kills Ulv 0
+mod utangardtest kills Hatchling 0
+mod utangardtest kills Fenring_Cultist 0
+mod utangardtest kills Fenring 0
+mod utangardtest kills StoneGolem 0
+tally Wolf 0
+
+console utangard foothold
+printed kills are the ones Utangard saw you make or help with in this world yes
+note fight Mountain \(.*fighting (\d+)/
+
+# 1. A wild wolf. It counts.
+spawn Wolf
+kill Wolf
+killed Wolf 1
+console utangard foothold
+went fight Mountain \(.*fighting (\d+)/ +1
+
+# 2. A wolf tamed first. The game still credits you with the kill; Utangard does not.
+spawn Wolf
+tame Wolf
+kill Wolf
+killed Wolf 2
+console utangard foothold
+went fight Mountain \(.*fighting (\d+)/ same
+
+# 3. A wild wolf with devcommands on. Off again straight after. `kill` holds until the body is
+# gone, which is after the game has credited the kill, so switching off cannot get in first.
+devcommands on
+spawn Wolf
+kill Wolf
+devcommands off
+killed Wolf 3
+console utangard foothold
+went fight Mountain \(.*fighting (\d+)/ same
+
+# 4. A wild wolf with devcommands off again. It counts, so the tally was still counting.
+spawn Wolf
+kill Wolf
+killed Wolf 4
+console utangard foothold
+went fight Mountain \(.*fighting (\d+)/ +1
+
+sweep

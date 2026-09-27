@@ -7,9 +7,9 @@
 # one-second refresh without reopening it. Clicking the Meadows, which is open, shows that biome
 # and takes the boxes away.
 #
-# The Fighting bar is seeded here, 6 Jotun warriors for 30 of 150 points, rather than fought.
-# This is a test of what the page draws; utangard-foothold-eating is the test of how the count
-# fills the bar.
+# The Fighting bar is seeded here with `mod utangardtest kills`, 6 Jotun warriors for 30 of 150
+# points, rather than fought. This is a test of what the page draws. utangard-foothold-eating
+# tests how the count fills the bar, and utangard-foothold-kills tests which kills go on it.
 #
 # What it needs. A world you host, default Foothold settings, Presentation.ShowCompendiumPanel on,
 # and the game in English, since the biome names are clicked and read by their English names.

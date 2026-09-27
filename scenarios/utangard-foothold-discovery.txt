@@ -4,14 +4,17 @@
 # raises the Deep North's Discovery count. Going back to where it started, which it uncovered a
 # minute earlier, raises it by nothing, although the minimap lifts the fog around you again every
 # two seconds while you stand there. That is the rule that stops a player farming the bar by
-# walking back and forth.
+# walking back and forth. Before any of that it checks the size of the bar: full at 1 km2, the
+# default since 2026-09-27. It went up from 0.5 because the fog lifts about 100 m around you, so a
+# walk along the border fills some of the bar from outside the biome. At 1 km2 filling it that way
+# takes twice the walk.
 #
-# What it needs. A world you host, default Foothold settings, and Deep North ground within 10 km
-# of where you land that this character has not walked. The Deep North is shut the way
-# utangard-altar-in-a-locked-biome shuts it. Utangard counts a world's map in the background
-# after it loads, and every Discovery number keeps rising by itself until that is done, so the
-# run waits for "Map counted." before it notes anything. If it never gets there, the map could
-# not be read, and the console line before the biomes says so.
+# What it needs. A world you host, default Foothold settings (DiscoveryFullKm2 1), and Deep North
+# ground within 10 km of where you land that this character has not walked. The Deep North is
+# shut the way utangard-altar-in-a-locked-biome shuts it. Utangard counts a world's map in the
+# background after it loads, and every Discovery number keeps rising by itself until that is
+# done, so the run waits for "Map counted." before it notes anything. If it never gets there, the
+# map could not be read, and the console line before the biomes says so.
 #
 # What it leaves behind, and none of it can be undone:
 #  - Two patches of this character's map of this world, uncovered. The explored map is saved in
@@ -36,6 +39,7 @@ biome DeepNorth 20
 wait 4
 console utangard foothold
 until 180 Map counted.
+printed full discovery is 1 km2 = yes
 printed DeepNorth (LOCKED, its rules apply to you now) yes
 mark
 note px DeepNorth \(LOCKED.*discovery (\d+)/

@@ -2,17 +2,18 @@
 #
 # What it proves. In the Deep North with no foothold, a bite is refused, the meat stays in the
 # pack, and the refusal says how far the Fighting bar has got. A Jotun warrior killed in god mode
-# goes on the game's own kill record and not on Utangard's, because god mode is devcommands and a
-# kill made with devcommands does not count. Utangard's own count fills the bar by points: a Jotun
-# warrior is worth 5 of a 150-point bar. At 14 warriors the bar is 70 points, which is 46%, and
-# the bite is still refused. At 15 it is 75, which is 50%, and the same meat goes down. One kind
-# stops at 75 however many more are counted. Then in the Ashlands, which is locked too and where
-# nothing has been fought, the bite is refused again. A foothold lifts the rule only in the biome
-# it was earned in.
+# goes on the game's own kill record and not on Utangard's: the game marks a creature hit by a
+# player in god mode as cheated, Utangard refuses those, and it refuses your own kill while you
+# are in god mode as well. Utangard's own count fills the bar by points: a Jotun warrior is worth
+# 5 of a 150-point bar. At 14 warriors the bar is 70 points, which is 46%, and the bite is still
+# refused. At 15 it is 75, which is 50%, and the same meat goes down. One kind stops at 75 however
+# many more are counted. Then in the Ashlands, which is locked too and where nothing has been
+# fought, the bite is refused again. A foothold lifts the rule only in the biome it was earned in.
 #
-# The warriors are counted with `mod utangardtest kills`, not fought. Every kill a scenario makes
-# is made in god mode, and those never count, so a bar cannot be fought up here. The god-mode
-# kill below is the check that they do not.
+# The warriors are counted with `mod utangardtest kills`, not fought. Fifteen Jotun warriors in
+# the Deep North with god mode off could kill the tester, and which kills count is already tested
+# in utangard-foothold-kills. This file asks what the count does to eating. The god-mode kill
+# below is here because it is the kill a tester makes without thinking.
 #
 # What it needs. A world you host. Default Foothold settings: FightingFullPoints 150,
 # EatAtFightingPercent 50, MaxFromOneKindPercent 50, and a Points_DeepNorth line that pays
@@ -31,8 +32,9 @@
 #    whether they were there. `key defeated_queen` and `key defeated_fader` put them back.
 #
 # `kill` hits from you, so vanilla marks you on the victim and credits you through
-# RPC_RegisterKill exactly as a sword would. `killed` reads that credit on its own, so the kill
-# is known to have happened when Utangard's number does not move.
+# RPC_RegisterKill exactly as a sword would. It holds until the body is gone, which is after the
+# game has credited the kill. `killed` reads that credit on its own, so the kill is known to have
+# happened when Utangard's number does not move.
 
 clear
 god
@@ -92,7 +94,6 @@ carrying CookedMeat 3
 # A kill in god mode. The game has it on record; Utangard does not count it.
 spawn JotunWarrior
 kill JotunWarrior
-wait 1
 killed JotunWarrior 1
 console utangard foothold
 printed DeepNorth (LOCKED, its rules apply to you now): fighting 0/150 (0%) yes
