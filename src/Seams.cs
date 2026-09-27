@@ -93,6 +93,21 @@ namespace Utangard
         /// </summary>
         internal static bool MapExplore;
 
+        /// <summary>
+        /// Character.OnDeath, a second time - counting a kill towards the Fighting bar of a
+        /// foothold (KillTally.Witness). Its own seam rather than part of KillCredit, so a failure
+        /// in one costs the boss credit or the foothold and never both. Off, no kill is counted,
+        /// the Fighting bar reads as unavailable and eating stays locked, which is the lock as it
+        /// was before footholds.
+        /// </summary>
+        internal static bool FootholdKills;
+
+        /// <summary>
+        /// ZNet.Awake - listening for kills made on another player's machine (KillTally.Listen).
+        /// Off, your own kills still count and kills that land on somebody else's machine do not.
+        /// </summary>
+        internal static bool KillMessages;
+
         /// <summary>What did not go on, in the words the log will use.</summary>
         private static readonly List<string> Broken = new List<string>();
 
@@ -155,6 +170,12 @@ namespace Utangard
                     "counting newly explored map for footholds (Minimap.Explore)")
                 & Patch(harmony, typeof(Discovery.Rewrite),
                     "noticing the explored map being loaded or reset (Minimap.SetMapData, Reset, ExploreAll)");
+
+            FootholdKills = Patch(harmony, typeof(KillTally.Witness),
+                "counting kills for the Fighting bar of a foothold (Character.OnDeath)");
+
+            KillMessages = Patch(harmony, typeof(KillTally.Listen),
+                "hearing about kills made on another player's machine (ZNet.Awake)");
 
             Report();
         }

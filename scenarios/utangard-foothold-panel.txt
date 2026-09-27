@@ -1,23 +1,24 @@
 # Utangard - the compendium page shows the biome you pick and your two bars there. LHM-26.
 #
 # What it proves. The compendium opens on the Utangard page drawn as a panel. Clicking Deep North
-# in the biome strip shows "The Deep North", with the Fighting bar at the number the console
-# prints and the Discovery bar at the number the console prints, each in its own box beside its
+# in the biome strip shows "The Deep North", with the Fighting bar at the percent the console
+# prints and the Discovery bar at the percent the console prints, each in its own box beside its
 # own heading. The page keeps up while it is open: a change to the kill count shows within its
 # one-second refresh without reopening it. Clicking the Meadows, which is open, shows that biome
 # and takes the boxes away.
 #
-# The Fighting bar is seeded here, 7 Jotun warriors for 35, rather than fought. This is a test of
-# what the page draws; utangard-foothold-eating is the test of how kills fill the bar.
+# The Fighting bar is seeded here, 6 Jotun warriors for 30 of 150 points, rather than fought.
+# This is a test of what the page draws; utangard-foothold-eating is the test of how the count
+# fills the bar.
 #
 # What it needs. A world you host, default Foothold settings, Presentation.ShowCompendiumPanel on,
 # and the game in English, since the biome names are clicked and read by their English names.
 # The Deep North is shut the way utangard-altar-in-a-locked-biome shuts it.
 #
 # What it leaves behind, and none of it can be undone:
-#  - This character's kill count for every creature on the Deep North points line: 0 for all of
-#    them except JotunWarrior, which is left at 8. The old numbers are not kept anywhere, and the
-#    count lives in the character, so it follows it into every world. Use a throwaway character.
+#  - Utangard's count, in this world, of every creature on the Deep North points line: 0 for all
+#    of them except JotunWarrior, which is left at 9. It is kept in the character, one entry per
+#    world, and the old numbers are not kept anywhere. Use a throwaway character.
 #  - The Deep North ground the run lands on is uncovered on this character's map of this world.
 #  - Fader's records in this world stay cleared. `key defeated_fader` puts them back.
 
@@ -32,24 +33,24 @@ unkey utangard_first_defeated_fader
 unkey utangard_p_$player_defeated_fader
 wait 1
 
-tally GoblinDeepNorth 0
-tally Elaking 0
-tally ElakingLantern 0
-tally ElakingMole 0
-tally DvergerDeepNorth 0
-tally Moose 0
-tally ShadowPerson 0
-tally JotunWitch 0
-tally JotunWarriorDualWield 0
-tally Barka 0
-tally JotunWarrior 7
+mod utangardtest kills GoblinDeepNorth 0
+mod utangardtest kills Elaking 0
+mod utangardtest kills ElakingLantern 0
+mod utangardtest kills ElakingMole 0
+mod utangardtest kills DvergerDeepNorth 0
+mod utangardtest kills Moose 0
+mod utangardtest kills ShadowPerson 0
+mod utangardtest kills JotunWitch 0
+mod utangardtest kills JotunWarriorDualWield 0
+mod utangardtest kills Barka 0
+mod utangardtest kills JotunWarrior 6
 
 # What the console says, so the page can be held to it.
 biome DeepNorth 20
 wait 3
 console utangard foothold
 until 180 Map counted.
-printed DeepNorth (LOCKED, its rules apply to you now): fighting 35/100 (35%) yes
+printed DeepNorth (LOCKED, its rules apply to you now): fighting 30/150 (20%) yes
 note pct DeepNorth \(LOCKED.*discovery \d+/\d+ px \((\d+)%
 
 # The page, on the Deep North. It opens on the group's frontier, which on this world may be an
@@ -59,15 +60,15 @@ wait 1
 press Deep North
 wait 1
 panel The Deep North yes
-beside Fighting | 35% yes
+beside Fighting | 20% yes
 panel Eating at 50% yes
 beside Discovery | $pct% yes
 panel Healing needs both full yes
 
-# One more warrior on the record while the page stays open.
-tally JotunWarrior 8
+# Three more warriors on the count while the page stays open: 45 of 150 is 30%.
+mod utangardtest kills JotunWarrior 9
 wait 2
-beside Fighting | 40% yes
+beside Fighting | 30% yes
 
 # An open biome: its own name, and no bars.
 press Meadows

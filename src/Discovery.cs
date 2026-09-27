@@ -25,10 +25,12 @@ namespace Utangard
     /// edge of the Plains uncovers some Plains as well. That is the map's rule, not ours, and it
     /// is not small: the fog lifts in a circle of m_exploreRadius around you (100 m in the game's
     /// code; the prefab's own value has not been read), so a walk along a border, or a sail along
-    /// a coast, uncovers about 0.1 km2 of the far side per kilometre without setting foot there,
-    /// and five kilometres of it fills a 0.5 km2 bar. The saved map keeps no record of where you
-    /// stood when a pixel lifted, so counting only ground uncovered under that biome's rules would
-    /// need a history the game does not keep. Said in the README and the cfg rather than fought.
+    /// a coast, uncovers about 0.1 km2 of the far side per kilometre without setting foot there.
+    /// The saved map keeps no record of where you stood when a pixel lifted, so counting only
+    /// ground uncovered under that biome's rules would need a history the game does not keep.
+    /// Said in the README and the cfg rather than fought, and made smaller instead: the full bar
+    /// went from 0.5 km2 to 1 on 2026-09-27, Robbin's "let's just up the points required", so
+    /// what used to take five kilometres of coastline now takes ten.
     ///
     /// <b>A pixel counts once.</b> The bit only ever goes from clear to set, and Minimap.Explore
     /// answers true only on that change, so running back and forth over the same ground earns

@@ -73,9 +73,10 @@ namespace Utangard
         public static ConfigEntry<float> SappedMaxSeconds;
 
         public static ConfigEntry<bool> FootholdEnabled;
-        public static ConfigEntry<int> EatAtFighting;
+        public static ConfigEntry<int> FightingFullPoints;
+        public static ConfigEntry<int> EatAtFightingPercent;
         public static ConfigEntry<float> DiscoveryFullKm2;
-        public static ConfigEntry<int> MaxFromOneKind;
+        public static ConfigEntry<int> MaxFromOneKindPercent;
 
         /// <summary>One points line per gateable biome, in GateableBiomes order.</summary>
         private static readonly Dictionary<Heightmap.Biome, ConfigEntry<string>> PointsLines =
@@ -372,21 +373,35 @@ namespace Utangard
                 + "to eat is the problem.\n"
                 + "Each character gets two bars per locked biome. Fighting fills from kills of that "
                 + "biome's creatures, using the points lines below. Discovery fills from the map "
-                + "you uncover there yourself. Eating comes back at EatAtFighting, and healing goes "
-                + "back to normal when both bars are full. The bars belong to your character and "
-                + "only lift the rules in the biome they were earned for. Within BorderMargin of a "
-                + "second locked biome you need the unlock in that one as well.\n"
+                + "you uncover there yourself. Eating comes back at EatAtFightingPercent of a full "
+                + "Fighting bar, and healing goes back to normal when both bars are full. The bars "
+                + "belong to your character and only lift the rules in the biome they were earned "
+                + "for. Within BorderMargin of a second locked biome you need the unlock in that one "
+                + "as well.\n"
                 + "The rest of the lock stays. Meads, powers and Rested are still refused, food and "
                 + "buffs still burn faster, you still leave Sapped, and the biome does not open for "
                 + "the group.\n"
                 + "Off puts the lock back exactly as it was.");
 
-            EatAtFighting = config.Bind(SecFoothold, "EatAtFighting", 50,
-                "Fighting points at which you may eat again in a locked biome. The bar holds 100, "
-                + "so this is also its percent. Only food: meads and potions are still refused. "
-                + "Above 100 means eating never comes back this way.");
+            FightingFullPoints = config.Bind(SecFoothold, "FightingFullPoints", 150,
+                "Fighting points that make a full bar. Every kill adds its creature's points from the "
+                + "Points_ lines below, and healing comes back when the bar is full.\n"
+                + "The two percent settings in this section are shares of this number. Raise it and "
+                + "eating and the per-kind limit move with it, so the bar asks for more fighting and "
+                + "keeps the same shape.");
 
-            DiscoveryFullKm2 = config.Bind(SecFoothold, "DiscoveryFullKm2", 0.5f,
+            // Percent rather than points, on purpose. These were points while the bar was a fixed
+            // 100, where the two were the same number. With the full bar a setting of its own, a
+            // points value would quietly stop meaning half the moment somebody raised the bar.
+            EatAtFightingPercent = config.Bind(SecFoothold, "EatAtFightingPercent", 50,
+                "Where eating comes back in a locked biome, as a percent of a full Fighting bar. 50 is "
+                + "half, which is 75 points at the default FightingFullPoints of 150. It is a percent "
+                + "so that it stays half however big the bar is, and because the refused meal and the "
+                + "compendium show the bar in percent as well.\n"
+                + "Only food comes back. Meads and potions are still refused. Above 100 means eating "
+                + "never comes back this way.");
+
+            DiscoveryFullKm2 = config.Bind(SecFoothold, "DiscoveryFullKm2", 1f,
                 "How much of a biome's map you have to uncover yourself before its Discovery bar is "
                 + "full, in square kilometres. The same for every biome, so a small Swamp asks as "
                 + "much walking as a wide Plains.\n"
@@ -394,15 +409,19 @@ namespace Utangard
                 + "and a piece of map counts once, so walking back and forth over the same ground "
                 + "earns nothing. Each map pixel is filed under the biome at its centre.\n"
                 + "The fog lifts in a wide circle around you, about 100 m, so walking along a border "
-                + "or sailing along a coast uncovers the biome on the other side too, and that "
-                + "counts. Five kilometres of it can fill a 0.5 km2 bar without setting foot inside.\n"
+                + "or sailing along a coast uncovers some of the biome on the other side, about "
+                + "0.1 km2 for every kilometre, and that counts. That is why the default is 1 and "
+                + "not 0.5. At 0.5 five kilometres of coastline filled a bar without setting foot "
+                + "inside. At 1 it takes ten, and the share you can get from outside is smaller.\n"
                 + "0 means no walking is needed, and healing then waits on the Fighting bar alone.");
 
-            MaxFromOneKind = config.Bind(SecFoothold, "MaxFromOneKind", 50,
-                "The most one kind of creature can put into a Fighting bar. At 50, killing trolls "
-                + "alone gets you eating but never healing, so the second half has to come from "
-                + "something else that lives there. A kind is one name in the game's kill tally, "
-                + "which is why the three dvergr mages count as one.");
+            MaxFromOneKindPercent = config.Bind(SecFoothold, "MaxFromOneKindPercent", 50,
+                "The most one kind of creature can put into a Fighting bar, as a percent of a full "
+                + "bar. 50 is 75 points at the default. Killing trolls alone then gets you eating but "
+                + "never healing, so the other half has to come from something else that lives "
+                + "there. A percent for the same reason as EatAtFightingPercent.\n"
+                + "A kind is one creature name as the game writes it, which is why the three dvergr "
+                + "mages count as one.");
 
             foreach (Heightmap.Biome biome in GateableBiomes)
                 PointsLines[biome] = BindPoints(config, biome);
@@ -535,18 +554,17 @@ namespace Utangard
 
             return config.Bind(SecFoothold, "Points_" + biome, line,
                 "What each kill is worth towards the Fighting bar in the " + name + ", as "
-                + "Prefab:points pairs separated by commas. The bar is full at 100. " + note + "\n"
-                + "Kills are read from your character's own kill tally, so they count wherever "
-                + "they happened, and helping with a kill counts as well. The tally lives in the "
-                + "character, not the world. Kills from any world count, singleplayer included, and "
-                + "so do creatures spawned with devcommands and tamed or bred animals you slaughter. "
-                + "The game keeps a cheat-free tally too, but it stops for good once a character "
-                + "has used a cheat command, so reading it would lock that character out.\n"
+                + "Prefab:points pairs separated by commas. The bar is full at FightingFullPoints, "
+                + "150 by default. " + note + "\n"
+                + "Only kills Utangard saw count: kills in this world, since this version, by you or "
+                + "with your help. Kills from other worlds and from before this version never count. "
+                + "Neither does a tamed or bred animal, a kill while you have devcommands on, or a "
+                + "creature spawned with devcommands or hit by somebody in god mode.\n"
                 + "A creature that is not listed is worth nothing here, which is how deer, hares "
                 + "and other prey are kept out. A creature listed in two biomes only counts in the "
-                + "earlier one: some creatures share a name in the kill tally, and a greydwarf "
-                + "killed at home must not fill the Deep North's bar. Run 'utangard creatures' in "
-                + "the console to check every name against the game.");
+                + "earlier one: some creatures share one name in the game, and a greydwarf killed "
+                + "at home must not fill the Deep North's bar. Run 'utangard creatures' in the "
+                + "console to check every name against the game.");
         }
 
         private static string ReadableName(Heightmap.Biome biome)

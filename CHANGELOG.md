@@ -14,25 +14,33 @@ and the mod uses [semantic versioning](https://semver.org).
   yourself, and once both bars are full your wounds heal at the normal rate. Meads, powers and
   Rested are still refused, food and buffs still burn faster and you still leave Sapped. The bars
   are yours, they only count in their own biome, and they never open it for the group.
-- Fighting reads the game's own kill tally for your character, so kills from before this version
-  count, assists count, and it does not matter where the kill happened. That tally is kept in the
-  character, so kills in other worlds and in singleplayer count, and so do creatures spawned with
-  devcommands and tame animals you slaughter. Each kind of creature is worth 1 to 5 points and the
-  bar is full at 100. No single kind can put in more than 50.
+- Fighting only counts kills Utangard saw happen. It keeps its own count in your character, one
+  for each world, so a kill in one world never counts in another. Everybody starts at zero with
+  this version: kills from before it, from other worlds and from singleplayer do not count.
+  Helping with a kill counts. A tame or bred animal counts for nothing, and so does a kill while
+  you have devcommands on, or of a creature spawned with devcommands or hit in god mode. Each kind
+  of creature is worth 1 to 5 points and the bar is full at 150. No single kind can put in more
+  than half of it.
 - Discovery only counts fog you lifted yourself, not what a map table shares. It is full at
-  0.5 km² in every biome, and a piece of map counts once. The fog lifts in a wide circle around
-  you, so walking a border or sailing a coast fills the biome on the other side as well.
+  1 km² in every biome, and a piece of map counts once. The fog lifts in a wide circle around
+  you, so walking a border or sailing a coast fills some of the biome on the other side as well.
+  Asking for a whole square kilometre keeps that part small.
 - Where two locked biomes meet, an unlock needs both bars. Within 5 m of the second biome its rules
   reach you, so stepping a metre into a biome you have fought enough in does not let you eat on the
   edge of one you have not.
-- A new **Foothold** config section: `FootholdEnabled`, `EatAtFighting`, `DiscoveryFullKm2`,
-  `MaxFromOneKind`, and a `Points_` line per biome saying what each creature is worth there. All of
-  it is synced from the host.
+- A new **Foothold** config section: `FootholdEnabled`, `FightingFullPoints`,
+  `EatAtFightingPercent`, `DiscoveryFullKm2`, `MaxFromOneKindPercent`, and a `Points_` line per
+  biome saying what each creature is worth there. Eating and the limit per kind are percents of the
+  full bar, so raising the bar keeps them at half. All of it is synced from the host.
+- Utangard now writes to your character file, which it never did before: one entry per world
+  holding its foothold kill counts.
 - A refused meal now says how far your Fighting bar has got. The wording is
   `Presentation.EatProgressLine`.
-- `utangard foothold` in the console shows both bars for every biome, what each kind of creature
-  put in, where the cap stopped it, and what is unlocked. `utangard creatures` checks every name
-  on the points lines against the game.
+- `utangard foothold` in the console shows both bars for every biome, how many of each creature
+  Utangard has counted for you, what each kind put in, where the cap stopped it, and what is
+  unlocked. `utangard creatures` checks every name on the points lines against the game.
+- `utangardtest kills <creature> <count>` sets your count of one creature in this world, so a test
+  can start a Fighting bar anywhere. It is a cheat command.
 - **A boss will not come to an altar in a biome the group has not earned.** Before, one player
   could carry an egg into the locked Mountains, kill Moder there, and start the Plains deadline
   for everybody while the rest were still on Bonemass. A refused offering uses nothing up. Each

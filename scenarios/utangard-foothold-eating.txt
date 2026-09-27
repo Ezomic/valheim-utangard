@@ -1,31 +1,38 @@
 # Utangard - fighting in a locked biome earns eating back there, and only there. LHM-26.
 #
 # What it proves. In the Deep North with no foothold, a bite is refused, the meat stays in the
-# pack, and the refusal says how far the Fighting bar has got. Real kills of a Deep North
-# creature fill that bar by its points: a Jotun warrior is worth 5. One kind stops at 50 however
-# many more die. At 50 the same meat goes down in the Deep North. Then in the Ashlands, which is
-# locked too and where nothing has been fought, it is refused again. A foothold lifts the rule
-# only in the biome it was earned in.
+# pack, and the refusal says how far the Fighting bar has got. A Jotun warrior killed in god mode
+# goes on the game's own kill record and not on Utangard's, because god mode is devcommands and a
+# kill made with devcommands does not count. Utangard's own count fills the bar by points: a Jotun
+# warrior is worth 5 of a 150-point bar. At 14 warriors the bar is 70 points, which is 46%, and
+# the bite is still refused. At 15 it is 75, which is 50%, and the same meat goes down. One kind
+# stops at 75 however many more are counted. Then in the Ashlands, which is locked too and where
+# nothing has been fought, the bite is refused again. A foothold lifts the rule only in the biome
+# it was earned in.
 #
-# What it needs. A world you host. Default Foothold settings: EatAtFighting 50, MaxFromOneKind
-# 50, and a Points_DeepNorth line that pays JotunWarrior 5. BlockEating on. The Deep North and
-# the Ashlands are shut by clearing Fader's and the Queen's records, the same five keys each
-# that utangard-altar-in-a-locked-biome clears. Another character in this world's roster who is
-# marked present at either boss would open it again, so if the first `printed` fails, look
-# there first.
+# The warriors are counted with `mod utangardtest kills`, not fought. Every kill a scenario makes
+# is made in god mode, and those never count, so a bar cannot be fought up here. The god-mode
+# kill below is the check that they do not.
+#
+# What it needs. A world you host. Default Foothold settings: FightingFullPoints 150,
+# EatAtFightingPercent 50, MaxFromOneKindPercent 50, and a Points_DeepNorth line that pays
+# JotunWarrior 5. BlockEating on. The Deep North and the Ashlands are shut by clearing Fader's and
+# the Queen's records, the same five keys each that utangard-altar-in-a-locked-biome clears.
+# Another character in this world's roster who is marked present at either boss would open it
+# again, so if the first `printed` fails, look there first.
 #
 # What it leaves behind, and none of it can be undone:
-#  - This character's kill count for every creature on the Deep North and Ashlands points
-#    lines. `tally` sets them to 0 at the start, and the old numbers are not kept anywhere.
-#    The run then leaves 11 Jotun warriors on the record. The count lives in the character,
-#    not the world, so it follows the character into every world it plays, a server included.
-#    Use a throwaway character.
+#  - Utangard's count, in this world, of every creature on the Deep North and Ashlands points
+#    lines: 0 for all of them except JotunWarrior, which is left at 16. It is kept in the
+#    character, one entry per world, and the old numbers are not kept anywhere.
+#  - The game's own kill record for JotunWarrior, set to 0 by `tally` and left at 1. That record
+#    lives in the character and follows it into every world. Use a throwaway character.
 #  - The Queen's and Fader's records in this world stay cleared, because the run cannot know
 #    whether they were there. `key defeated_queen` and `key defeated_fader` put them back.
 #
 # `kill` hits from you, so vanilla marks you on the victim and credits you through
-# RPC_RegisterKill exactly as a sword would. `killed` reads that credit on its own, so a failure
-# after it is Utangard's reading and not the kill.
+# RPC_RegisterKill exactly as a sword would. `killed` reads that credit on its own, so the kill
+# is known to have happened when Utangard's number does not move.
 
 clear
 god
@@ -43,30 +50,31 @@ unkey utangard_first_defeated_queen
 unkey utangard_p_$player_defeated_queen
 wait 1
 
-# No foothold in either biome: nothing on either points line has been killed.
-tally GoblinDeepNorth 0
-tally Elaking 0
-tally ElakingLantern 0
-tally ElakingMole 0
-tally DvergerDeepNorth 0
-tally Moose 0
-tally ShadowPerson 0
-tally JotunWitch 0
+# No foothold in either biome: Utangard has counted nothing on either points line here.
+mod utangardtest kills GoblinDeepNorth 0
+mod utangardtest kills Elaking 0
+mod utangardtest kills ElakingLantern 0
+mod utangardtest kills ElakingMole 0
+mod utangardtest kills DvergerDeepNorth 0
+mod utangardtest kills Moose 0
+mod utangardtest kills ShadowPerson 0
+mod utangardtest kills JotunWitch 0
+mod utangardtest kills JotunWarrior 0
+mod utangardtest kills JotunWarriorDualWield 0
+mod utangardtest kills Barka 0
+mod utangardtest kills Charred_Archer 0
+mod utangardtest kills Charred_Twitcher 0
+mod utangardtest kills Volture 0
+mod utangardtest kills BlobLava 0
+mod utangardtest kills Charred_Melee 0
+mod utangardtest kills Asksvin 0
+mod utangardtest kills Charred_Mage 0
+mod utangardtest kills BonemawSerpent 0
+mod utangardtest kills FallenValkyrie 0
+mod utangardtest kills Morgen 0
+mod utangardtest kills Morgen_NonSleeping 0
+mod utangardtest kills Charred_Melee_Dyrnwyn 0
 tally JotunWarrior 0
-tally JotunWarriorDualWield 0
-tally Barka 0
-tally Charred_Archer 0
-tally Charred_Twitcher 0
-tally Volture 0
-tally BlobLava 0
-tally Charred_Melee 0
-tally Asksvin 0
-tally Charred_Mage 0
-tally BonemawSerpent 0
-tally FallenValkyrie 0
-tally Morgen 0
-tally Morgen_NonSleeping 0
-tally Charred_Melee_Dyrnwyn 0
 
 # Shut, with no foothold: refused, and the meat stays.
 biome DeepNorth 20
@@ -75,69 +83,56 @@ banish all 60
 hungry
 give CookedMeat:3
 console utangard foothold
-printed DeepNorth (LOCKED, its rules apply to you now): fighting 0/100 (0%) yes
+printed DeepNorth (LOCKED, its rules apply to you now): fighting 0/150 (0%) yes
 centre The land will not feed you here no
 eat CookedMeat
 centre Fighting here 0%. You can eat at 50%. yes
 carrying CookedMeat 3
 
-# One real kill, worth 5.
+# A kill in god mode. The game has it on record; Utangard does not count it.
 spawn JotunWarrior
 kill JotunWarrior
 wait 1
 killed JotunWarrior 1
 console utangard foothold
-printed DeepNorth (LOCKED, its rules apply to you now): fighting 5/100 (5%) yes
+printed DeepNorth (LOCKED, its rules apply to you now): fighting 0/150 (0%) yes
 
-# Nine more makes 50.
-spawn JotunWarrior
-kill JotunWarrior
-spawn JotunWarrior
-kill JotunWarrior
-spawn JotunWarrior
-kill JotunWarrior
-spawn JotunWarrior
-kill JotunWarrior
-spawn JotunWarrior
-kill JotunWarrior
-spawn JotunWarrior
-kill JotunWarrior
-spawn JotunWarrior
-kill JotunWarrior
-spawn JotunWarrior
-kill JotunWarrior
-spawn JotunWarrior
-kill JotunWarrior
-wait 1
-killed JotunWarrior 10
+# 14 warriors is 70 points, 46% rounded down. Still short of half, so still refused.
+mod utangardtest kills JotunWarrior 14
 console utangard foothold
-printed DeepNorth (LOCKED, its rules apply to you now): fighting 50/100 (50%) yes
+printed DeepNorth (LOCKED, its rules apply to you now): fighting 70/150 (46%) yes
+hungry
+eat CookedMeat
+centre Fighting here 46%. You can eat at 50%. yes
+carrying CookedMeat 3
 
-# An eleventh. One kind may put in 50 and no more, so the bar does not move.
-spawn JotunWarrior
-kill JotunWarrior
-wait 1
-killed JotunWarrior 11
+# 15 is 75 points, exactly half.
+mod utangardtest kills JotunWarrior 15
 console utangard foothold
-printed 5pt x11 = 50 (capped at 50, 55 earned) yes
-printed DeepNorth (LOCKED, its rules apply to you now): fighting 50/100 (50%) yes
+printed DeepNorth (LOCKED, its rules apply to you now): fighting 75/150 (50%) yes
 printed - eating allowed, yes
 
-# At 50 the same meat goes down here. Hungry first, so a refusal could only be the land's.
+# A 16th. One kind may put in half the bar and no more, so the bar does not move.
+mod utangardtest kills JotunWarrior 16
+console utangard foothold
+printed 5pt x16 = 75 (capped at 75, 80 earned) yes
+printed DeepNorth (LOCKED, its rules apply to you now): fighting 75/150 (50%) yes
+
+# At half the same meat goes down here. Hungry first, so a refusal could only be the land's.
 hungry
 eat CookedMeat
 centre The land will not feed you here no
 carrying CookedMeat 2
 
-# The Ashlands, also shut, where nothing has been fought. The Deep North's 50 does not follow
+# The Ashlands, also shut, where nothing has been fought. The Deep North's 75 does not follow
 # you: its line no longer says its rules apply, and the bite is refused on the Ashlands' own 0.
 biome AshLands 25
 wait 3
 banish all 60
 hungry
 console utangard foothold
-printed AshLands (LOCKED, its rules apply to you now): fighting 0/100 (0%) yes
-printed DeepNorth (LOCKED): fighting 50/100 (50%) yes
+printed AshLands (LOCKED, its rules apply to you now): fighting 0/150 (0%) yes
+printed DeepNorth (LOCKED): fighting 75/150 (50%) yes
 centre The land will not feed you here no
 eat CookedMeat
 centre Fighting here 0%. You can eat at 50%. yes

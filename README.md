@@ -79,11 +79,10 @@ Every locked biome has two bars for each character.
 
 - **Fighting** fills from kills of that biome's creatures. Each kind is worth a set number of
   points, 1 or 2 for the common ones up to 5 for the biggest threat, and the bar is full at
-  100. One kind of creature can put in 50 at most, so you cannot fill it on trolls alone. Kills
-  come from the game's own kill tally for your character. That means they count wherever the
-  kill happened, helping with a kill counts, and kills from before this version count too.
+  150. One kind of creature can put in half of that at most, 75 points, so you cannot fill it
+  on trolls alone. Helping with a kill counts the same as landing the last blow.
 - **Discovery** fills from the part of that biome's map you uncovered yourself. It is full at
-  0.5 km², the same in every biome. What a map table shares with you does not count. Each piece
+  1 km², the same in every biome. What a map table shares with you does not count. Each piece
   of the map counts once, so walking back and forth over the same ground earns nothing.
 
 At 50% Fighting you can eat in that biome again. With both bars full your wounds heal there at
@@ -95,23 +94,30 @@ bar in the Swamp does nothing for you in the Mountains. Where two locked biomes 
 unlock in both: within 5 m of the other one, its rules reach you too. They never open a biome for
 the group either. That still takes the boss, or the catch-up deadline.
 
-Some things count that you might not expect:
+Only kills Utangard saw happen count, and only in the world they happened in. Utangard keeps
+its own count in your character, one for each world. Everybody's bars started at zero with this
+version, so kills from before it do not count, and neither do kills in another world or in
+singleplayer. Some kills never count:
 
-- The kill tally belongs to your character, not to the world. Kills from any world count,
-  singleplayer included, and so do creatures spawned with devcommands. The game does keep a
-  cheat-free tally as well, but it stops counting for good once a character has used a cheat
-  command, so it would lock out every character that ever had.
-- A tame animal counts like a wild one. Lox, wolves and asksvin are on the lists, and the game
-  records a slaughtered pet the same way as a kill in the wild.
-- The map lifts the fog in a wide circle around you, not just under your feet. Walking along a
-  border or sailing along a coast uncovers the biome on the other side, and that counts too.
+- A tame animal, or one bred from tame parents. Lox, wolves and asksvin are on the lists, but
+  slaughtering your own herd earns nothing.
+- A kill while you have devcommands on. The game ignores a player's devcommands on a dedicated
+  server, and so does this. A creature spawned with devcommands, or one somebody hit in god mode
+  or ghost mode, counts for nobody.
+- A kill that lands after you have left. The kill is counted on the machine that had the
+  creature and sent to everyone who hit it, so if you log out before it dies, you miss it.
+
+The map lifts the fog in a wide circle around you, about 100 m, not just under your feet.
+Walking along a border or sailing along a coast uncovers some of the biome on the other side, and
+that counts too. That is why Discovery asks for a whole square kilometre. Only a small part of it
+can be filled from outside.
 
 The Utangard page in the compendium shows both bars for whichever biome you pick, and it opens
 on the first biome your group has not earned. Click another biome in the row to see it, or use
 left and right on the d-pad with a controller. A refused meal tells you how far your Fighting bar
-has got. `utangard foothold` in the console (F5) shows both bars for every biome and what each
-kind of creature has added. What each creature is worth is in the config, one line per biome,
-under **Foothold**.
+has got. `utangard foothold` in the console (F5) shows both bars for every biome, how many of
+each creature Utangard has counted for you, and what each kind has added. What each creature is
+worth is in the config, one line per biome, under **Foothold**.
 
 ## Biome table
 
@@ -165,8 +171,9 @@ dependency. With it installed, the server rejects a client whose Utangard versio
 does not match, and the host's rule settings are applied on connected clients in memory without
 writing their config file. Without it Utangard is fully functional and single player needs
 nothing else, but a player who simply does not install the mod is not gated at all, so the gate
-becomes an agreement between players rather than a rule of the server. Utangard logs a warning
-once if it finds the group gate running in a multiplayer session with no Core.
+becomes an agreement between players rather than a rule of the server. Footholds lose out too: a
+creature that dies on the machine of a player without Utangard is counted for nobody. Utangard
+logs a warning once if it finds the group gate running in a multiplayer session with no Core.
 
 Settings that decide a rule are synced from the host: all of **Gate** apart from its two
 messages, including the biome keys and the border margin; the drains and blocks under **Food**
@@ -182,11 +189,14 @@ Persistence:
 - Credit is per world, not per character. A character that cleared a solo world does not arrive
   on your server pre-credited: imported credit is only honoured for a boss this world has
   already seen die, so it can never open a biome on its own.
-- Your character file is read, never written.
+- Utangard writes one thing to your character file: its foothold kill counts, one entry for each
+  world you play. Everything else in the file is only read.
 - Food timers and status effects belong to the owning client. Nothing here reaches into another
   player's character.
-- A foothold is read from your own character on your own machine: its kill tally, and the map
-  it has explored in this world. Nothing about it is sent to the server or saved in the world.
+- A foothold is read from your own character on your own machine: the kills Utangard counted
+  for you in this world, and the map you have explored here. A kill is counted on whichever
+  machine had the creature, which tells each player who hit it. Nothing about a foothold is
+  saved in the world.
 
 ## Configuration
 
@@ -248,10 +258,14 @@ appears to do nothing, check the cfg first.
 | Setting | Default | What it does |
 | --- | --- | --- |
 | `FootholdEnabled` | `true` | Let a character earn eating and healing back in a locked biome. Off puts the lock back exactly as it was. |
-| `EatAtFighting` | `50` | Fighting points, out of 100, at which you may eat again. Food only; meads and potions stay refused. Above 100 means never. |
-| `DiscoveryFullKm2` | `0.5` | How much of a biome's map, in km², you have to uncover yourself for a full Discovery bar. `0` means no walking is needed. |
-| `MaxFromOneKind` | `50` | The most one kind of creature can add to a Fighting bar. |
+| `FightingFullPoints` | `150` | Fighting points that make a full bar. Healing needs a full bar. |
+| `EatAtFightingPercent` | `50` | Where you may eat again, as a percent of a full Fighting bar. Food only; meads and potions stay refused. Above 100 means never. |
+| `DiscoveryFullKm2` | `1` | How much of a biome's map, in km², you have to uncover yourself for a full Discovery bar. `0` means no walking is needed. |
+| `MaxFromOneKindPercent` | `50` | The most one kind of creature can add to a Fighting bar, as a percent of a full bar. |
 | `Points_Meadows` … `Points_Ocean` | see below | What each kill is worth there, as `Prefab:points` pairs. A creature that is not listed is worth nothing in that biome. |
+
+The two percent settings are shares of `FightingFullPoints`, so if you raise the bar, eating
+and the limit per kind stay at half of it.
 
 The points lines, as they ship. The Meadows and the Ocean are empty because neither is gated by
 default.
@@ -267,8 +281,8 @@ default.
 | Deep North | `GoblinDeepNorth:2, Elaking:2, ElakingLantern:2, ElakingMole:2, DvergerDeepNorth:2, Moose:3, ShadowPerson:3, JotunWitch:4, JotunWarrior:5, JotunWarriorDualWield:5, Barka:5` |
 
 Prey is left out on purpose, and so are Swamp skeletons. Some creatures share one name in the
-game's kill tally, like the frozen greydwarves of the Deep North and the ones at home, so a name
-listed in two biomes only counts in the earlier one. The three dvergr mages are one name as well,
+game, like the frozen greydwarves of the Deep North and the ones at home, so a name listed in two
+biomes only counts in the earlier one. The three dvergr mages are one name as well,
 which is why they are all worth 3. `utangard creatures` checks every line against the game.
 
 ### Presentation
@@ -343,8 +357,8 @@ boss, the biome-opened announcement fires on the transition, and the defeat-key 
 all nine rows against the world's own creature prefabs. Running standalone with no Core has been
 confirmed in game.
 
-Footholds are new and have not been run in game yet: neither bar, the two unlocks,
-`utangard foothold`, nor the compendium panel that shows them.
+Footholds are new and have not been run in game yet: neither bar, the kill counting behind
+Fighting, the two unlocks, `utangard foothold`, nor the compendium panel that shows them.
 
 One more thing is untested: attendee credit with more than one player at a boss kill. Solo you own
 the boss and credit yourself either way. The loop is identical for one player or five; what is

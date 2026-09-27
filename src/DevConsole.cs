@@ -15,22 +15,22 @@ namespace Utangard
     ///
     /// The design Robbin settled on 2026-09-24 is that a character earns back eating and health
     /// regeneration in a biome that is still gated, one biome at a time, by fighting there and
-    /// by exploring it - counted from what the game already records per character rather than
-    /// from anything Utangard stores. Numbers for that cannot be picked from a desk, because
-    /// both halves of the answer are data that exists only in a running world: which creatures
-    /// the spawn tables put in each biome, and how big each biome is on this world's map. This
-    /// prints both, beside what the local character has actually done, so the thresholds are
-    /// chosen from real lists rather than guessed.
+    /// by exploring it. Numbers for that cannot be picked from a desk, because both halves of
+    /// the answer are data that exists only in a running world: which creatures the spawn
+    /// tables put in each biome, and how big each biome is on this world's map. This prints
+    /// both, beside what the local character has actually done, so the thresholds are chosen
+    /// from real lists rather than guessed.
     ///
     /// Read-only, so registered isCheat: false. It needs no devcommands and marks nothing.
+    /// `utangardtest` is the one that writes, and it is a cheat on purpose (see RegisterTest).
     ///
     /// <b>What each half reads, and what it cannot see.</b>
     ///
-    ///   Kills come from PlayerProfile's per-creature tally, keyed by the creature's display
-    ///   token ($enemy_wolf). The game writes it in Game.RPC_RegisterKill for every player who
-    ///   damaged the creature, not only the one who landed the blow. It is lifetime and per
-    ///   character, which on Longhouse is the same thing as per world, since the server only
-    ///   admits characters made for it.
+    ///   Kills come from the tally Utangard keeps for itself since 2026-09-27 (KillTally): kills
+    ///   this character made or helped with in this world, seen as they happened, keyed by the
+    ///   creature's display token ($enemy_wolf). It used to be the game's lifetime tally in the
+    ///   PlayerProfile, which took in other worlds, devcommands and tamed animals. The tally only
+    ///   keeps kinds a points line pays for, so every other creature reads as 0 here.
     ///
     ///   Creatures per biome come from the world's spawn tables, the same source the shared
     ///   BiomeIndex reads. Those are the overworld spawns only: a draugr placed by a crypt's own
@@ -68,6 +68,82 @@ namespace Utangard
             new Terminal.ConsoleCommand("utangard",
                 "utangard foothold | biomes | creatures - your foothold in each locked biome, and the raw numbers behind it",
                 OnCommand, isCheat: false);
+
+            RegisterTest();
+        }
+
+        /// <summary>
+        /// `utangardtest kills &lt;creature&gt; &lt;count&gt;`, which sets Utangard's own count of one
+        /// creature for this character in this world, so a scenario can put a Fighting bar where it
+        /// needs it without fifty kills first.
+        ///
+        /// A command of its own, registered isCheat, rather than a fourth verb of `utangard`: the
+        /// cheat flag belongs to a whole command, and `utangard` has to stay one a player can type
+        /// on a server without devcommands. This one hands out a foothold for nothing, so it is a
+        /// cheat. Devkit's `mod` step calls its handler directly, past RunAction, so a scenario
+        /// runs it without devcommands and without the cheat mark on the character. Vaettir's
+        /// `furrow` and `furrowtest` are split the same way for the same reason.
+        ///
+        /// Failable, so a refusal comes back as a string: RunAction prints it in red, and Devkit
+        /// fails the step on it rather than reading a refusal as having run.
+        /// </summary>
+        private static void RegisterTest()
+        {
+            new Terminal.ConsoleCommand("utangardtest",
+                "utangardtest kills <creature> <count> - set how many of that creature Utangard has counted you killing in this world, for tests",
+                new Terminal.ConsoleEventFailable(OnTest), isCheat: true);
+        }
+
+        private static object OnTest(Terminal.ConsoleEventArgs args)
+        {
+            var term = args.Context;
+            if (term == null) return "no console to answer in";
+
+            var what = args.Length > 1 ? args[1].ToLowerInvariant() : "";
+            if (what == "kills") return SetKills(term, args);
+
+            term.AddString("utangardtest kills <creature> <count> - set this character's count of that creature in this world, as if it had killed that many. 0 clears it.");
+            term.AddString("<creature> is a prefab name from a points line: JotunWarrior, Troll, Greydwarf...");
+            return true;
+        }
+
+        private static object SetKills(Terminal term, Terminal.ConsoleEventArgs args)
+        {
+            if (args.Length < 4) return "utangardtest kills <creature> <count>";
+
+            var scene = ZNetScene.instance;
+            if (scene == null) return "no world loaded yet";
+
+            int count;
+            if (!int.TryParse(args[3], NumberStyles.Integer, CultureInfo.InvariantCulture, out count) || count < 0)
+                return "'" + args[3] + "' is not a count";
+
+            var go = scene.GetPrefab(args[2]);
+            Character character;
+            if (go == null || !go.TryGetComponent(out character)) return "no creature called " + args[2];
+
+            var token = character.m_name ?? "";
+
+            // Only a kind some points line pays for, because that is all the tally ever keeps.
+            // Setting any other would write a number nothing reads, and a scenario would pass on
+            // it. Zero is the exception: it is already zero, and a scenario clearing a whole line
+            // should not fail on a creature the line no longer pays for.
+            if (!Foothold.Pays(token))
+            {
+                if (count != 0)
+                    return args[2] + " (" + token + ") is worth nothing on any points line, so Utangard does not count it";
+
+                Say(term, "utangardtest kills: " + go.name + " (" + token + ") is worth nothing on any points line, so its count is 0 already.");
+                return true;
+            }
+
+            int had;
+            if (!KillTally.Set(token, count, out had))
+                return "there is no character in a world to set it on";
+
+            Say(term, "utangardtest kills: " + go.name + " (" + token + ") was " + had + ", now " + count
+                      + ", for " + Player.m_localPlayer.GetPlayerName() + " in this world.");
+            return true;
         }
 
         private static void OnCommand(Terminal.ConsoleEventArgs args)
@@ -91,8 +167,8 @@ namespace Utangard
         /// console and the panel cannot disagree about a number.
         ///
         /// Every kind is listed, killed or not, with the cap shown where it bit: "why is my bar
-        /// stuck at 50" is nearly always one kind at its cap, and that is only visible beside the
-        /// kinds that have not been touched yet.
+        /// stuck at half" is nearly always one kind at its cap, and that is only visible beside the
+        /// kinds that have not been touched yet. The kill counts are Utangard's own, per world.
         /// </summary>
         private static void FootholdReport(Terminal term)
         {
@@ -106,12 +182,21 @@ namespace Utangard
             var inv = CultureInfo.InvariantCulture;
             var full = Discovery.FullPixels();
             var pixelKm2 = Discovery.PixelKm2();
+            var bar = Foothold.FullBar();
 
             Say(term, "utangard foothold: " + player.GetPlayerName() + ". "
                       + (UtangardConfig.FootholdEnabled.Value ? "" : "FootholdEnabled is OFF, so nothing below unlocks anything. ")
-                      + "Eating at " + UtangardConfig.EatAtFighting.Value + " fighting, healing at "
-                      + Foothold.FullBar + " fighting and full discovery. No kind above "
-                      + UtangardConfig.MaxFromOneKind.Value + ".");
+                      + "A full Fighting bar is " + bar + " points. Eating at " + Foothold.EatAtPercent() + "% ("
+                      + Foothold.EatAtPoints(bar) + " points), healing at a full bar and full discovery. No kind above "
+                      + UtangardConfig.MaxFromOneKindPercent.Value + "% (" + Foothold.KindCap(bar) + " points).");
+
+            // Said every time, because it is the first thing anybody asks when a bar is lower than
+            // their memory of the fighting: which kills were counted at all.
+            var whyNot = KillTally.WhyNot();
+            Say(term, whyNot != null
+                ? "utangard foothold: kills cannot be counted right now: " + whyNot + ". Every Fighting bar reads as empty."
+                : "utangard foothold: kills are the ones Utangard saw you make or help with in this world. Not from "
+                  + "other worlds or before this version, not of tamed animals, and not with devcommands.");
 
             if (!Discovery.Available())
                 Say(term, "utangard foothold: the explored map cannot be read this session, so every Discovery bar is empty.");
@@ -133,11 +218,12 @@ namespace Utangard
 
                 var unlocked = !s.Locked
                     ? "nothing to unlock"
-                    : (s.CanEat ? "eating allowed" : "eating at " + s.EatAt + "%")
+                    : (s.CanEat ? "eating allowed" : "eating at " + s.EatAtPercent + "%")
                       + ", " + (s.CanHeal ? "healing allowed" : "healing needs both full");
 
+                // The percent is the one the panel and the refused meal print, rounded down.
                 var fighting = s.FightingAvailable
-                    ? s.Fighting + "/" + Foothold.FullBar + " (" + s.FightingPercent.ToString("0", inv) + "%)"
+                    ? s.Fighting + "/" + s.Full + " (" + s.FightingPercent.ToString(inv) + "%)"
                     : "unreadable";
 
                 // Rounded down, as the compendium panel rounds it, so the two print the same number
@@ -193,13 +279,17 @@ namespace Utangard
                 return;
             }
 
-            var kills = profile.m_playerStats[0].m_enemyStats[0];
+            // Utangard's own tally, so "your kills" here is the number the Fighting bar uses. Empty
+            // rather than missing when it cannot be read, and the header line says why.
+            var kills = KillTally.Here() ?? new Dictionary<string, int>();
             var creatures = SpawnTables();
             Dictionary<Heightmap.Biome, int> area, seen;
             float pixelKm2;
             var mapNote = Exploration(out area, out seen, out pixelKm2);
 
-            Say(term, "utangard biomes: " + profile.GetName() + ". " + mapNote);
+            var whyNot = KillTally.WhyNot();
+            Say(term, "utangard biomes: " + profile.GetName() + ". " + mapNote
+                      + (whyNot != null ? " Kills cannot be read: " + whyNot + "." : ""));
 
             foreach (var biome in Order)
             {
@@ -215,28 +305,29 @@ namespace Utangard
 
                 var kinds = 0;
                 var killed = 0;
-                var sum = 0f;
+                var sum = 0L;
                 var parts = new List<string>();
                 foreach (var c in rows)
                 {
-                    kills.TryGetValue(c.Token, out var n);
+                    kills.TryGetValue(c.Token ?? "", out var n);
                     if (c.Unconditional) kinds++;
-                    if (n > 0f) { killed++; sum += n; }
+                    if (n > 0) { killed++; sum += n; }
                     parts.Add(c.Prefab + (c.Unconditional ? "" : "*") + " " + c.Health.ToString("0", CultureInfo.InvariantCulture)
-                              + "hp x" + n.ToString("0", CultureInfo.InvariantCulture));
+                              + "hp x" + n.ToString(CultureInfo.InvariantCulture));
                 }
 
                 Say(term, biome + ": " + totalKm2.ToString("0.0", CultureInfo.InvariantCulture) + " km2 on this map, you explored "
                           + mineKm2.ToString("0.00", CultureInfo.InvariantCulture) + " km2 ("
                           + share.ToString("0.0", CultureInfo.InvariantCulture) + "%). Creatures: "
                           + kinds + " kinds you can always meet, you have killed " + killed + " kinds, "
-                          + sum.ToString("0", CultureInfo.InvariantCulture) + " kills.");
+                          + sum.ToString(CultureInfo.InvariantCulture) + " kills.");
                 if (parts.Count > 0) Say(term, "    " + string.Join(", ", parts.ToArray()));
             }
 
             Say(term, "utangard biomes: * = only spawns behind a world key, a weather or a persistent event. "
                       + "Spawn tables only - creatures a dungeon or a camp places itself are not in them. "
-                      + "Each entry is health, then your kills. Kills include assists.");
+                      + "Each entry is health, then your kills: the ones Utangard counted in this world, assists "
+                      + "included, and only for creatures a points line pays for.");
 
             // A creature in most biomes' tables is either a real wanderer or a row gated by
             // something this does not read. Print its raw rows so which one is decidable.
@@ -407,8 +498,10 @@ namespace Utangard
             var scene = ZNetScene.instance;
             if (scene == null) { Say(term, "utangard creatures: no world loaded yet."); return; }
 
-            var profile = Game.instance != null ? Game.instance.GetPlayerProfile() : null;
-            var kills = profile != null ? profile.m_playerStats[0].m_enemyStats[0] : null;
+            // Utangard's own tally, the one the bar pays from. Null when it cannot be read, and each
+            // line then says "?" rather than a 0 that would look like a fact.
+            var kills = KillTally.Here();
+            var bar = Foothold.FullBar();
 
             var byToken = new Dictionary<string, List<string>>();
 
@@ -418,8 +511,8 @@ namespace Utangard
                 var entries = Foothold.Parse(UtangardConfig.PointsLineFor(biome));
                 if (entries.Count == 0) continue;
 
-                Say(term, "utangard creatures: " + biome + ", " + entries.Count + " kinds, full bar " + Foothold.FullBar
-                          + ", no kind above " + UtangardConfig.MaxFromOneKind.Value + ".");
+                Say(term, "utangard creatures: " + biome + ", " + entries.Count + " kinds, full bar " + bar
+                          + " points, no kind above " + Foothold.KindCap(bar) + ".");
 
                 foreach (var e in entries)
                     Say(term, "    " + e.Value + " pt  " + Describe(scene, e.Key, kills, byToken, biome + " " + e.Key + "=" + e.Value));
@@ -455,7 +548,7 @@ namespace Utangard
                 : "utangard creatures: after the shared-name rule, " + dropped + " entr(ies) do not count.");
         }
 
-        private static string Describe(ZNetScene scene, string prefabName, Dictionary<string, float> kills,
+        private static string Describe(ZNetScene scene, string prefabName, Dictionary<string, int> kills,
                                        Dictionary<string, List<string>> byToken, string label)
         {
             var go = scene.GetPrefab(prefabName);
@@ -475,11 +568,13 @@ namespace Utangard
             if (!byToken.TryGetValue(token, out var list)) byToken[token] = list = new List<string>();
             list.Add(label);
 
-            var n = 0f;
-            if (kills != null) kills.TryGetValue(token, out n);
+            var n = 0;
+            var counted = kills != null && kills.TryGetValue(token, out n)
+                ? n.ToString(CultureInfo.InvariantCulture)
+                : kills != null ? "0" : "?";
 
             return prefabName + " " + token + " " + character.m_health.ToString("0", CultureInfo.InvariantCulture) + "hp "
-                   + character.m_faction + " " + brain + tame + ", your kills " + n.ToString("0", CultureInfo.InvariantCulture) + prey;
+                   + character.m_faction + " " + brain + tame + ", your kills here " + counted + prey;
         }
 
         /// <summary>To the console and the log, so a run leaves the numbers on disk.</summary>

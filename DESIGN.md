@@ -208,6 +208,62 @@ eat than an open biome, which the band makes you stand five metres clear of. So 
 when the ground underfoot is locked, and an unlock holds only when every one of them grants it.
 The drain, the refusals and Sapped still ask for one key, because for them any one will do.
 
+### A foothold counts only the kills it saw
+
+The Fighting bar first read the game's own kill tally, `PlayerProfile.m_enemyStats`. That tally
+lives in the character file, so it took in kills from every world the character had played,
+kills from before the mod, creatures spawned with devcommands and pets slaughtered at home. The
+game's cheat-free copy was no way out: it stops for good once a character has used any cheat
+command, which would have locked out every test character. Robbin's answer was to stop reading
+the game's tally at all: "only kills the mod saw happening". So `KillTally` keeps its own.
+
+**Where a kill is seen.** `Character.OnDeath` on the machine that owns the creature, the only
+machine the game credits a kill from. A prefix, because `OnDeath` ends in
+`ZNetScene.Destroy`, which resets the view's ZDO, and the ZDO is where the list of attackers
+lives. The owner check is repeated in the prefix, and in 1.0 it matters: a creature with
+`m_deathAnimation` does not get `OnDeath` from `CheckDeath` but from the `Die` animation event,
+which fires on every client animating it. So the owner guard halfway down `OnDeath`, which the
+boss section above calls unreachable, is reached in 1.0 for those creatures.
+
+**Who is credited.** The same players the game credits, found the same way: every entry in
+ZNet's player list whose name `Character.Damage` marked on the creature's ZDO. The owner counts
+its own local player directly and sends everyone else a routed RPC with the creature's name
+token. One difference from vanilla, on purpose: a player with no character at that moment is
+skipped. Vanilla routes to that player's `UserID`, which for `ZDOID.None` is 0, and 0 is
+`ZRoutedRpc.Everybody`.
+
+**What never counts.** A tamed creature, which includes anything bred from tamed parents because
+`Procreation` calls `SetTamed` on the offspring as it is made. A creature the game has marked as
+cheated: the spawn command marks everything it spawns, and `Character.Damage` marks anything hit
+by a player in god mode, ghost mode or debug flight, or with a spawned weapon. And any kill that
+arrives while the receiving machine has devcommands in force, asked through
+`Terminal.IsCheatsEnabled`, which is the test a cheat command has to pass before it runs. A
+client's devcommands on a dedicated server never pass it, and the game ignores them there too.
+
+**Where it is kept.** `Player.m_customData`, one entry per world keyed by the world's UID, so a
+kill in one world never counts in another. `Player.Save` writes m_customData with the rest of
+the character, and `Game` saves the character on logout, on its own timer and on death before
+respawning, so the tally needs no save of its own. It holds one number per creature kind that a
+points line pays for, which keeps it a few dozen entries long. Everybody started at zero on the
+day this shipped.
+
+### Why eating is a percent of the bar
+
+While the Fighting bar was a fixed 100, points and percent were the same number, and
+`EatAtFighting` and `MaxFromOneKind` were written in points. Robbin asked for a full bar of 150,
+and it became a setting of its own. A points value for eating would then have meant half of the
+bar only for as long as nobody touched the bar. So both are percents of it now, and the key names say
+so: `EatAtFightingPercent` and `MaxFromOneKindPercent`, 50 each, which is 75 points at the default.
+Every screen shows the bar in percent rounded down, and the eating threshold is the fewest points
+whose rounded-down percent reaches the setting, so the line under a refused meal cannot say 50%
+while the meal is being refused at 50%.
+
+Discovery's full bar went up as well, for a different reason. The fog lifts about 100 m around
+you, so a walk along a border uncovers some of the biome on the other side, roughly 0.1 km² per
+kilometre, and the saved map cannot say where you stood when a pixel lifted. At 0.5 km² five
+kilometres of coastline filled a bar. The full bar is 1 km² now, which halves the share you can
+get from outside without trying to fight the map.
+
 ### Reading the boss keys off the game
 
 The one silent failure this mod can have is a gate row naming a key nothing ever sets: it fails

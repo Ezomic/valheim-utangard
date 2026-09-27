@@ -45,7 +45,8 @@ namespace Utangard
     /// value has not changed, so a panel whose numbers are still costs no layout at all.
     ///
     /// Everything it shows is read on this client: the gate from the world's keys, the bars from
-    /// the local character's kill tally and minimap. Nothing here is sent anywhere.
+    /// the kill tally Utangard keeps in the local character and from its minimap. Nothing here is
+    /// sent anywhere.
     /// </summary>
     internal static class CompendiumPanel
     {
@@ -404,18 +405,22 @@ namespace Utangard
 
         private static void DrawBars(Foothold.Standing s)
         {
-            // Fighting. Points out of 100, so the points are the percent.
-            SetText(_fighting.Percent, s.FightingAvailable ? s.Fighting + "%" : "?");
-            SetFill(_fighting.Fill, s.FightingAvailable ? s.Fighting / (float)Foothold.FullBar : 0f);
+            // Fighting. In percent of a full bar, rounded down the way the console and the refused
+            // meal round it, since the bar stopped being 100 points: a bar at 74 of 150 says 49%,
+            // and "Eating at 50%" beside it is then exactly true. The fill is drawn from the same
+            // rounded number, so the bar and the figure over it cannot disagree.
+            int fighting = s.FightingAvailable ? s.FightingPercent : 0;
+            SetText(_fighting.Percent, s.FightingAvailable ? fighting + "%" : "?");
+            SetFill(_fighting.Fill, fighting / 100f);
 
             if (!UtangardConfig.BlockEating.Value || s.CanEat)
                 SetState(_fighting.State, "Eating allowed", true);
             else if (!s.FightingAvailable)
-                SetState(_fighting.State, "Kills cannot be read", false);
-            else if (s.EatAt > Foothold.FullBar)
+                SetState(_fighting.State, "Kills are not being counted", false);
+            else if (s.EatAtPercent > 100)
                 SetState(_fighting.State, "No eating here", false);
             else
-                SetState(_fighting.State, "Eating at " + s.EatAt + "%", false);
+                SetState(_fighting.State, "Eating at " + s.EatAtPercent + "%", false);
 
             // Discovery. Rounded down, so the bar never reads 100% a pixel short of full.
             int percent = s.DiscoveryAvailable ? Mathf.FloorToInt(s.DiscoveryPercent) : 0;

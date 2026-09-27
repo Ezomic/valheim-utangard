@@ -141,9 +141,10 @@ namespace Utangard
                 UtangardConfig.SappedStaminaRegen,
                 UtangardConfig.SappedMaxSeconds,
                 UtangardConfig.FootholdEnabled,
-                UtangardConfig.EatAtFighting,
+                UtangardConfig.FightingFullPoints,
+                UtangardConfig.EatAtFightingPercent,
                 UtangardConfig.DiscoveryFullKm2,
-                UtangardConfig.MaxFromOneKind);
+                UtangardConfig.MaxFromOneKindPercent);
 
             Suite.Sync(UtangardConfig.GateKeyEntries());
 

@@ -14,8 +14,10 @@ namespace Utangard
     /// 2026-09-24: per character and per locked biome, two bars that earn back what the lock
     /// takes, "earned in the biome where the buff is active".
     ///
-    ///   Fighting, 0 to 100, from kills of that biome's creatures. Eating comes back at 50.
-    ///   Discovery, 0 to 100, from that biome's map uncovered on your own feet (see Discovery).
+    ///   Fighting, from kills of that biome's creatures. Full at FightingFullPoints, 150 by
+    ///   default since 2026-09-27 ("for fighting make the max points needed 150"; it was 100).
+    ///   Eating comes back at half of it, and one kind of creature may put in half at most.
+    ///   Discovery, 0 to 100%, from that biome's map uncovered on your own feet (see Discovery).
     ///   Healing comes back at normal speed when both are full.
     ///
     /// Everything else about a locked biome stays: meads, powers and Rested are still refused,
@@ -29,12 +31,13 @@ namespace Utangard
     /// one metre over a line would be a better place to eat than an open biome, which the margin
     /// makes you stand five metres clear of.
     ///
-    /// <b>No network code, and none needed.</b> Both bars read the local character's own data
-    /// on the local client: the kill tally lives in the PlayerProfile, and the explored map in
-    /// the local Minimap. The two things they unlock, the eating refusal and the healing
-    /// multiplier, already run only on the client that owns the character. So each client
-    /// decides for itself and nothing is sent. The same caveat as the rest of the mod applies:
-    /// this is a rule for a group running the same plugins, not an anti-cheat.
+    /// <b>Each client decides for itself.</b> Both bars read the local character's own data on
+    /// the local client: the kill tally Utangard keeps in the character (KillTally), and the
+    /// explored map in the local Minimap. The two things they unlock, the eating refusal and the
+    /// healing multiplier, already run only on the client that owns the character. The one thing
+    /// that crosses the network is a kill: it is seen on whichever machine owned the creature,
+    /// and that machine tells each player who helped. The same caveat as the rest of the mod
+    /// applies: this is a rule for a group running the same plugins, not an anti-cheat.
     ///
     /// <b>A failed read keeps the lock as it was.</b> Every question here answers "not earned"
     /// when it cannot answer at all, so a game update that moves the kill tally or the map costs
@@ -45,7 +48,53 @@ namespace Utangard
     /// </summary>
     internal static class Foothold
     {
-        internal const int FullBar = 100;
+        /// <summary>
+        /// Fighting points that make a full bar: FightingFullPoints, never below 1, so a percent
+        /// can always be taken of it. It was a constant 100 until Robbin raised it to 150 on
+        /// 2026-09-27, which is when eating and the per-kind limit became percents of it (see
+        /// UtangardConfig.EatAtFightingPercent).
+        /// </summary>
+        internal static int FullBar()
+        {
+            return Math.Max(1, UtangardConfig.FightingFullPoints.Value);
+        }
+
+        /// <summary>
+        /// A bar's points as the percent every screen shows: the panel, the console and the line
+        /// under a refused meal. Rounded down, so nothing says 50% a point short of eating.
+        /// </summary>
+        internal static int Percent(int points, int full)
+        {
+            if (full <= 0) return 100;
+            return (int)Math.Min(100L, Math.Max(0L, (long)points * 100L / full));
+        }
+
+        /// <summary>
+        /// Where eating comes back, in points: the fewest points whose percent, rounded down as
+        /// Percent rounds it, reaches EatAtFightingPercent. So "Fighting here 49%" is always a
+        /// refusal and "50%" never is. Above 100% it is more than a full bar, which is never.
+        /// </summary>
+        internal static int EatAtPoints(int full)
+        {
+            long points = ((long)full * EatAtPercent() + 99L) / 100L;
+            return (int)Math.Min(int.MaxValue, points);
+        }
+
+        /// <summary>
+        /// The most one kind may put in, in points: MaxFromOneKindPercent of a full bar, rounded
+        /// down, so "at most half" of an odd bar stays at most half.
+        /// </summary>
+        internal static int KindCap(int full)
+        {
+            long points = (long)full * Math.Max(0, UtangardConfig.MaxFromOneKindPercent.Value) / 100L;
+            return (int)Math.Min(int.MaxValue, points);
+        }
+
+        /// <summary>EatAtFightingPercent, never below 0.</summary>
+        internal static int EatAtPercent()
+        {
+            return Math.Max(0, UtangardConfig.EatAtFightingPercent.Value);
+        }
 
         /// <summary>
         /// What a kill is worth, per biome, as they were first written.
@@ -57,8 +106,9 @@ namespace Utangard
         /// Hand-set by Robbin on 2026-09-24, biome by biome, after a first draft that paid each kill
         /// its creature's health: that made the bar a sum of hit points, and he wanted the numbers to
         /// say how much a creature matters rather than how long it takes to fall. So each biome's
-        /// common creature is worth 1 and its big threat 5, a full bar is 100 whatever the biome,
-        /// eating comes back at 50, and no one kind of creature may supply more than half of it.
+        /// common creature is worth 1 and its big threat 5, a full bar is the same size whatever the
+        /// biome (100 then, 150 since 2026-09-27), eating comes back at half of it, and no one kind
+        /// of creature may supply more than half of it.
         ///
         /// A creature missing from a biome's line is worth nothing there, and that is how prey and
         /// the harmless are kept out - deer in the Black Forest, bats in the Mountains, hares and
@@ -67,10 +117,10 @@ namespace Utangard
         /// and camp creatures count: ulvs and cultists in a frost cave, surtlings at a fire geyser,
         /// growths in a tar pit, a charred warlock in a fortress. None of those are in any spawn list.
         ///
-        /// Keyed by prefab name here because that is what a person can read and type. The game's kill
-        /// tally is keyed by the creature's display token, so the name is resolved to a token at
-        /// runtime; two prefabs that share one token cannot be scored apart, which is what
-        /// `utangard creatures` checks.
+        /// Keyed by prefab name here because that is what a person can read and type. A kill is
+        /// filed under the creature's display token, m_name, in the game's records and in
+        /// Utangard's own tally alike, so the name is resolved to a token at runtime; two prefabs
+        /// that share one token cannot be scored apart, which is what `utangard creatures` checks.
         ///
         /// <b>A shared token counts only in the earliest biome that lists it.</b> Measured with
         /// `utangard creatures` on 2026-09-24: eight tokens are shared between prefabs. The frozen
@@ -221,6 +271,10 @@ namespace Utangard
         }
 
         private static Dictionary<Heightmap.Biome, List<KindDef>> _table;
+
+        /// <summary>Every token in _table, in any biome. What KillTally keeps a count of.</summary>
+        private static HashSet<string> _paid;
+
         private static ZNetScene _tableScene;
         private static int _tableVersion = -1;
         private static int _version;
@@ -259,6 +313,7 @@ namespace Utangard
             if (!stale) return _table;
 
             var table = new Dictionary<Heightmap.Biome, List<KindDef>>();
+            var paid = new HashSet<string>(StringComparer.Ordinal);
             var misses = false;
 
             foreach (var entry in Resolve(scene))
@@ -283,9 +338,11 @@ namespace Utangard
                 }
 
                 kind.Prefabs.Add(entry.Prefab);
+                paid.Add(entry.Token);
             }
 
             _table = table;
+            _paid = paid;
             _tableScene = scene;
             _tableVersion = _version;
             _tableBuiltAt = UnityEngine.Time.realtimeSinceStartup;
@@ -294,45 +351,21 @@ namespace Utangard
         }
 
         /// <summary>
-        /// The local character's lifetime kills, by the creature's display token.
+        /// Whether some biome's points line pays for a kill filed under this token. KillTally asks
+        /// before it counts anything, so the tally holds only kinds a foothold can use and stays a
+        /// few dozen numbers long.
         ///
-        /// Game.RPC_RegisterKill writes it, for every player the creature's ZDO marks as having hit
-        /// it, not only the one who landed the last blow - so assists count, and the kill counts
-        /// wherever it happened. It arrives live: Character.OnDeath calls RPC_RegisterKill directly
-        /// for the owner and routes it to everybody else, and IncrementStatEnemy adds to this
-        /// dictionary on the spot, so a kill is on the bar the moment it lands rather than at the
-        /// next save. Slot [0] of both arrays is the raw total, the one vanilla writes whatever the
-        /// cheat flag and the difficulty say. Read on the client that owns the character; there is
-        /// no copy of it anywhere else.
-        ///
-        /// <b>What that total takes in, said plainly because it is a choice.</b> It is saved in
-        /// the character file, not the world, so it counts kills from every world the character
-        /// has played, singleplayer included. It counts a creature spawned with devcommands, and
-        /// a tamed or bred one slaughtered at home: Character.Damage marks any player attacker on
-        /// the victim whatever it is, and OnDeath registers the kill under the same m_name.
-        ///
-        /// Slot [1] is vanilla's cheat-free copy - IncrementStatEnemy writes it only when
-        /// Achievements.CanGetAchievements passes - and it was not used, for what it costs. That
-        /// check fails for good once a character has ever run a cheat command (m_usedCheats),
-        /// on a world you host whose starting modifiers the game counts as cheated, and while
-        /// the inventory holds a cheated item. So every character that has ever typed
-        /// devcommands, every test character included, could never earn eating anywhere, with
-        /// nothing on screen to say why. The spec asked for the game's own tally, wherever the
-        /// kill happened, and the README says what that includes. A tamed kill cannot be told
-        /// apart in either slot.
+        /// The Fighting bar used to read the game's lifetime tally, PlayerProfile.m_enemyStats,
+        /// here. It counted kills from every world the character had played, from before the mod,
+        /// from devcommands and of tamed animals, and Robbin's answer on 2026-09-27 was "only kills
+        /// the mod saw happening". KillTally is that: see its class comment.
         /// </summary>
-        private static Dictionary<string, float> Tally()
+        internal static bool Pays(string token)
         {
-            var game = Game.instance;
-            if (game == null) return null;
+            if (string.IsNullOrEmpty(token) || Table() == null) return false;
 
-            var profile = game.GetPlayerProfile();
-            if (profile == null || profile.m_playerStats == null || profile.m_playerStats.Length == 0) return null;
-
-            var stats = profile.m_playerStats[0];
-            if (stats == null || stats.m_enemyStats == null || stats.m_enemyStats.Length == 0) return null;
-
-            return stats.m_enemyStats[0];
+            var paid = _paid;
+            return paid != null && paid.Contains(token);
         }
 
         // ------------------------------------------------------------------ the read API --
@@ -352,7 +385,9 @@ namespace Utangard
             /// <summary>Points per kill.</summary>
             public int Points;
 
-            /// <summary>Kills in the tally, assists included.</summary>
+            /// <summary>
+            /// Kills Utangard counted for this character in this world, assists included.
+            /// </summary>
             public int Kills;
 
             /// <summary>What this kind puts into the bar, after the cap.</summary>
@@ -388,19 +423,28 @@ namespace Utangard
             /// </summary>
             public bool Here;
 
-            /// <summary>Fighting points, 0 to FullBar. The bar is 100, so this is also its percent.</summary>
+            /// <summary>Fighting points, 0 to Full.</summary>
             public int Fighting;
 
-            /// <summary>Fighting points at which eating comes back (EatAtFighting).</summary>
+            /// <summary>Fighting points that make a full bar (FightingFullPoints).</summary>
+            public int Full;
+
+            /// <summary>Where eating comes back, in percent of a full bar (EatAtFightingPercent).</summary>
+            public int EatAtPercent;
+
+            /// <summary>The same, in points.</summary>
             public int EatAt;
 
-            /// <summary>The most one kind may put in (MaxFromOneKind).</summary>
+            /// <summary>The most one kind may put in, in points (MaxFromOneKindPercent of Full).</summary>
             public int KindCap;
 
             /// <summary>Every kind the biome's line pays for, killed or not, in the line's order.</summary>
             public List<Kind> Kinds = new List<Kind>();
 
-            /// <summary>False when the kill tally could not be read; Fighting is then 0.</summary>
+            /// <summary>
+            /// False when the kill tally could not be read, or kills are not being counted this
+            /// session; Fighting is then 0.
+            /// </summary>
             public bool FightingAvailable;
 
             /// <summary>Map pixels of this biome the character uncovered on foot.</summary>
@@ -427,9 +471,13 @@ namespace Utangard
             /// <summary>Both bars are full (and the foothold is on).</summary>
             public bool CanHeal;
 
-            public float FightingPercent
+            /// <summary>
+            /// The Fighting bar in percent, rounded down, which is the number every screen shows and
+            /// the one EatAtPercent is compared with.
+            /// </summary>
+            public int FightingPercent
             {
-                get { return Math.Min(100f, Fighting * 100f / FullBar); }
+                get { return Percent(Fighting, Full); }
             }
         }
 
@@ -441,12 +489,15 @@ namespace Utangard
         /// </summary>
         internal static Standing Read(Heightmap.Biome biome)
         {
+            int full = FullBar();
             var s = new Standing
             {
                 Biome = biome,
                 Enabled = On(),
-                EatAt = EatAt(),
-                KindCap = KindCap(),
+                Full = full,
+                EatAtPercent = EatAtPercent(),
+                EatAt = EatAtPoints(full),
+                KindCap = KindCap(full),
             };
 
             try
@@ -464,7 +515,7 @@ namespace Utangard
 
                 s.CanEat = s.Enabled && s.FightingAvailable && s.Fighting >= s.EatAt;
                 s.CanHeal = s.Enabled && s.FightingAvailable && s.DiscoveryAvailable
-                    && s.Fighting >= FullBar && s.Discovered >= s.DiscoveryFull;
+                    && s.Fighting >= s.Full && s.Discovered >= s.DiscoveryFull;
             }
             catch (Exception e)
             {
@@ -504,7 +555,7 @@ namespace Utangard
 
         private static void FillFighting(Standing s)
         {
-            var tally = Tally();
+            var tally = KillTally.Here();
             var table = Table();
             s.FightingAvailable = tally != null && table != null;
             if (!s.FightingAvailable) return;
@@ -513,15 +564,15 @@ namespace Utangard
             if (!table.TryGetValue(s.Biome, out kinds)) return;
 
             var loc = Localization.instance;
-            var sum = 0;
+            long sum = 0;
 
             foreach (var def in kinds)
             {
-                float raw;
-                tally.TryGetValue(def.Token, out raw);
+                int kills;
+                tally.TryGetValue(def.Token, out kills);
+                if (kills < 0) kills = 0;
 
-                var kills = raw > 0f ? (int)raw : 0;
-                var earned = kills * def.Points;
+                var earned = Earned(kills, def.Points);
                 var capped = Math.Min(earned, s.KindCap);
 
                 string name = loc != null ? loc.Localize(def.Token) : null;
@@ -542,7 +593,13 @@ namespace Utangard
                 sum += capped;
             }
 
-            s.Fighting = Math.Min(FullBar, sum);
+            s.Fighting = (int)Math.Min(s.Full, sum);
+        }
+
+        /// <summary>Kills times points, held at int.MaxValue rather than wrapping.</summary>
+        private static int Earned(int kills, int points)
+        {
+            return (int)Math.Min(int.MaxValue, (long)kills * points);
         }
 
         private static void FillDiscovery(Standing s)
@@ -564,9 +621,9 @@ namespace Utangard
 
         /// <summary>
         /// Whether the eating refusal is lifted for this player where they stand: the foothold is
-        /// on, and their Fighting bar has reached EatAtFighting in every locked biome whose rules
-        /// reach them here. One biome short is a refusal, which is what keeps a foothold from
-        /// being an eating spot on the edge of a biome you have not earned (see RulingBiomes).
+        /// on, and their Fighting bar has reached EatAtFightingPercent in every locked biome whose
+        /// rules reach them here. One biome short is a refusal, which is what keeps a foothold
+        /// from being an eating spot on the edge of a biome you have not earned (see RulingBiomes).
         ///
         /// Only the local player can answer yes, because only its kill tally is on this machine,
         /// and that is also the only player the refusal ever runs for.
@@ -579,7 +636,7 @@ namespace Utangard
             {
                 if (!BiomeGate.RulingBiomes(player, Ruling)) return false;
 
-                int eatAt = EatAt();
+                int eatAt = EatAtPoints(FullBar());
                 foreach (var biome in Ruling)
                 {
                     int fighting;
@@ -608,12 +665,13 @@ namespace Utangard
                 if (!BiomeGate.RulingBiomes(player, Ruling)) return false;
                 if (!Discovery.Available()) return false;
 
-                int full = Discovery.FullPixels();
+                int fullBar = FullBar();
+                int fullMap = Discovery.FullPixels();
                 foreach (var biome in Ruling)
                 {
                     int fighting;
-                    if (!FightingIn(biome, out fighting) || fighting < FullBar) return false;
-                    if (Discovery.Pixels(biome) < full) return false;
+                    if (!FightingIn(biome, out fighting) || fighting < fullBar) return false;
+                    if (Discovery.Pixels(biome) < fullMap) return false;
                 }
 
                 return true;
@@ -647,9 +705,12 @@ namespace Utangard
                 if (string.IsNullOrEmpty(line)) return null;
 
                 // Past a full bar the threshold cannot be reached, so there is nothing to aim at.
-                if (EatAt() > FullBar) return null;
+                if (EatAtPercent() > 100) return null;
 
                 if (!BiomeGate.RulingBiomes(player, Ruling)) return null;
+
+                int full = FullBar();
+                int eatAt = EatAtPoints(full);
 
                 // The biome doing the refusing: the first one short of the mark. Where two locked
                 // biomes meet, naming the one already past it would tell a player they may eat
@@ -660,7 +721,7 @@ namespace Utangard
                 {
                     int f;
                     if (!FightingIn(b, out f)) return null;
-                    if (f >= EatAt()) continue;
+                    if (f >= eatAt) continue;
 
                     biome = b;
                     fighting = f;
@@ -669,11 +730,16 @@ namespace Utangard
 
                 if (biome == Heightmap.Biome.None) return null;
 
+                // Both in percent, the bar rounded down as everywhere else, so the line can never
+                // say 50% over a bite that is being refused at a 50% mark. Points would not do
+                // since the bar stopped being 100: "Fighting here 60. You can eat at 75." reads as
+                // a percent and is not one.
+                //
                 // Replace rather than string.Format, so a stray brace in someone's wording cannot
                 // throw in the middle of a refusal.
                 return line
-                    .Replace("{fighting}", fighting.ToString(CultureInfo.InvariantCulture))
-                    .Replace("{eat}", EatAt().ToString(CultureInfo.InvariantCulture))
+                    .Replace("{fighting}", Percent(fighting, full).ToString(CultureInfo.InvariantCulture))
+                    .Replace("{eat}", EatAtPercent().ToString(CultureInfo.InvariantCulture))
                     .Replace("{biome}", GateReport.BiomeName(biome));
             }
             catch (Exception e)
@@ -684,48 +750,39 @@ namespace Utangard
         }
 
         /// <summary>
-        /// The Fighting bar for one biome without building the whole Standing. False when the
-        /// tally or the table cannot be read, which callers treat as not earned.
+        /// The Fighting bar for one biome, in points, without building the whole Standing. False
+        /// when the tally or the table cannot be read, which callers treat as not earned.
         /// </summary>
         private static bool FightingIn(Heightmap.Biome biome, out int fighting)
         {
             fighting = 0;
 
-            var tally = Tally();
+            var tally = KillTally.Here();
             var table = Table();
             if (tally == null || table == null) return false;
 
             List<KindDef> kinds;
             if (!table.TryGetValue(biome, out kinds)) return true;
 
-            var cap = KindCap();
-            var sum = 0;
+            int full = FullBar();
+            int cap = KindCap(full);
+            long sum = 0;
             foreach (var def in kinds)
             {
-                float raw;
-                tally.TryGetValue(def.Token, out raw);
-                if (raw <= 0f) continue;
+                int kills;
+                tally.TryGetValue(def.Token, out kills);
+                if (kills <= 0) continue;
 
-                sum += Math.Min((int)raw * def.Points, cap);
+                sum += Math.Min(Earned(kills, def.Points), cap);
             }
 
-            fighting = Math.Min(FullBar, sum);
+            fighting = (int)Math.Min(full, sum);
             return true;
         }
 
         private static bool On()
         {
             return UtangardConfig.Enabled.Value && UtangardConfig.FootholdEnabled.Value;
-        }
-
-        private static int EatAt()
-        {
-            return Math.Max(0, UtangardConfig.EatAtFighting.Value);
-        }
-
-        private static int KindCap()
-        {
-            return Math.Max(0, UtangardConfig.MaxFromOneKind.Value);
         }
 
         /// <summary>
