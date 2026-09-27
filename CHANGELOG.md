@@ -15,16 +15,19 @@ and the mod uses [semantic versioning](https://semver.org).
   Rested are still refused, food and buffs still burn faster and you still leave Sapped. The bars
   are yours, they only count in their own biome, and they never open it for the group.
 - Fighting only counts kills Utangard saw happen. It keeps its own count in your character, one
-  for each world, so a kill in one world never counts in another. Everybody starts at zero with
-  this version: kills from before it, from other worlds and from singleplayer do not count.
-  Helping with a kill counts. A tame or bred animal counts for nothing, and so does a kill while
-  you have devcommands on, or of a creature spawned with devcommands or hit in god mode. Each kind
-  of creature is worth 1 to 5 points and the bar is full at 150. No single kind can put in more
-  than half of it.
+  for each world, so a kill in one world never counts in another, and a singleplayer world is
+  another world too. Everybody starts at zero with this version, so kills from before it do not
+  count. Helping with a kill counts. A tame or bred animal counts for nothing. So does a creature
+  spawned with devcommands or wiped out with `killall`, and your own kill while you have
+  devcommands on or are in god mode or ghost mode. A friend who helped somebody in god mode can
+  still be credited when the god-mode player's machine did not have the creature. Each kind of
+  creature is worth 1 to 5 points and the bar is full at 150. No single kind can put in more than
+  half of it.
 - Discovery only counts fog you lifted yourself, not what a map table shares. It is full at
   1 km² in every biome, and a piece of map counts once. The fog lifts in a wide circle around
-  you, so walking a border or sailing a coast fills some of the biome on the other side as well.
-  Asking for a whole square kilometre keeps that part small.
+  you, so walking a border or sailing a coast fills some of the biome on the other side as well,
+  and nothing stops that filling the whole bar. At 1 km² it takes about ten kilometres of
+  coastline to do it.
 - Where two locked biomes meet, an unlock needs both bars. Within 5 m of the second biome its rules
   reach you, so stepping a metre into a biome you have fought enough in does not let you eat on the
   edge of one you have not.
@@ -49,8 +52,9 @@ and the mod uses [semantic versioning](https://semver.org).
 - The Queen's door stays sealed the same way while the Mistlands are locked, since she is not
   summoned at an altar. The Sealbreaker is not used up when the door refuses, and a door that is
   already open stays open. `BossDoorKeys` lists which keys count.
-- `utangard biomes`, a console command listing each biome's creatures, your kills of each and how
-  much of it you have explored.
+- `utangard biomes`, a console command listing each biome's creatures, how many of each
+  Utangard counted for you in this world, and how much of it you have explored. Only creatures a
+  points line pays for are counted, so deer and the rest of the prey always show 0.
 
 ### Changed
 

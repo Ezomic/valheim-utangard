@@ -157,7 +157,7 @@ namespace Utangard
             if (what == "creatures") { Creatures(term); return; }
 
             term.AddString("utangard foothold - per biome: your Fighting and Discovery bars, what each kind of creature put in, and what is unlocked");
-            term.AddString("utangard biomes - per biome: its creatures and your kills of each, and how much of it you have explored");
+            term.AddString("utangard biomes - per biome: its creatures, the kills of each Utangard counted for you in this world (only creatures a points line pays for), and how much of it you have explored");
             term.AddString("utangard creatures - every creature in the foothold tables, checked against the game");
         }
 
@@ -319,7 +319,7 @@ namespace Utangard
                 Say(term, biome + ": " + totalKm2.ToString("0.0", CultureInfo.InvariantCulture) + " km2 on this map, you explored "
                           + mineKm2.ToString("0.00", CultureInfo.InvariantCulture) + " km2 ("
                           + share.ToString("0.0", CultureInfo.InvariantCulture) + "%). Creatures: "
-                          + kinds + " kinds you can always meet, you have killed " + killed + " kinds, "
+                          + kinds + " kinds you can always meet. Utangard counted " + killed + " kinds, "
                           + sum.ToString(CultureInfo.InvariantCulture) + " kills.");
                 if (parts.Count > 0) Say(term, "    " + string.Join(", ", parts.ToArray()));
             }

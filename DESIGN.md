@@ -230,15 +230,34 @@ ZNet's player list whose name `Character.Damage` marked on the creature's ZDO. T
 its own local player directly and sends everyone else a routed RPC with the creature's name
 token. One difference from vanilla, on purpose: a player with no character at that moment is
 skipped. Vanilla routes to that player's `UserID`, which for `ZDOID.None` is 0, and 0 is
-`ZRoutedRpc.Everybody`.
+`ZRoutedRpc.Everybody`. The exception is the owner's own entry. ZNet rebuilds the list every two
+seconds and a respawn sets this machine's character to None in between, so for a moment after
+spawning your own entry can still say None, and vanilla credits you through that same broadcast.
+An entry with no character and your own profile name is therefore taken to be you.
 
-**What never counts.** A tamed creature, which includes anything bred from tamed parents because
-`Procreation` calls `SetTamed` on the offspring as it is made. A creature the game has marked as
-cheated: the spawn command marks everything it spawns, and `Character.Damage` marks anything hit
-by a player in god mode, ghost mode or debug flight, or with a spawned weapon. And any kill that
-arrives while the receiving machine has devcommands in force, asked through
-`Terminal.IsCheatsEnabled`, which is the test a cheat command has to pass before it runs. A
-client's devcommands on a dedicated server never pass it, and the game ignores them there too.
+**What never counts.** Some of it is checked on the owner, for everybody. A tamed creature, which
+includes anything bred from tamed parents because `Procreation` calls `SetTamed` on the offspring
+as it is made. A creature the game has marked as cheated. And a creature the console's kill
+commands wiped out: `killall` and `killenemies` hit with `new HitData(1E+10f)`, which has no
+attacker, so the game's cheat mark is never written and `OnDeath` would credit everybody who had
+hit it before. The owner reads the lethal hit off `m_lastHit` and refuses one with no attacker
+and a billion damage or more, which nothing in play comes near.
+
+The rest is checked on the machine that receives the kill, for its own player: devcommands in
+force, asked through `Terminal.IsCheatsEnabled` (a client's devcommands on a dedicated server never
+pass it, and the game ignores them there too), and god mode, ghost mode, debug flight or a
+spawned weapon in hand. Those four are what `Character.ApplyDamage` checks before it writes the
+cheat mark, and it has to be asked again at home because the mark is written on the owner, from
+the owner's copy of the player who hit. `InGodMode` and `InGhostMode` read plain fields nothing
+sends anywhere, and a player's inventory is never loaded on another machine, so the owner's copy
+says no to three of the four whatever the player is doing. And `devcommands` only flips
+`Terminal.m_cheat`, so god mode outlives it.
+
+That leaves one gap, on purpose. When a god-mode player helps with a kill on a creature some
+other machine has, their own share is refused at home but the friend who helped is still
+credited, because nothing on the friend's side can tell. Closing it would take a message from
+the cheating machine to the owner on every hit, which is more machinery than one host cheating
+in his own hosted game is worth. The README says so.
 
 **Where it is kept.** `Player.m_customData`, one entry per world keyed by the world's UID, so a
 kill in one world never counts in another. `Player.Save` writes m_customData with the rest of
@@ -256,13 +275,16 @@ bar only for as long as nobody touched the bar. So both are percents of it now, 
 so: `EatAtFightingPercent` and `MaxFromOneKindPercent`, 50 each, which is 75 points at the default.
 Every screen shows the bar in percent rounded down, and the eating threshold is the fewest points
 whose rounded-down percent reaches the setting, so the line under a refused meal cannot say 50%
-while the meal is being refused at 50%.
+while the meal is being refused at 50%. The per-kind cap is rounded the same way. It was rounded
+down at first, and on a bar of 125 that put eating at 63 and stopped a kind at 62, so one kind
+alone could never reach eating, which is exactly what the cfg says it can.
 
 Discovery's full bar went up as well, for a different reason. The fog lifts about 100 m around
 you, so a walk along a border uncovers some of the biome on the other side, roughly 0.1 km² per
-kilometre, and the saved map cannot say where you stood when a pixel lifted. At 0.5 km² five
-kilometres of coastline filled a bar. The full bar is 1 km² now, which halves the share you can
-get from outside without trying to fight the map.
+kilometre, and the saved map cannot say where you stood when a pixel lifted. So nothing stops a
+whole bar coming from outside. At 0.5 km² five kilometres of coastline filled one. The full bar
+is 1 km² now, which doubles the distance rather than closing the gap, and it does that without
+trying to fight the map.
 
 ### Reading the boss keys off the game
 

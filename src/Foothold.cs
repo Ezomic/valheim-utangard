@@ -76,17 +76,30 @@ namespace Utangard
         /// </summary>
         internal static int EatAtPoints(int full)
         {
-            long points = ((long)full * EatAtPercent() + 99L) / 100L;
-            return (int)Math.Min(int.MaxValue, points);
+            return PointsAt(EatAtPercent(), full);
         }
 
         /// <summary>
         /// The most one kind may put in, in points: MaxFromOneKindPercent of a full bar, rounded
-        /// down, so "at most half" of an odd bar stays at most half.
+        /// up exactly as EatAtPoints rounds, so two equal percents are always equal points.
+        ///
+        /// It was rounded down at first, to keep "at most half" of an odd bar at most half. That
+        /// broke the promise the cfg makes, that one kind alone gets you eating: at a bar of 125,
+        /// eating sat at 63 and a kind stopped at 62, so a player farming trolls read "Fighting
+        /// here 49%" on every bite for good. Rounded up, the cap on its own shows the same percent
+        /// as the setting on any bar of 100 points or more.
         /// </summary>
         internal static int KindCap(int full)
         {
-            long points = (long)full * Math.Max(0, UtangardConfig.MaxFromOneKindPercent.Value) / 100L;
+            return PointsAt(Math.Max(0, UtangardConfig.MaxFromOneKindPercent.Value), full);
+        }
+
+        /// <summary>
+        /// The fewest points whose percent, rounded down as Percent rounds it, reaches this one.
+        /// </summary>
+        private static int PointsAt(int percent, int full)
+        {
+            long points = ((long)full * percent + 99L) / 100L;
             return (int)Math.Min(int.MaxValue, points);
         }
 
@@ -435,7 +448,10 @@ namespace Utangard
             /// <summary>The same, in points.</summary>
             public int EatAt;
 
-            /// <summary>The most one kind may put in, in points (MaxFromOneKindPercent of Full).</summary>
+            /// <summary>
+            /// The most one kind may put in, in points (MaxFromOneKindPercent of Full, rounded up
+            /// as EatAt is).
+            /// </summary>
             public int KindCap;
 
             /// <summary>Every kind the biome's line pays for, killed or not, in the line's order.</summary>

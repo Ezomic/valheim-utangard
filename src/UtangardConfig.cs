@@ -385,7 +385,7 @@ namespace Utangard
 
             FightingFullPoints = config.Bind(SecFoothold, "FightingFullPoints", 150,
                 "Fighting points that make a full bar. Every kill adds its creature's points from the "
-                + "Points_ lines below, and healing comes back when the bar is full.\n"
+                + "Points_ lines below. Healing needs this bar full, and the Discovery bar as well.\n"
                 + "The two percent settings in this section are shares of this number. Raise it and "
                 + "eating and the per-kind limit move with it, so the bar asks for more fighting and "
                 + "keeps the same shape.");
@@ -410,9 +410,10 @@ namespace Utangard
                 + "earns nothing. Each map pixel is filed under the biome at its centre.\n"
                 + "The fog lifts in a wide circle around you, about 100 m, so walking along a border "
                 + "or sailing along a coast uncovers some of the biome on the other side, about "
-                + "0.1 km2 for every kilometre, and that counts. That is why the default is 1 and "
-                + "not 0.5. At 0.5 five kilometres of coastline filled a bar without setting foot "
-                + "inside. At 1 it takes ten, and the share you can get from outside is smaller.\n"
+                + "0.1 km2 for every kilometre, and that counts. The map does not remember where you "
+                + "stood, so nothing stops a whole bar coming from outside. That is why the default "
+                + "is 1 and not 0.5: at 0.5 five kilometres of coastline filled a bar without setting "
+                + "foot inside, and at 1 it takes ten.\n"
                 + "0 means no walking is needed, and healing then waits on the Fighting bar alone.");
 
             MaxFromOneKindPercent = config.Bind(SecFoothold, "MaxFromOneKindPercent", 50,
@@ -558,8 +559,9 @@ namespace Utangard
                 + "150 by default. " + note + "\n"
                 + "Only kills Utangard saw count: kills in this world, since this version, by you or "
                 + "with your help. Kills from other worlds and from before this version never count. "
-                + "Neither does a tamed or bred animal, a kill while you have devcommands on, or a "
-                + "creature spawned with devcommands or hit by somebody in god mode.\n"
+                + "Neither does a tamed or bred animal, a creature spawned with devcommands or wiped "
+                + "out with killall, or your kill while you have devcommands on or are in god mode or "
+                + "ghost mode.\n"
                 + "A creature that is not listed is worth nothing here, which is how deer, hares "
                 + "and other prey are kept out. A creature listed in two biomes only counts in the "
                 + "earlier one: some creatures share one name in the game, and a greydwarf killed "

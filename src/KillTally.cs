@@ -36,12 +36,23 @@ namespace Utangard
     /// token, to the peer the game sends RPC_RegisterKill to. Utangard is Requirement.Everyone, so
     /// every machine has the handler. A player who is offline, or has left, misses the kill.
     ///
-    /// <b>What never counts.</b> A tamed creature, which covers anything born to tamed parents:
-    /// Procreation calls SetTamed on the offspring the moment it is made. A creature the game has
-    /// marked as cheated, which Terminal's spawn command does to everything it spawns and
-    /// Character.Damage does to anything hit by a player in god mode, ghost mode, debug flight or
-    /// with a spawned weapon. And any kill arriving while the receiving machine has devcommands in
-    /// force, which is the same test the game uses before it lets a cheat command run at all.
+    /// <b>What never counts.</b> Checked on the owner, for everybody: a tamed creature, which
+    /// covers anything born to tamed parents, since Procreation calls SetTamed on the offspring
+    /// the moment it is made; a creature the game has marked as cheated; and one the console's
+    /// kill commands wiped out (see WipedByCommand). Checked on the receiving machine, for its own
+    /// player only: devcommands in force, god mode, ghost mode, debug flight, or a weapon spawned
+    /// with devcommands in hand (see Heard).
+    ///
+    /// The split is forced by what each machine can see, and it leaves one gap on purpose. The
+    /// game's cheat mark is written by Character.ApplyDamage on the owner, from the owner's copy
+    /// of the player who hit, and god mode, ghost mode and that player's inventory exist only on
+    /// the player's own machine. So the mark catches Terminal's spawn command, which sets it on
+    /// everything spawned, and a cheating player hitting a creature their own machine has. It
+    /// never sees a god-mode player hitting a creature somebody else's machine has. That player
+    /// is refused at home by Heard; a friend who helped them is still credited, because nothing
+    /// on the friend's side can tell. Closing that would take a message from the cheater's machine
+    /// to the owner on every hit, which is more machinery than one host cheating in his own
+    /// hosted game is worth. The README says so.
     ///
     /// <b>Where it is kept.</b> In the character, one entry of Player.m_customData per world, keyed
     /// by the world's UID: a kill in one world never counts in another. m_customData is written by
@@ -147,6 +158,14 @@ namespace Utangard
                     return;
                 }
 
+                if (WipedByCommand(creature))
+                {
+                    Note("a " + token + " was wiped out by killall or killenemies, and a kill made with devcommands does not count");
+                    return;
+                }
+
+                string localName = LocalName();
+
                 foreach (ZNet.PlayerInfo info in net.GetPlayerList())
                 {
                     if (string.IsNullOrEmpty(info.m_name)) continue;
@@ -155,7 +174,16 @@ namespace Utangard
                     // the way OnDeath builds it: the int hash and the name, as one string.
                     if (!zdo.GetBool(ZDOVars.s_attackers + info.m_name)) continue;
 
-                    if (info.m_characterID == net.LocalPlayerCharacterID && Player.m_localPlayer != null)
+                    // The first test is vanilla's. The second covers the list being behind: ZNet
+                    // rebuilds it every two seconds, and a respawn sets this machine's character
+                    // to None in between, so for a moment after spawning your own entry can still
+                    // say None. Vanilla credits you anyway there, through the broadcast below, so
+                    // an entry with no character and your own name is taken to be you.
+                    bool local = Player.m_localPlayer != null
+                        && (info.m_characterID == net.LocalPlayerCharacterID
+                            || (info.m_characterID.IsNone() && localName != null && info.m_name == localName));
+
+                    if (local)
                     {
                         Heard(token);
                         continue;
@@ -197,6 +225,63 @@ namespace Utangard
             }
         }
 
+        /// <summary>
+        /// The lethal blow came from the console's kill commands. killall, killenemies and
+        /// killenemycreatures hit every creature near whoever typed them with new HitData(1E+10f):
+        /// no attacker and ten billion damage. With no attacker, Character.ApplyDamage never
+        /// writes the cheat mark, so the creature dies clean and OnDeath credits everybody who
+        /// had hit it before. Only a host can run those commands, and the friend it would credit
+        /// may well have devcommands off, so the receiving side cannot catch it. Only this can.
+        ///
+        /// m_lastHit is the lethal hit, because ApplyDamage stores a hit only while the creature
+        /// still has health before it. Nothing in play comes near a billion: the edge of the world
+        /// hits for 99,999 and a creature's attack that kills itself for 9,999,999, and the most
+        /// the game's scaling takes off ten billion is a factor of a few.
+        ///
+        /// Bound lazily, and a failed binding costs this one check rather than every kill. The
+        /// rule elsewhere is that a failure keeps the lock as it was, but here that would mean no
+        /// Fighting bar for anybody until an update, over a command only a host can type.
+        /// </summary>
+        private static bool WipedByCommand(Character creature)
+        {
+            AccessTools.FieldRef<Character, HitData> of = LastHitOf();
+            if (of == null) return false;
+
+            // HitData is a plain class, so an ordinary null check is right.
+            HitData hit = of(creature);
+            return hit != null && !hit.HaveAttacker() && hit.m_damage.m_damage >= 1E+09f;
+        }
+
+        private static AccessTools.FieldRef<Character, HitData> _lastHitOf;
+        private static bool _lastHitBound;
+
+        /// <summary>Character.m_lastHit, protected, bound lazily - see Reflect.</summary>
+        private static AccessTools.FieldRef<Character, HitData> LastHitOf()
+        {
+            if (_lastHitBound) return _lastHitOf;
+            _lastHitBound = true;
+
+            _lastHitOf = Reflect.Field<Character, HitData>(
+                "m_lastHit", "refusing foothold kills made with killall");
+
+            return _lastHitOf;
+        }
+
+        /// <summary>
+        /// This character's name as ZNet puts it in the player list: UpdatePlayerList takes the
+        /// host's own entry from the profile, and a client's peer name comes from the same place.
+        /// Null when there is no game.
+        /// </summary>
+        private static string LocalName()
+        {
+            Game game = Game.instance;
+            if (game == null) return null;
+
+            // PlayerProfile is a plain class.
+            PlayerProfile profile = game.GetPlayerProfile();
+            return profile != null ? profile.GetName() : null;
+        }
+
         /// <summary>One kill credited to the local character, if it counts.</summary>
         private static void Heard(string token)
         {
@@ -205,6 +290,13 @@ namespace Utangard
             if (CheatsOn())
             {
                 Note("your " + token + " kill does not count, because devcommands are on");
+                return;
+            }
+
+            if (CheatingNow())
+            {
+                Note("your " + token + " kill does not count, because you are in god mode, ghost mode or "
+                     + "debug flight, or carry a weapon spawned with devcommands");
                 return;
             }
 
@@ -236,6 +328,30 @@ namespace Utangard
             if (console != null) return console.IsCheatsEnabled();
 
             return Terminal.m_cheat;
+        }
+
+        /// <summary>
+        /// The local character is doing one of the four things Character.ApplyDamage treats as
+        /// cheating: god mode, ghost mode, debug flight, or a damaging item spawned with
+        /// devcommands in hand.
+        ///
+        /// Asked here as well as through the owner's cheat mark, because only this machine can
+        /// answer for three of them. InGodMode and InGhostMode return plain fields that nothing
+        /// sends anywhere, and a player's inventory is never loaded on another machine, so the
+        /// owner's copy of you says no to all three whatever you are doing. Only debug flight
+        /// reaches the owner, through your ZDO. CheatsOn does not cover them either: `devcommands`
+        /// flips Terminal.m_cheat and nothing else, so god mode stays on after devcommands go off.
+        /// </summary>
+        private static bool CheatingNow()
+        {
+            Player player = Player.m_localPlayer;
+            if (player == null) return false;
+
+            if (player.InGodMode() || player.InGhostMode() || player.IsDebugFlying()) return true;
+
+            // Inventory is a plain class.
+            Inventory inventory = player.GetInventory();
+            return inventory != null && inventory.CheatedDamagingItemEquipped();
         }
 
         private static bool On()

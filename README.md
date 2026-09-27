@@ -96,21 +96,29 @@ the group either. That still takes the boss, or the catch-up deadline.
 
 Only kills Utangard saw happen count, and only in the world they happened in. Utangard keeps
 its own count in your character, one for each world. Everybody's bars started at zero with this
-version, so kills from before it do not count, and neither do kills in another world or in
-singleplayer. Some kills never count:
+version, so kills from before it do not count. Kills made in another world never count here
+either, and a singleplayer world is another world. Some kills never count:
 
 - A tame animal, or one bred from tame parents. Lox, wolves and asksvin are on the lists, but
   slaughtering your own herd earns nothing.
-- A kill while you have devcommands on. The game ignores a player's devcommands on a dedicated
-  server, and so does this. A creature spawned with devcommands, or one somebody hit in god mode
-  or ghost mode, counts for nobody.
+- Your kill while you have devcommands on, or are in god mode, ghost mode or debug flight, or
+  hold a weapon spawned with devcommands. The game ignores a player's devcommands on a dedicated server, and so
+  does this.
+- A creature spawned with devcommands, or wiped out with `killall` or `killenemies`. Those count
+  for nobody, not even the players who had already hit them.
 - A kill that lands after you have left. The kill is counted on the machine that had the
   creature and sent to everyone who hit it, so if you log out before it dies, you miss it.
 
+One gap is left. If somebody in god mode helps you with a kill, the game only notices when
+their own machine had the creature. When any other machine had it, their share is still refused
+on their side, but yours counts, because no machine can see god mode on anybody else's
+character.
+
 The map lifts the fog in a wide circle around you, about 100 m, not just under your feet.
 Walking along a border or sailing along a coast uncovers some of the biome on the other side, and
-that counts too. That is why Discovery asks for a whole square kilometre. Only a small part of it
-can be filled from outside.
+that counts too. The map does not remember where you stood, so you could fill the whole bar from
+outside. That is why Discovery asks for a whole square kilometre: at half of that, five kilometres
+of coastline did it, and now it takes about ten.
 
 The Utangard page in the compendium shows both bars for whichever biome you pick, and it opens
 on the first biome your group has not earned. Click another biome in the row to see it, or use
@@ -258,7 +266,7 @@ appears to do nothing, check the cfg first.
 | Setting | Default | What it does |
 | --- | --- | --- |
 | `FootholdEnabled` | `true` | Let a character earn eating and healing back in a locked biome. Off puts the lock back exactly as it was. |
-| `FightingFullPoints` | `150` | Fighting points that make a full bar. Healing needs a full bar. |
+| `FightingFullPoints` | `150` | Fighting points that make a full bar. Healing needs this bar full, and Discovery too. |
 | `EatAtFightingPercent` | `50` | Where you may eat again, as a percent of a full Fighting bar. Food only; meads and potions stay refused. Above 100 means never. |
 | `DiscoveryFullKm2` | `1` | How much of a biome's map, in km², you have to uncover yourself for a full Discovery bar. `0` means no walking is needed. |
 | `MaxFromOneKindPercent` | `50` | The most one kind of creature can add to a Fighting bar, as a percent of a full bar. |
