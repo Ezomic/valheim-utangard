@@ -1,0 +1,53 @@
+# Utangard - the Discovery bar fills from new ground and not from ground already uncovered. LHM-26.
+#
+# What it proves. In a locked Deep North, landing on ground this character has never uncovered
+# raises the Deep North's Discovery count. Going back to where it started, which it uncovered a
+# minute earlier, raises it by nothing, although the minimap lifts the fog around you again every
+# two seconds while you stand there. That is the rule that stops a player farming the bar by
+# walking back and forth.
+#
+# What it needs. A world you host, default Foothold settings, and Deep North ground within 10 km
+# of where you land that this character has not walked. The Deep North is shut the way
+# utangard-altar-in-a-locked-biome shuts it. Utangard counts a world's map in the background
+# after it loads, and every Discovery number keeps rising by itself until that is done, so the
+# run waits for "Map counted." before it notes anything. If it never gets there, the map could
+# not be read, and the console line before the biomes says so.
+#
+# What it leaves behind, and none of it can be undone:
+#  - Two patches of this character's map of this world, uncovered. The explored map is saved in
+#    the character for each world and there is no way to put the fog back over one spot. Every
+#    run uses ground no earlier run touched, so the Deep North near where you land fills up a
+#    little more each time. Use a throwaway character.
+#  - Fader's records in this world stay cleared, because the run cannot know whether they were
+#    there. `key defeated_fader` puts them back.
+
+clear
+god
+ghost
+
+unkey defeated_fader
+unkey utangard_open_defeated_fader
+unkey wither_open_defeated_fader
+unkey utangard_first_defeated_fader
+unkey utangard_p_$player_defeated_fader
+wait 1
+
+biome DeepNorth 20
+wait 4
+console utangard foothold
+until 180 Map counted.
+printed DeepNorth (LOCKED, its rules apply to you now) yes
+mark
+note px DeepNorth \(LOCKED.*discovery (\d+)/
+
+# New ground. `fresh` lands where your own fog has never lifted, so this rises on every run.
+biome DeepNorth 10 fresh
+wait 5
+console utangard foothold
+went px DeepNorth \(LOCKED.*discovery (\d+)/ up
+
+# Back to the start. Everything around it was uncovered on the way in, so nothing is new.
+back
+wait 6
+console utangard foothold
+went px DeepNorth \(LOCKED.*discovery (\d+)/ same

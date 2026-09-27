@@ -140,8 +140,11 @@ namespace Utangard
                     ? s.Fighting + "/" + Foothold.FullBar + " (" + s.FightingPercent.ToString("0", inv) + "%)"
                     : "unreadable";
 
+                // Rounded down, as the compendium panel rounds it, so the two print the same number
+                // and neither says 100% a pixel short of full. ToString("0") rounds half up, and
+                // it had the console one ahead of the panel whenever the fraction passed a half.
                 var discovery = s.DiscoveryAvailable
-                    ? s.Discovered + "/" + s.DiscoveryFull + " px (" + s.DiscoveryPercent.ToString("0", inv) + "%"
+                    ? s.Discovered + "/" + s.DiscoveryFull + " px (" + Math.Floor(s.DiscoveryPercent).ToString("0", inv) + "%"
                       + (s.DiscoveryCounting ? ", still counting" : "") + ")"
                     : "unreadable";
 
