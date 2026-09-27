@@ -296,6 +296,14 @@ namespace Utangard
                 if (!UtangardConfig.Enabled.Value || !UtangardConfig.GateOnGroup.Value) return;
                 if (__instance == null) return;
 
+                // The owner only. In 1.0 a creature with a death animation reaches OnDeath
+                // through CharacterAnimEvent.Die on every client animating it, and the
+                // non-owners return at OnDeath's IsOwner check with this postfix still to run.
+                // The credit writes check before they write, so the extra calls were churn
+                // rather than double credit, but the owner is the one machine meant to do this.
+                ZNetView nview;
+                if (!__instance.TryGetComponent(out nview) || !nview.IsValid() || !nview.IsOwner()) return;
+
                 Progression.CreditAttendees(
                     __instance.transform.position, __instance.m_defeatSetGlobalKey);
             }
