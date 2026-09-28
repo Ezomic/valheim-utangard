@@ -44,6 +44,10 @@ and the mod uses [semantic versioning](https://semver.org).
   unlocked. `utangard creatures` checks every name on the points lines against the game.
 - `utangardtest kills <creature> <count>` sets your count of one creature in this world, so a test
   can start a Fighting bar anywhere. It is a cheat command.
+- `utangard deaths <creature>` says whether a creature dies through its animation, how many your
+  machine has seen die this session and whether it had them, how often it ran the boss credit for
+  one, and whose machine has the nearest live one. It was written for a two-player test of who
+  gets the credit for a kill, and it is not a cheat.
 - **A boss will not come to an altar in a biome the group has not earned.** Before, one player
   could carry an egg into the locked Mountains, kill Moder there, and start the Plains deadline
   for everybody while the rest were still on Bonemass. A refused offering uses nothing up. Each

@@ -9,9 +9,10 @@ using UnityEngine;
 namespace Utangard
 {
     /// <summary>
-    /// `utangard`, the console command. Three verbs: `foothold`, the local character's two bars
-    /// in every biome as the unlocks read them; and `biomes` and `creatures`, the raw material
-    /// the foothold tables were written from.
+    /// `utangard`, the console command. Four verbs: `foothold`, the local character's two bars
+    /// in every biome as the unlocks read them; `biomes` and `creatures`, the raw material
+    /// the foothold tables were written from; and `deaths`, which machine ran a creature's death
+    /// (see DeathsReport).
     ///
     /// The design Robbin settled on 2026-09-24 is that a character earns back eating and health
     /// regeneration in a biome that is still gated, one biome at a time, by fighting there and
@@ -66,7 +67,7 @@ namespace Utangard
             _registered = true;
 
             new Terminal.ConsoleCommand("utangard",
-                "utangard foothold | biomes | creatures - your foothold in each locked biome, and the raw numbers behind it",
+                "utangard foothold | biomes | creatures | deaths <creature> - your foothold in each locked biome, the raw numbers behind it, and which machine ran a creature's death",
                 OnCommand, isCheat: false);
 
             RegisterTest();
@@ -155,10 +156,220 @@ namespace Utangard
             if (what == "foothold") { FootholdReport(term); return; }
             if (what == "biomes") { Biomes(term); return; }
             if (what == "creatures") { Creatures(term); return; }
+            if (what == "deaths") { DeathsReport(term, args); return; }
 
             term.AddString("utangard foothold - per biome: your Fighting and Discovery bars, what each kind of creature put in, and what is unlocked");
             term.AddString("utangard biomes - per biome: its creatures, the kills of each Utangard counted for you in this world (only creatures a points line pays for), and how much of it you have explored");
             term.AddString("utangard creatures - every creature in the foothold tables, checked against the game");
+            term.AddString("utangard deaths <creature> - whether it dies through its animation, how many this machine saw die this session and whether it had them, and who has the nearest live one");
+        }
+
+        // ------------------------------------------------------------------ deaths ------
+
+        /// <summary>What `utangard deaths` counts for one prefab, this session only.</summary>
+        private sealed class DeathCount
+        {
+            internal int AsOwner;
+            internal int NotOwner;
+            internal int BossCredit;
+        }
+
+        private static readonly Dictionary<string, DeathCount> Deaths =
+            new Dictionary<string, DeathCount>(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// How far `utangard deaths` looks for a live one. Devkit's `kill` reaches as far and takes
+        /// the nearest the same way, so the two name the same creature.
+        /// </summary>
+        private const float DeathsReach = 40f;
+
+        /// <summary>
+        /// A creature's OnDeath was entered on this machine. Called from KillTally's prefix, which
+        /// runs wherever OnDeath is reached, before OnDeath's own owner check and before the body is
+        /// destroyed, so the view can still say who has the creature. A postfix could not: OnDeath
+        /// ends in ZNetScene.Destroy, which resets the view, and after that IsValid is false on the
+        /// owner as well.
+        /// </summary>
+        internal static void SawDeath(Character creature)
+        {
+            try
+            {
+                if (creature == null || creature.IsPlayer()) return;
+
+                ZNetView nview;
+                if (!creature.TryGetComponent(out nview) || !nview.IsValid()) return;
+
+                var count = DeathsOf(Utils.GetPrefabName(creature.gameObject));
+                if (nview.IsOwner()) count.AsOwner++;
+                else count.NotOwner++;
+            }
+            catch (Exception)
+            {
+                // A test readout is not worth a broken death. The drops, the defeat key and the
+                // despawn all come after the prefix this runs in.
+            }
+        }
+
+        /// <summary>
+        /// KillCredit got past its owner check for this creature and is about to credit the players
+        /// at the kill.
+        /// </summary>
+        internal static void RanBossCredit(Character creature)
+        {
+            try
+            {
+                if (creature == null) return;
+                DeathsOf(Utils.GetPrefabName(creature.gameObject)).BossCredit++;
+            }
+            catch (Exception)
+            {
+                // As in SawDeath: never into a death.
+            }
+        }
+
+        private static DeathCount DeathsOf(string prefab)
+        {
+            var name = prefab ?? "";
+
+            DeathCount count;
+            if (!Deaths.TryGetValue(name, out count)) Deaths[name] = count = new DeathCount();
+            return count;
+        }
+
+        /// <summary>
+        /// `utangard deaths &lt;creature&gt;`: which machine ran that creature's death, and what came of it.
+        ///
+        /// Written for paired-kill-credit-killer.txt and paired-kill-credit-watcher.txt (LHM-36). In
+        /// 1.0 a creature with m_deathAnimation reaches Character.OnDeath through its animation's Die
+        /// event on every client animating it, not only on the one that has it, and three mods
+        /// credited kills in OnDeath postfixes without asking who had the creature. Whether their
+        /// fixes hold is a question about the OTHER machine, and nothing a scenario could read said
+        /// whether that machine had run the death at all. Without that, "the watcher's count did not
+        /// move" passes just as well for a watcher that never saw anything die.
+        ///
+        /// Every token is about this machine only:
+        ///   deathanim   whether the creature dies through its animation, the only road by which a
+        ///               machine that does not have it reaches OnDeath at all;
+        ///   gatekey     whether its death writes a key the gate table asks for, which is when the
+        ///               boss credit has anything to do;
+        ///   asowner, notowner   how many entered OnDeath here this session, by whether this
+        ///               machine had the creature at that moment;
+        ///   bosscredit  how many times Utangard's boss credit ran here for one, past its owner check;
+        ///   nearest     who has the nearest live one, the one Devkit's `kill` would hit, so a
+        ///               scenario can check that it owns what it is about to kill;
+        ///   kills       your kills of it in Utangard's own tally for this world.
+        ///
+        /// Read-only. The counts are kept in memory from the start of the process, so a scenario
+        /// reads them before and after rather than for a number of its own.
+        /// </summary>
+        private static void DeathsReport(Terminal term, Terminal.ConsoleEventArgs args)
+        {
+            var scene = ZNetScene.instance;
+            var player = Player.m_localPlayer;
+            if (scene == null || player == null)
+            {
+                Say(term, "utangard deaths: no character in a world yet.");
+                return;
+            }
+
+            if (args.Length < 3)
+            {
+                Say(term, "utangard deaths <creature> - a prefab name: Greydwarf, Eikthyr...");
+                return;
+            }
+
+            var go = scene.GetPrefab(args[2]);
+            Character creature;
+            if (go == null || !go.TryGetComponent(out creature))
+            {
+                Say(term, "utangard deaths: no creature called " + args[2] + ".");
+                return;
+            }
+
+            var name = go.name;
+            var head = "utangard deaths " + name + ": ";
+
+            var key = creature.m_defeatSetGlobalKey;
+            var gate = string.IsNullOrEmpty(key) ? "none" : UtangardConfig.IsGateKey(key) ? "yes" : "no";
+
+            Say(term, head + "deathanim=" + (creature.m_deathAnimation ? "yes" : "no") + " gatekey=" + gate + "   ("
+                      + (creature.m_deathAnimation
+                          ? "it dies through its animation, so every machine animating it reaches OnDeath"
+                          : "it dies straight from CheckDeath, so only the machine that has it reaches OnDeath")
+                      + (string.IsNullOrEmpty(key) ? "" : "; its death writes " + key) + ")");
+
+            DeathCount seen;
+            Deaths.TryGetValue(name, out seen);
+
+            var off = (Seams.FootholdKills ? "" : " The death hook did not go on this session, so asowner and notowner cannot move.")
+                      + (Seams.KillCredit && UtangardConfig.Enabled.Value && UtangardConfig.GateOnGroup.Value
+                          ? ""
+                          : " The boss credit is off this session (its hook, Enabled or GateOnGroup), so bosscredit cannot move.");
+
+            Say(term, head + "asowner=" + (seen != null ? seen.AsOwner : 0)
+                      + " notowner=" + (seen != null ? seen.NotOwner : 0)
+                      + " bosscredit=" + (seen != null ? seen.BossCredit : 0)
+                      + "   (deaths this machine ran this session, by whether it had the creature, and the boss credits it ran for one)"
+                      + off);
+
+            Say(term, head + NearestAlive(name, player));
+            Say(term, head + KillsOf(creature));
+        }
+
+        /// <summary>The nearest live one within DeathsReach, and which machine has it.</summary>
+        private static string NearestAlive(string prefab, Player player)
+        {
+            var all = Character.GetAllCharacters();
+            var reach = DeathsReach * DeathsReach;
+            var nearest = reach;
+            var alive = 0;
+            Character best = null;
+
+            if (all != null)
+            {
+                foreach (var character in all)
+                {
+                    if (character == null || character.IsDead()) continue;
+                    if (!string.Equals(Utils.GetPrefabName(character.gameObject), prefab, StringComparison.OrdinalIgnoreCase)) continue;
+
+                    var distance = (character.transform.position - player.transform.position).sqrMagnitude;
+                    if (distance > reach) continue;
+
+                    alive++;
+                    if (distance > nearest) continue;
+
+                    nearest = distance;
+                    best = character;
+                }
+            }
+
+            if (best == null) return "nearest=none alive=0   (none alive within " + DeathsReach.ToString("0", CultureInfo.InvariantCulture) + " m)";
+
+            ZNetView nview;
+            var who = !best.TryGetComponent(out nview) || !nview.IsValid() ? "nobody"
+                    : nview.IsOwner() ? "here" : "elsewhere";
+
+            return "nearest=" + who + " alive=" + alive + "   (the nearest live one, "
+                   + Mathf.Sqrt(nearest).ToString("0.0", CultureInfo.InvariantCulture) + " m away, belongs to "
+                   + (who == "here" ? "this machine" : who == "elsewhere" ? "another machine" : "no machine") + ")";
+        }
+
+        /// <summary>Your kills of it in Utangard's tally for this world, or why there is no number.</summary>
+        private static string KillsOf(Character creature)
+        {
+            var token = creature.m_name ?? "";
+            if (!Foothold.Pays(token))
+                return "kills=unpaid   (" + token + " is on no points line, so Utangard does not count it)";
+
+            var kills = KillTally.Here();
+            if (kills == null)
+                return "kills=unreadable   (" + (KillTally.WhyNot() ?? "the kill tally cannot be read") + ")";
+
+            int n;
+            kills.TryGetValue(token, out n);
+
+            return "kills=" + n.ToString(CultureInfo.InvariantCulture) + "   (your kills of " + token
+                   + " that Utangard counted in this world, assists included)";
         }
 
         /// <summary>

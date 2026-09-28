@@ -304,6 +304,9 @@ namespace Utangard
                 ZNetView nview;
                 if (!__instance.TryGetComponent(out nview) || !nview.IsValid() || !nview.IsOwner()) return;
 
+                // For `utangard deaths`: how many machines got this far for one boss (LHM-36).
+                DevConsole.RanBossCredit(__instance);
+
                 Progression.CreditAttendees(
                     __instance.transform.position, __instance.m_defeatSetGlobalKey);
             }

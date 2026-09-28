@@ -88,6 +88,10 @@ namespace Utangard
             [HarmonyPrefix]
             private static void Prefix(Character __instance)
             {
+                // Counted for `utangard deaths` whoever has the creature, because which machines
+                // reach this line at all is the question that readout exists for (LHM-36).
+                DevConsole.SawDeath(__instance);
+
                 Seen(__instance);
             }
         }

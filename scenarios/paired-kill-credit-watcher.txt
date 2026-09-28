@@ -1,0 +1,120 @@
+# Kill credit, TWO CLIENTS: the side that only watches. LHM-36.
+#
+# Run this one on client B. Its partner is paired-kill-credit-killer.txt on client A, which
+# spawns and kills everything. Read that file's header for why the pair exists and how to set it
+# up; this one is the short half. It lives in Utangard's scenarios with its partner, because two
+# of the three mods it checks are Utangard's.
+#
+# This character never hits anything, never spawns anything and owns nothing that dies. God
+# mode and ghost mode are on, so nothing turns on it and it cannot become an attacker by
+# accident. So every kill credit this machine runs for A's creatures is one it had no business
+# running, and every number here except the two `up` lines must stay where it was.
+#
+# What it proves from this side:
+#   - This machine really did run a death it did not own: at least one greydwarf and at least one
+#     Eikthyr reached OnDeath here with the creature belonging to A's machine. That is the road
+#     the 2026-09-27 fixes close, and the two `up` lines are the only proof this run was on it.
+#   - Having run them, it fed no sapling (Vaettir), ran no boss credit (Utangard), and wrote no
+#     boss-kill record (Vandi's log line, which Vandi writes wherever it records one).
+#   - This character's own Utangard tally and Vandi record did not move. Neither could have from
+#     a broken build either: the tally credits the players who hit the creature and the record
+#     credits whoever summoned the boss, and this character did neither. They are here because a
+#     watcher's numbers not moving is a claim the pair makes, not because they test the fixes.
+#
+# WHAT A BROKEN BUILD READS, on this side
+#   - `went gnot ... up` or `went enot ... up` failing with "went from N to N": this machine never
+#     ran one of those deaths. Not a mod failure. A's removal of the body got here before this
+#     copy of the death animation reached its Die event, every time, and nothing below was
+#     tested. Run the pair again. See WHAT IT CANNOT SEE in the killer's header.
+#   - `went gown` or `went eown` rising: this machine had one of the creatures A killed, so for
+#     that one the roles were swapped. For Eikthyr that means B reached the altar before A.
+#   - Vaettir's BloodFeed without its owner check: fedhere rises by one for every greydwarf death
+#     this machine ran near the sapling.
+#   - Utangard's KillCredit without it: bosscredit rises by one for every Eikthyr death run here.
+#   - Vandi's Summon.Died without it: the `logged` line finds "defeated_eikthyr credited to player
+#     <A's id>". It is written for every Eikthyr death run here, however the count came out.
+#   - Utangard's kill tally without its owner check does nothing visible here. It sends A's
+#     machine a kill message, and A's tally reads more than +5.
+#
+# WHAT IT CANNOT SEE
+#   - Whether it will get to run a death at all, which is the race the killer's header describes.
+#   - A's side of anything. A's counts are A's to check.
+#   - Deaths it ran that were not A's kills. Nothing else should die within reach during a run:
+#     A sends every wild creature within 60 m away before each greydwarf, and the sapling's
+#     callers are sent away with them.
+#
+# WHAT IT LEAVES BEHIND: this character in god mode and ghost mode. Devkit empties the pack at
+# the end and hands back its kit.
+#
+# Press Run on this once A's file is running. It waits for A.
+
+god
+ghost
+
+# The numbers before, all of them this machine's own. Nothing here is absolute: the counts run
+# from the start of the process and the records from whenever this character first played here.
+console utangard deaths Greydwarf
+note gown asowner=(\d+)
+note gnot notowner=(\d+)
+note gkills kills=(\d+)
+
+console utangard deaths Eikthyr
+note eown asowner=(\d+)
+note enot notowner=(\d+)
+note ecredit bosscredit=(\d+)
+
+console vandi
+note vandi defeated_eikthyr=(\d+)
+
+# Before the sapling exists, so only the count this machine keeps of its own feeds.
+console vaettir sapling
+note fedhere fedhere=(\d+)
+
+waitfor rig_kc_ready 300
+
+# Look where the killing happens: the pole stands between A and the altar. A copy of a creature
+# nobody is looking at may not be animated at all, and then it never reaches its Die event.
+face wood_pole2
+wait 1
+
+key rig_kc_watching
+
+# ---------------------------------------------------------------- five greydwarfs
+
+waitfor rig_kc_grey 300
+
+# A's last kill ended when the body was gone on A. Any death this machine runs for it runs
+# before A's removal of that body reaches here, and the removal was sent before the signal, so
+# this is slack rather than a guess.
+wait 3
+
+console utangard deaths Greydwarf
+
+# The one that makes the rest mean something.
+went gnot notowner=(\d+) up
+
+went gown asowner=(\d+) same
+went gkills kills=(\d+) same
+
+console vaettir sapling
+went fedhere fedhere=(\d+) same
+
+key rig_kc_b_grey
+
+# ---------------------------------------------------------------- two Eikthyrs
+
+waitfor rig_kc_boss 300
+wait 3
+
+console utangard deaths Eikthyr
+went enot notowner=(\d+) up
+
+went eown asowner=(\d+) same
+went ecredit bosscredit=(\d+) same
+
+console vandi
+went vandi defeated_eikthyr=(\d+) same
+
+logged defeated_eikthyr credited to player no
+
+key rig_kc_b_done
