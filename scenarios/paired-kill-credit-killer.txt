@@ -55,7 +55,9 @@
 # A is mortal for the greydwarf half, because Utangard refuses the credit of a character in god
 # mode, ghost mode or debug flight. The sapling calls greydwarfs as soon as it is planted, so
 # every wild creature within 60 m is sent away before each spawn. God mode goes back on for the
-# bosses.
+# bosses, and only once this side has read its tally, not at the last kill. The watcher's machine
+# runs a death after this one does, so anything it sends about the last greydwarf lands here after
+# that kill is over, and a character already back in god mode would refuse it.
 #
 # The two sides talk through global keys, which the server broadcasts to everybody. The names
 # are deliberately not GlobalKeys members, so they are inert world state.
@@ -63,7 +65,8 @@
 # WHAT A BROKEN BUILD READS, on this side
 #   - A kill tally that counts on a machine that does not have the creature: the watcher's
 #     machine sends this one a kill message for every greydwarf death it ran, so `went gkills`
-#     reads more than +5. That only shows when the watcher ran one, which is point 5.
+#     reads more than +5. That only shows when the watcher ran one, which is point 5, and only
+#     because this character is still mortal when the message lands (see the reading below).
 #   - A tally that refuses the kill here (god mode left on, a cheat mark): gown +5, gkills +0.
 #   - A postfix whose owner check refuses the owner as well. OnDeath ends in ZNetScene.Destroy,
 #     which resets the creature's view before any postfix runs, so a postfix that asks IsValid()
@@ -179,7 +182,8 @@ printed owner=here yes
 note fed fed=(\d+)/
 note fedhere fedhere=(\d+)
 
-# From here to the last greydwarf, nothing that makes a kill a cheat.
+# From here until the tally has been read, nothing that makes a kill a cheat. That runs past the
+# last kill on purpose, for the reason given at the reading.
 god off
 
 # Each one: the wildlife sent away, the sapling's callers included, so nothing reaches a mortal
@@ -216,14 +220,25 @@ console utangard deaths Greydwarf
 printed nearest=here yes
 kill Greydwarf
 
-god
+# Still mortal, and it has to be until the tally below is read. The sapling keeps calling while
+# this side waits, so its callers are sent away on both sides of the wait.
+banish all 60
 
 key rig_kc_grey
 
 # The watcher reads its own numbers and only then answers. Anything its machine did about these
 # deaths, a kill message sent here included, went out before that answer and through the same
 # server, so the readings below cannot come too early for it.
+#
+# Such a message can still land too late for a character in god mode, which is why god mode
+# waits. The watcher's machine only starts its copy of a death animation when this machine's dead
+# flag reaches it, so its OnDeath for the last greydwarf always runs after this one's, and a kill
+# message it sends for that death arrives after `kill` above has returned. Utangard's tally
+# refuses a kill heard by a character in god mode, so `god` at the last kill would refuse exactly
+# that message, and a tally counting on the wrong machine would still read +5 whenever the last
+# greydwarf was the only death the watcher ran.
 waitfor rig_kc_b_grey 120
+banish all 60
 
 # Five deaths run here, all as their owner, and five kills in Utangard's tally. More than five
 # kills is the watcher's machine crediting them as well.
@@ -231,6 +246,9 @@ console utangard deaths Greydwarf
 went gown asowner=(\d+) +5
 went gnot notowner=(\d+) same
 went gkills kills=(\d+) +5
+
+# The tally is read, so nothing that arrives from here on can change what it said.
+god
 
 # Five feeds from this machine, five on the sapling, and the sapling still this machine's.
 console vaettir sapling
