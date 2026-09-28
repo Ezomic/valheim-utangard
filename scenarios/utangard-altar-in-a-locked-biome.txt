@@ -34,11 +34,19 @@ wait 3
 banish Eikthyr 80
 give TrophyDeer:4
 
+# Both halves wait 15 seconds before counting, because Eikthyr takes about ten to come. The altar
+# queues DelayedSpawnBoss for its m_spawnBossDelay, which is asset data, and this altar's is not
+# vanilla's code default of 5. The 2026-09-28 run counted at 8 seconds and found nobody although
+# the offering had been taken, and Vandi's summoner scenario the same day brackets the delay
+# between 9 and 12 seconds: its first offering had brought nobody at 9 seconds, and its second,
+# made at 13, brought a boss between 22 and 25. A count inside the delay proves nothing either
+# way, and on the shut half it would pass a broken refusal, whose boss would arrive after it.
+
 # Shut.
 centre The land will not answer no
 offer TrophyDeer
 centre The land will not answer an offering here yes
-wait 8
+wait 15
 count Eikthyr 0 80
 carrying TrophyDeer 4
 
@@ -47,7 +55,7 @@ key utangard_open_defeated_fader
 wait 1
 offer TrophyDeer
 centre The land will not answer no
-wait 8
+wait 15
 count Eikthyr 1 80
 carrying TrophyDeer 2
 

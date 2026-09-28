@@ -8,10 +8,20 @@
 # key used from the hotbar (Door.UseItem) and E with the key in the pack (Door.Interact). So both
 # are tried, and after each the door is still shut and the Sealbreaker is still carried.
 #
-# Two things here are asset data nobody had seen when this was written: the location's name and
-# the door's. If `location` fails, its note lists the names the world does know. If `door` finds
-# nothing, the door is not called DvergerBossDoor, and Utangard's log line on world load -
-# "Boss doors kept sealed in a locked biome: ..." - names what it guards.
+# The names were asset data nobody had seen when this was first written, and the run of
+# 2026-09-28 settled both. The location is Mistlands_DvergrBossEntrance1: it placed, and its
+# dungeon DG_DvergrBoss generated 45 rooms. The door is dungeon_queen_door, not DvergerBossDoor,
+# which the first version guessed and every door step then failed to find. Utangard's own line on
+# world load names it, read off ZNetScene's prefabs by the Sealbreaker it wants: "Boss doors kept
+# sealed in a locked biome: dungeon_queen_door (DvergrKey)". So that line is still where to look
+# if this ever stops finding the door.
+#
+# The door steps search 100 m, not the 60 the first version used. TestSpawnLocation clamps a
+# location into its zone by the location's radius, and this one's is 32, the whole zone, so it
+# lands on the zone's centre however far ahead it was asked for: 25 m from the player in that run,
+# not 30 m ahead. The dungeon keeps its rooms inside that zone's 64 m square (its "Bounds diff"
+# line in Player.log), so the door is within about 70 m of anybody standing in the zone, and the
+# rest of the 100 is room for height.
 
 clear
 god
@@ -29,30 +39,30 @@ wait 3
 location Mistlands_DvergrBossEntrance1 30
 wait 3
 give DvergrKey:1
-dooris DvergerBossDoor shut 60
+dooris dungeon_queen_door shut 100
 
 # Shut: the key from the hotbar.
 centre The seal will not break no
-door DvergerBossDoor DvergrKey 60
+door dungeon_queen_door DvergrKey 100
 centre The seal will not break here yet yes
 wait 1
-dooris DvergerBossDoor shut 60
+dooris dungeon_queen_door shut 100
 carrying DvergrKey 1
 
 # Shut: E, with the key in the pack.
-door DvergerBossDoor 60
+door dungeon_queen_door 100
 centre The seal will not break here yet yes
 wait 1
-dooris DvergerBossDoor shut 60
+dooris dungeon_queen_door shut 100
 carrying DvergrKey 1
 
 # Open, the way the group's Fader kill would leave it. Whether the key is spent now is the
 # door's own m_consumeKey, vanilla's business, so it is not asserted.
 key utangard_open_defeated_fader
 wait 1
-door DvergerBossDoor 60
+door dungeon_queen_door 100
 centre The seal will not break no
 wait 2
-dooris DvergerBossDoor open 60
+dooris dungeon_queen_door open 100
 
 unkey utangard_open_defeated_fader
