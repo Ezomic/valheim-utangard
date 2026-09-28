@@ -85,8 +85,9 @@ the owning client and nowhere else. Crediting "the local player" from it would c
 one member of a group that killed a boss together, and the gate would then stay shut forever
 while looking exactly like it was working.
 
-In 1.0 a creature with `m_deathAnimation` reaches `OnDeath` a second way, through its
-animation's `Die` event, on every client animating it, so for those the guard is live. That does
+In 1.0 a creature with `m_deathAnimation` does not get `OnDeath` from `CheckDeath` at all:
+`CheckDeath` starts its death animation, and the animation's `Die` event calls `OnDeath` on every
+client animating it, the owner included. So for those creatures the guard is live. That does
 not make the other clients a way to credit their own players: whether one gets there at all is a
 race against the owner removing the body, which it often loses.
 

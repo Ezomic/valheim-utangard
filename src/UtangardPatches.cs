@@ -295,9 +295,13 @@ namespace Utangard
         /// had no owner check at all. KillTally.Witness reads its owner in a prefix for the same
         /// reason.
         ///
-        /// The credit itself stays in the postfix, so it only lands for a death vanilla carried
-        /// through to the end: Harmony skips a postfix when the original throws. The prefix's
-        /// answer is the one OnDeath's own check gives a few lines later, in the same call.
+        /// The credit itself stays in the postfix, so it only lands when vanilla's OnDeath ran to
+        /// its end. Harmony skips a postfix when the original throws, but not when another mod's
+        /// prefix skipped the original: every prefix still runs, this one included, so on the
+        /// owner __state still says yes for a boss that is standing and has set no defeat key.
+        /// __runOriginal is false in exactly that case, and the postfix checks it, as Vandi's
+        /// Summon.Died and Vaettir's BloodFeed.Feed do. With OnDeath run, the prefix's answer is
+        /// the one OnDeath's own check gives a few lines later, in the same call.
         ///
         /// Position comes from the transform rather than from a cached value because
         /// ZNetScene.Destroy hands the object to Unity's Object.Destroy, which only takes effect
@@ -325,10 +329,11 @@ namespace Utangard
             }
 
             [HarmonyPostfix]
-            private static void Postfix(Character __instance, bool __state)
+            private static void Postfix(Character __instance, bool __state, bool __runOriginal)
             {
-                // The owner only, as the prefix found it. Never ask the view here.
-                if (!__state) return;
+                // The owner only, as the prefix found it, and only if OnDeath actually ran.
+                // Never ask the view here.
+                if (!__state || !__runOriginal) return;
 
                 if (!UtangardConfig.Enabled.Value || !UtangardConfig.GateOnGroup.Value) return;
                 if (__instance == null) return;
