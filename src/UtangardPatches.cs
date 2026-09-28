@@ -270,19 +270,38 @@ namespace Utangard
         /// <summary>
         /// Credit everyone at the kill, the moment a boss dies.
         ///
-        /// This patch runs on exactly one machine: the client that owns the creature's ZDO.
-        /// It reads as though it runs everywhere, because OnDeath pushes vanilla's unique key
-        /// above an `if (!m_nview.IsOwner()) return;` - but that guard is unreachable.
-        /// CheckDeath is OnDeath's only caller, and CheckDeath is itself called from one place,
-        /// inside `if (zDO.IsOwner())` in Character.CustomFixedUpdate.
+        /// Only the machine that has the creature credits, and it credits the whole fight, which
+        /// is why this hands over a position rather than crediting the local player. Before 1.0
+        /// that was the only machine OnDeath ever ran on: CheckDeath was its one caller, and
+        /// CheckDeath is called from inside `if (zDO.IsOwner())` in Character.CustomFixedUpdate.
+        /// In 1.0 a creature with m_deathAnimation reaches OnDeath through its animation's Die
+        /// event (CharacterAnimEvent.Die) on every machine animating it, and OnDeath's own
+        /// `if ((bool)m_nview &amp;&amp; !m_nview.IsOwner()) return;` sends the others home halfway
+        /// down, with this postfix still to run on them. Whether they get that far at all is a
+        /// race against the owner's removal of the body, so they can never be the ones relied on,
+        /// and they are turned away here. The credit writes check before they write, so what they
+        /// used to add was churn rather than double credit.
         ///
-        /// So there is no "every client present" to inherit, from a prefix, a postfix or
-        /// anything else. The owner has to do the crediting for the whole fight, which is why
-        /// this hands over a position rather than crediting the local player.
+        /// <b>Who has the creature is read in the prefix, never in the postfix.</b> On the machine
+        /// that has it, OnDeath runs to its last lines, and those are ZNetScene.Destroy, which
+        /// calls ResetZDO on the view and leaves it with no ZDO before anything after OnDeath
+        /// runs. So in the postfix IsValid() is false and IsOwner() is false with it, since
+        /// IsOwner asks IsValid first. The owner check added on 2026-09-27 asked there, and it
+        /// turned every machine away: the owner at IsValid, the others at IsOwner. From then on a
+        /// kill wrote no boss credit anywhere, and credit came only from the backfill at a
+        /// character's next spawn, until that was found from the game's code on 2026-09-28 and
+        /// the question moved into the prefix, which runs before any of OnDeath while the view
+        /// still answers and hands the answer on in __state. Nothing released carried it; 1.3.1
+        /// had no owner check at all. KillTally.Witness reads its owner in a prefix for the same
+        /// reason.
         ///
-        /// Position comes from the transform rather than from a cached value because a
-        /// postfix runs before ZNetScene.Destroy has taken effect - the object is still where
-        /// it died.
+        /// The credit itself stays in the postfix, so it only lands for a death vanilla carried
+        /// through to the end: Harmony skips a postfix when the original throws. The prefix's
+        /// answer is the one OnDeath's own check gives a few lines later, in the same call.
+        ///
+        /// Position comes from the transform rather than from a cached value because
+        /// ZNetScene.Destroy hands the object to Unity's Object.Destroy, which only takes effect
+        /// at the end of the frame. In the postfix the body is still where it died.
         ///
         /// This is one of the two doors credit comes through, so whether it went on decides
         /// whether the mod is allowed to wither anybody at all. See Seams.PenaltyIsEscapable.
@@ -290,19 +309,29 @@ namespace Utangard
         [HarmonyPatch(typeof(Character), "OnDeath")]
         internal static class KillCredit
         {
-            [HarmonyPostfix]
-            private static void Postfix(Character __instance)
+            /// <summary>
+            /// Whether this machine has the creature, asked while the view can still say. A
+            /// machine that does not have it leaves OnDeath at its own owner check, and one that
+            /// does has no ZDO left to ask by the postfix. See the class comment.
+            /// </summary>
+            [HarmonyPrefix]
+            private static void Prefix(Character __instance, out bool __state)
             {
+                ZNetView nview;
+                __state = __instance != null
+                          && __instance.TryGetComponent(out nview)
+                          && nview.IsValid()
+                          && nview.IsOwner();
+            }
+
+            [HarmonyPostfix]
+            private static void Postfix(Character __instance, bool __state)
+            {
+                // The owner only, as the prefix found it. Never ask the view here.
+                if (!__state) return;
+
                 if (!UtangardConfig.Enabled.Value || !UtangardConfig.GateOnGroup.Value) return;
                 if (__instance == null) return;
-
-                // The owner only. In 1.0 a creature with a death animation reaches OnDeath
-                // through CharacterAnimEvent.Die on every client animating it, and the
-                // non-owners return at OnDeath's IsOwner check with this postfix still to run.
-                // The credit writes check before they write, so the extra calls were churn
-                // rather than double credit, but the owner is the one machine meant to do this.
-                ZNetView nview;
-                if (!__instance.TryGetComponent(out nview) || !nview.IsValid() || !nview.IsOwner()) return;
 
                 // For `utangard deaths`: how many machines got this far for one boss (LHM-36).
                 DevConsole.RanBossCredit(__instance);

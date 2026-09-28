@@ -22,11 +22,14 @@ namespace Utangard
     /// that says who hit the creature is gone by the time the body finishes: OnDeath ends in
     /// ZNetScene.Destroy, which resets the view's ZDO before anything after it could read it.
     ///
-    /// The owner check is repeated here and it is not ceremony. CLAUDE.md records OnDeath's own
-    /// `!IsOwner()` return as dead code, and it was, until 1.0 gave creatures a death animation:
+    /// The owner check is repeated here and it is not ceremony. CLAUDE.md used to record OnDeath's
+    /// own `!IsOwner()` return as dead code, and it was, until 1.0 gave creatures a death animation:
     /// with Character.m_deathAnimation set, CheckDeath starts a coroutine instead of calling
     /// OnDeath, and OnDeath then comes from CharacterAnimEvent.Die, an animation event that fires
     /// on every client animating the creature. On all of them but the owner the guard is live.
+    /// Being a prefix is also what lets the check work at all: the reset that takes the attackers
+    /// takes the owner's answer with it, so the same check in a postfix refuses the owner too.
+    /// That is what happened to KillCredit's check, found 2026-09-28; this one was never affected.
     ///
     /// <b>Who is credited.</b> Exactly the players the game credits, found the way OnDeath finds
     /// them: every entry in ZNet's player list whose name the creature's ZDO marked as an attacker

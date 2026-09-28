@@ -78,12 +78,17 @@ spawn-time. So `m_uniques` does not contain a boss you killed this session until
 and quitting to desktop before respawning loses the credit with the process. Found by playing:
 Eikthyr died, the world key was set, nothing was recorded.
 
-**And it lands for one player, not all of them.** That `!m_nview.IsOwner()` guard is
-unreachable. `CheckDeath` is `OnDeath`'s only caller, and `CheckDeath` is called from exactly
-one place, inside `if (zDO.IsOwner())` in `Character.CustomFixedUpdate`. `OnDeath` runs on the
-owning client and nowhere else. Crediting "the local player" from it would credit precisely one
-member of a group that killed a boss together, and the gate would then stay shut forever while
-looking exactly like it was working.
+**And it lands for one player, not all of them.** Before Valheim 1.0 that `!m_nview.IsOwner()`
+guard was unreachable. `CheckDeath` was `OnDeath`'s only caller, and `CheckDeath` is called from
+exactly one place, inside `if (zDO.IsOwner())` in `Character.CustomFixedUpdate`. `OnDeath` ran on
+the owning client and nowhere else. Crediting "the local player" from it would credit precisely
+one member of a group that killed a boss together, and the gate would then stay shut forever
+while looking exactly like it was working.
+
+In 1.0 a creature with `m_deathAnimation` reaches `OnDeath` a second way, through its
+animation's `Die` event, on every client animating it, so for those the guard is live. That does
+not make the other clients a way to credit their own players: whether one gets there at all is a
+race against the owner removing the body, which it often loses.
 
 So Utangard hooks `Character.OnDeath` and the owning client credits **everyone within
 `CreditRadius` of the corpse**, on the group's behalf. It can: global keys are world state,
@@ -92,6 +97,12 @@ which at a boss fight is all of them. The radius is generous because the two fai
 are not symmetric: crediting a bystander costs one person's sense of having earned it, while
 missing a genuine participant holds the gate shut for the whole group with no remedy short of
 killing the boss again.
+
+Which client is the owner is read in a prefix and handed to the postfix that credits. It cannot
+be asked in the postfix: `OnDeath` ends in `ZNetScene.Destroy`, which calls `ResetZDO` on the
+view, so by then `IsValid()` and `IsOwner()` both say no on the owner as well. The owner check
+added on 2026-09-27 asked there and credited nobody at a kill, which was found from the game's
+code on 2026-09-28. No release carried it.
 
 `m_uniques` is still read on spawn, because it is the only place credit earned *before* this
 mod lives. It is the backfill, not the live path.
@@ -222,8 +233,10 @@ machine the game credits a kill from. A prefix, because `OnDeath` ends in
 `ZNetScene.Destroy`, which resets the view's ZDO, and the ZDO is where the list of attackers
 lives. The owner check is repeated in the prefix, and in 1.0 it matters: a creature with
 `m_deathAnimation` does not get `OnDeath` from `CheckDeath` but from the `Die` animation event,
-which fires on every client animating it. So the owner guard halfway down `OnDeath`, which the
-boss section above calls unreachable, is reached in 1.0 for those creatures.
+which fires on every client animating it. So the owner guard halfway down `OnDeath`, which was
+unreachable before 1.0, is reached for those creatures. Being a prefix is also what lets the
+check answer for the owner at all: the same reset that takes the attackers takes the owner's
+answer too. The boss section above has the check that was asked too late.
 
 **Who is credited.** The same players the game credits, found the same way: every entry in
 ZNet's player list whose name `Character.Damage` marked on the creature's ZDO. The owner counts

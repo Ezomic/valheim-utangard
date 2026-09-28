@@ -80,6 +80,9 @@ and the mod uses [semantic versioning](https://semver.org).
   config apart from keybinds, so the host's wording and its Verbose flag were applied on every
   client and put back if you changed them. The two boss messages under Gate count as wording
   too. This needs Core 1.1.0 or later.
+- A boss kill is credited by one machine, the one that had the boss. In Valheim 1.0 a creature
+  with a death animation dies on every machine showing it, and in 1.3.1 each of them could write
+  the group's credit. Nobody got it twice, because a credit already written is not written again.
 
 ## [1.3.1] - 2026-09-12
 

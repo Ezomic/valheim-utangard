@@ -12,7 +12,9 @@
 # others home, but a Harmony postfix still runs after that return. Vandi (Summon.Died), Utangard
 # (KillCredit) and Vaettir (BloodFeed) credited kills in postfixes without asking who had the
 # creature, and were given owner checks on 2026-09-27; Utangard's kill tally was written with
-# one. None of it can be tested alone, because a single machine has everything it can see.
+# one. Those three checks were asked in the postfix, where they refuse the owner as well, so on
+# 2026-09-28 each moved to reading ownership in a prefix and handing it to the postfix. None of
+# it can be tested alone, because a single machine has everything it can see.
 #
 # WHAT THE PAIR PROVES, when both files pass:
 #   1. Both creatures can take that road at all. Greydwarf and Eikthyr each say deathanim=yes.
@@ -63,12 +65,14 @@
 #     machine sends this one a kill message for every greydwarf death it ran, so `went gkills`
 #     reads more than +5. That only shows when the watcher ran one, which is point 5.
 #   - A tally that refuses the kill here (god mode left on, a cheat mark): gown +5, gkills +0.
-#   - A postfix whose owner check refuses the owner as well. Read from the code on 2026-09-28,
-#     not run: OnDeath ends in ZNetScene.Destroy, which resets the creature's view before any
-#     postfix runs, so a postfix that asks IsValid() or IsOwner() is told no on the owner too.
-#     Utangard's KillCredit, Vandi's Summon.Died and Vaettir's BloodFeed all ask. If that holds,
-#     this file fails at `went ecredit`, `went vandi`, the `logged` line, `went fedhere` and
-#     `went fed`, and each reads +0. The kill tally is a prefix and is not affected.
+#   - A postfix whose owner check refuses the owner as well. OnDeath ends in ZNetScene.Destroy,
+#     which resets the creature's view before any postfix runs, so a postfix that asks IsValid()
+#     or IsOwner() is told no on the owner too and credits nobody. The checks of 2026-09-27 did
+#     exactly that, found from the game's code on 2026-09-28; Utangard's KillCredit, Vandi's
+#     Summon.Died and Vaettir's BloodFeed now ask in a prefix instead. Neither the fault nor the
+#     fix has been run. One that slips back fails here and reads +0: `went ecredit` for Utangard,
+#     `went vandi` and the `logged` line for Vandi, `went fedhere` and `went fed` for Vaettir.
+#     The kill tally was always a prefix and is not affected.
 #   - The watcher's half of all three postfixes is checked on the watcher, where it is certain.
 #     This side can only sometimes see it: `fed` above +5, `owner=elsewhere` on the sapling
 #     because the watcher's machine claimed it to write its copy, or the Vandi record at +3 or

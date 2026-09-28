@@ -274,13 +274,21 @@ namespace Utangard
         ///
         /// Second, and worse, who OnDeath runs for. It looks like it runs on every client that
         /// had the creature loaded, because it pushes that key *above* an
-        /// `if (!m_nview.IsOwner()) return;`. That guard is dead code. CheckDeath is the only
-        /// caller of OnDeath, and CheckDeath is called from exactly one place - inside
-        /// `if (zDO.IsOwner())` in Character.CustomFixedUpdate. So OnDeath only ever runs on
-        /// the client that owns the creature, and crediting "the local player" would credit
+        /// `if (!m_nview.IsOwner()) return;`. Before 1.0 that guard was dead code: CheckDeath
+        /// was the only caller of OnDeath, and CheckDeath is called from exactly one place,
+        /// inside `if (zDO.IsOwner())` in Character.CustomFixedUpdate. So OnDeath only ever ran
+        /// on the client that owns the creature, and crediting "the local player" would credit
         /// precisely one member of a group that killed a boss together. The gate would then
         /// stay shut forever while looking exactly like it was working, which is the worst
         /// shape a bug can take in a mod whose whole job is refusing things.
+        ///
+        /// 1.0 changed who gets there without changing the answer. A creature with a death
+        /// animation reaches OnDeath through the animation's Die event on every machine
+        /// animating it, so the guard is live for those. But whether another machine gets that
+        /// far is a race against the owner's removal of the body, so the owner is still the only
+        /// one that can be counted on, and KillCredit turns the rest away. It learns who the
+        /// owner is in a prefix, because by its postfix the owner's view has no ZDO left to ask;
+        /// see KillCredit for the bug that cost, 2026-09-28.
         ///
         /// So the owner credits everyone standing near the corpse. It can: global keys are
         /// world state, writable on anyone's behalf, and Player.GetPlayersInRange sees every
