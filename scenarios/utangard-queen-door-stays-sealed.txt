@@ -1,3 +1,4 @@
+#! nostage
 # Utangard - the Queen's door stays sealed while its biome is locked.
 #
 # Same premise as utangard-altar-in-a-locked-biome, and the same keys cleared: the Deep North,
@@ -22,6 +23,14 @@
 # not 30 m ahead. The dungeon keeps its rooms inside that zone's 64 m square (its "Bounds diff"
 # line in Player.log), so the door is within about 70 m of anybody standing in the zone, and the
 # rest of the 100 is room for height.
+#
+# NO STAGE. The `#! nostage` line at the top turns off the ground Devkit makes ready before the
+# first step, and there is no `stage` after `biome` either, because a location wants the world's
+# own ground under it. It levels its own pad with the game's older terrain system, and the game
+# applies that before the terrain compiler a stage writes to, so on staged ground the stage's
+# change is added on top of the pad: where the stage raised the slope a metre, the pad comes out a
+# metre above the entrance's foot, and where it lowered it, a metre below. On the world's own
+# ground the pad is level with the entrance, which is what `location` is for.
 
 clear
 god
@@ -36,13 +45,6 @@ wait 1
 
 biome DeepNorth
 wait 3
-
-# The ground here cleared and levelled before the entrance goes on it, as in
-# utangard-altar-in-a-locked-biome. Devkit's own stage ran before the first step, back where the
-# run started, and `location` spawns at the height of your feet. This one lands on its zone's
-# centre, which can be past the 34 metres a stage reaches, so the far side of it may still stand
-# on the world's own ground.
-stage
 location Mistlands_DvergrBossEntrance1 30
 wait 3
 give DvergrKey:1

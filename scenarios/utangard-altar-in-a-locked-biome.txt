@@ -1,3 +1,4 @@
+#! nostage
 # Utangard - no boss comes to an altar in a biome the group has not earned.
 #
 # The Deep North, because it is the last biome and the one a dev world is least likely to have
@@ -15,6 +16,14 @@
 # trophies are still in the pack. Open: latch the Deep North the way a Fader kill would, and the
 # same altar with the same offering brings him. Without the second half a broken altar would
 # pass the first.
+#
+# NO STAGE. The `#! nostage` line at the top turns off the ground Devkit makes ready before the
+# first step, and there is no `stage` after `biome` either, because a location wants the world's
+# own ground under it. It levels its own pad with the game's older terrain system, and the game
+# applies that before the terrain compiler a stage writes to, so on staged ground the stage's
+# change is added on top of the pad: where the stage raised the slope a metre, the pad comes out a
+# metre above the altar's foot, and where it lowered it, a metre below. On the world's own
+# ground the pad is level with the altar, which is what `location` is for.
 
 clear
 god
@@ -29,12 +38,6 @@ wait 1
 
 biome DeepNorth
 wait 3
-
-# The ground here cleared and levelled before the altar goes on it. Devkit's own stage ran before
-# the first step, back where the run started. `location` spawns the altar at the height of your
-# feet, so on the Deep North's slopes it could stand buried or in the air, and a tree or rock
-# there would be inside it.
-stage
 location Eikthyrnir
 wait 3
 banish Eikthyr 80
