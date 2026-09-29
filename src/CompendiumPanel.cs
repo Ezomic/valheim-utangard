@@ -94,8 +94,11 @@ namespace Utangard
         private static TextsDialog _dialog;
         private static GameObject _root;
 
-        /// <summary>The compendium's text viewport, which the panel covers exactly.</summary>
+        /// <summary>The rect the compendium's text is shown in, which the panel covers. See Host.</summary>
         private static RectTransform _host;
+
+        /// <summary>The body's minimum height, which Fit keeps at the host's so the page fills it.</summary>
+        private static LayoutElement _floor;
 
         /// <summary>What Fit last fitted to, so an unchanged compendium costs no layout.</summary>
         private static float _fitScale = -1f;
@@ -529,7 +532,8 @@ namespace Utangard
             TMP_Text donor = dialog.m_textArea;
             if (donor == null) throw new InvalidOperationException("TextsDialog.m_textArea is not set.");
 
-            RectTransform host = Host(dialog, donor);
+            string passed;
+            RectTransform host = Host(dialog, donor, out passed);
 
             var root = new GameObject("Utangard_Panel", typeof(RectTransform));
             root.SetActive(false);
@@ -543,16 +547,22 @@ namespace Utangard
             _root = root;
             _dialog = dialog;
             _host = host;
-            _fitScale = -1f;
-            Fit();
 
             // The panel: a 1 px edge in #5a4a36 around a #1f1a14 face. An Image with no sprite is
             // a flat rectangle, so the edge is the root's colour showing round a face inset by 1.
             // Raycast on, so a click on the panel does not fall through to whatever is under it.
             Paint(rootRect, PanelEdge, true);
             RectTransform face = Child("Face", rootRect);
+            face.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
             Inset(face, 1f);
             Paint(face, PanelFace, false);
+
+            // As tall as what it holds, and never squeezed: see Fit. The body below is the one
+            // child this column lays out, 1 in from the edge on every side.
+            VerticalLayoutGroup frame = root.AddComponent<VerticalLayoutGroup>();
+            frame.padding = new RectOffset(1, 1, 1, 1);
+            Stack(frame, false);
+            root.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
             // The label everything is cloned from, stripped and kept switched off.
             GameObject proto = Object.Instantiate(donor.gameObject, rootRect);
@@ -571,10 +581,13 @@ namespace Utangard
             root.AddComponent<CompendiumPanelTicker>();
 
             RectTransform body = Child("Body", rootRect);
-            Inset(body, 1f);
+            _floor = body.gameObject.AddComponent<LayoutElement>();
             VerticalLayoutGroup column = body.gameObject.AddComponent<VerticalLayoutGroup>();
             column.padding = new RectOffset(22, 22, 18, 18);
             Stack(column, false);
+
+            _fitScale = -1f;
+            Fit();
 
             // 1. The biome strip. Equal cells 6 apart, 12 below it.
             RectTransform strip = Child("Biomes", body);
@@ -615,12 +628,14 @@ namespace Utangard
             _rules = Label(body, SmallSize, Muted, TextAlignmentOptions.TopLeft);
 
             // Every number here is one nothing but the running game can answer, and each is the
-            // first thing to read if the panel looks wrong: the size of the area it covers, the
-            // scale that area sits at (below 1 the panel is being drawn back up), the size the
-            // compendium's own text uses, and whether the biome buttons found vanilla's sounds.
+            // first thing to read if the panel looks wrong: the area it covers and the rects it
+            // climbed past to find one the text does not size (see Host), the scale that area
+            // sits at (below 1 the panel is being drawn back up), the size the compendium's own
+            // text uses, and whether the biome buttons found vanilla's sounds.
             var inv = System.Globalization.CultureInfo.InvariantCulture;
             Rect area = host.rect;
-            UtangardPlugin.Log.LogInfo("Compendium panel built over '" + host.name + "', "
+            UtangardPlugin.Log.LogInfo("Compendium panel built over '" + host.name + "'"
+                + (passed.Length > 0 ? " (past " + passed + ", sized by what is in it)" : "") + ", "
                 + Mathf.RoundToInt(area.width) + " x " + Mathf.RoundToInt(area.height)
                 + " at scale " + _fitScale.ToString("0.###", inv)
                 + ", the compendium's own text at size " + donor.fontSize.ToString("0.#", inv)
@@ -629,17 +644,32 @@ namespace Utangard
         }
 
         /// <summary>
-        /// Keeps the panel over exactly the area the compendium's text would fill.
+        /// Keeps the panel over the area the compendium's text would fill: as wide as it, from
+        /// its top, and at least as tall as it.
         ///
-        /// At a scale of 1 or more that is simply "fill the parent". Below 1 the compendium sits
-        /// under a parent that shrinks it, and the panel is drawn at 1/scale instead, with its rect
-        /// shrunk by the same factor so it still covers the same area on screen. Its text then
-        /// comes out at the mockup's pixel sizes at 1080p, which is the floor this page promises.
-        /// A compendium scaled up is left alone: its text is only bigger, and bigger is readable.
+        /// <b>The height is the panel's own.</b> A ContentSizeFitter on the root makes it as tall
+        /// as what it holds, and this only sets the floor under that, on the body's LayoutElement,
+        /// so the dark page still fills the text area when there is less to say. It used to be
+        /// the other way round, the panel stretched to its host and the columns inside fitted to
+        /// that, and a column squeezed shorter than its content hands each child its MINIMUM
+        /// height, which for a TextMeshPro label is 0 (TMP_Text never sets m_minHeight). So when
+        /// the host shrank (see Host), every text collapsed to no height at all and was drawn
+        /// over its neighbour: each biome button came out as its own 4-unit edge, which reads as
+        /// a line struck through the name, the title and the waiting line landed on one line, and
+        /// each box's heading sat under its bar, the bar's 12-unit LayoutElement being the one
+        /// minimum that held. Robbin's screenshot of 2026-09-29. Grown from its content, no
+        /// label can get less than its text needs, whatever it is drawn over.
+        ///
+        /// At a scale of 1 or more it is drawn as it is. Below 1 the compendium sits under a
+        /// parent that shrinks it, and the panel is drawn at 1/scale instead, with its width and
+        /// floor shrunk by the same factor so it still covers the same area on screen. Its text
+        /// then comes out at the mockup's pixel sizes at 1080p, which is the floor this page
+        /// promises. A compendium scaled up is left alone: its text is only bigger, and bigger is
+        /// readable.
         /// </summary>
         private static void Fit()
         {
-            if (_root == null || _host == null) return;
+            if (_root == null || _host == null || _floor == null) return;
 
             float scale = HostScale(_host);
             Vector2 size = _host.rect.size;
@@ -648,21 +678,19 @@ namespace Utangard
             _fitScale = scale;
             _fitSize = size;
 
-            var rect = (RectTransform)_root.transform;
-            if (scale >= 0.99f)
-            {
-                rect.localScale = Vector3.one;
-                Inset(rect, 0f);
-                return;
-            }
+            float drawn = scale >= 0.99f ? 1f : scale;
+            float grow = 1f / drawn;
 
-            float grow = 1f / scale;
+            var rect = (RectTransform)_root.transform;
             rect.anchorMin = new Vector2(0f, 1f);
             rect.anchorMax = new Vector2(0f, 1f);
             rect.pivot = new Vector2(0f, 1f);
             rect.localScale = new Vector3(grow, grow, 1f);
             rect.anchoredPosition = Vector2.zero;
-            rect.sizeDelta = size * scale;
+            rect.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, size.x * drawn);
+
+            // Less the 1-unit edge above and below, which the root's own column pads.
+            _floor.minHeight = Mathf.Max(0f, size.y * drawn - 2f);
         }
 
         /// <summary>
@@ -828,23 +856,78 @@ namespace Utangard
         }
 
         /// <summary>
-        /// Where the panel goes: over the scroll view that holds the compendium's text, in its
-        /// viewport, so it is clipped where the text would be and does not scroll with it.
-        /// The text area's size lives in the UI asset rather than in any code, so it is taken
-        /// from the running game and logged once on build.
+        /// Where the panel goes: the nearest rect above the compendium's text whose height is its
+        /// own rather than the text's, so the panel covers the area the text is shown in, is
+        /// clipped where the text would be, and does not scroll with it.
+        ///
+        /// <b>The text's own parent is not it.</b> The first version looked for a ScrollRect's
+        /// viewport and came out on that parent, which in 1.0 is 'Content': 840 x 565 on the log
+        /// line when the panel was built. Content is sized by the text inside it, so the moment
+        /// the panel blanked the text it shrank, to about 55 units measured off Robbin's
+        /// screenshot, and took the panel with it. That is what squeezed every label flat (see
+        /// Fit).
+        ///
+        /// So this climbs past every rect whose height follows what is in it: one a
+        /// ContentSizeFitter sizes, one a scroll view moves, one a layout group above it sizes.
+        /// It stops at the first rect that clips what is drawn in it, since that is the area the
+        /// text is seen in, and it never climbs to the dialog itself, nor to a rect that would
+        /// bring the page's topic, the text's scrollbar or the list under the panel. The hierarchy is asset data no
+        /// decompile shows, so the rects it passed are named on the build log line. Where it
+        /// cannot climb far enough the panel is still never squeezed, since it grows to its
+        /// content; it can then come out shorter than the text area, and that is all.
         /// </summary>
-        private static RectTransform Host(TextsDialog dialog, TMP_Text donor)
+        private static RectTransform Host(TextsDialog dialog, TMP_Text donor, out string passed)
         {
-            ScrollRect scroll = donor.GetComponentInParent<ScrollRect>();
-            if (scroll != null && scroll != dialog.m_leftScrollRect)
+            var host = donor.transform.parent as RectTransform;
+            if (host == null) throw new InvalidOperationException("The compendium's text has no parent to draw over.");
+
+            passed = "";
+            while (!Clips(host) && FollowsContent(host))
             {
-                if (scroll.viewport != null) return scroll.viewport;
-                return (RectTransform)scroll.transform;
+                var above = host.parent as RectTransform;
+                if (above == null || above == dialog.transform || !above.IsChildOf(dialog.transform)) break;
+                if (Brings(host, above, dialog.m_textAreaTopic) || Brings(host, above, dialog.m_rightScrollbar)
+                    || Brings(host, above, dialog.m_listRoot)) break;
+
+                passed += (passed.Length > 0 ? ", '" : "'") + host.name + "'";
+                host = above;
             }
 
-            var parent = donor.transform.parent as RectTransform;
-            if (parent == null) throw new InvalidOperationException("The compendium's text has no parent to draw over.");
-            return parent;
+            return host;
+        }
+
+        /// <summary>Whether something sizes or moves this rect by what is inside it.</summary>
+        private static bool FollowsContent(RectTransform rect)
+        {
+            foreach (ContentSizeFitter fitter in rect.GetComponents<ContentSizeFitter>())
+                if (fitter.enabled && fitter.verticalFit != ContentSizeFitter.FitMode.Unconstrained) return true;
+
+            foreach (ScrollRect scroll in rect.GetComponentsInParent<ScrollRect>(true))
+                if (scroll.content == rect) return true;
+
+            Transform parent = rect.parent;
+            if (parent == null) return false;
+
+            foreach (HorizontalOrVerticalLayoutGroup group in parent.GetComponents<HorizontalOrVerticalLayoutGroup>())
+                if (group.enabled && group.childControlHeight) return true;
+
+            return false;
+        }
+
+        /// <summary>Whether this rect cuts off what is drawn in it, the way a scroll view's viewport does.</summary>
+        private static bool Clips(RectTransform rect)
+        {
+            RectMask2D rectMask = rect.GetComponent<RectMask2D>();
+            if (rectMask != null && rectMask.enabled) return true;
+
+            Mask mask = rect.GetComponent<Mask>();
+            return mask != null && mask.enabled;
+        }
+
+        /// <summary>Whether climbing from one rect to the one above it puts this part under the panel.</summary>
+        private static bool Brings(Transform from, Transform to, Component part)
+        {
+            return part != null && part.transform.IsChildOf(to) && !part.transform.IsChildOf(from);
         }
 
         /// <summary>
@@ -1014,6 +1097,7 @@ namespace Utangard
             _root = null;
             _dialog = null;
             _host = null;
+            _floor = null;
             _fitScale = -1f;
             _proto = null;
             _title = null;

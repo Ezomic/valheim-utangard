@@ -5,7 +5,8 @@
 # prints and the Discovery bar at the percent the console prints, each in its own box beside its
 # own heading. The page keeps up while it is open: a change to the kill count shows within its
 # one-second refresh without reopening it. Clicking the Meadows, which is open, shows that biome
-# and takes the boxes away.
+# and takes the boxes away. And every text on it has the height its text needs, which the strings
+# alone cannot show: see the `tall` steps.
 #
 # The Fighting bar is seeded here with `mod utangardtest kills`, 6 Jotun warriors for 30 of 150
 # points, rather than fought. This is a test of what the page draws. utangard-foothold-eating
@@ -60,6 +61,15 @@ wait 1
 press Deep North
 wait 1
 panel The Deep North yes
+
+# Every text as tall as its text needs. On 2026-09-29 the page drew each of these at no height,
+# on top of one another, and the steps around these still passed, since every string was there.
+tall The Deep North
+tall Deep North
+tall Fighting
+tall Discovery
+tall Eating at 50%
+
 beside Fighting | 20% yes
 panel Eating at 50% yes
 beside Discovery | $pct% yes
