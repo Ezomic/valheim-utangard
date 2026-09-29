@@ -1,11 +1,11 @@
 #! partner paired-kill-credit-watcher
 # Kill credit, TWO CLIENTS: the side that owns the creatures and kills them. LHM-36.
 #
-# Run this one on client A. Its partner is paired-kill-credit-watcher.txt on client B, and
-# neither proves anything alone. The pair lives in Utangard's scenarios because two of the
-# three mods it checks are checked here: Utangard's kill tally (the Fighting bar of a foothold)
-# and Utangard's boss credit. The third is Vandi's boss-kill record, and Vaettir's blood feed
-# rides along because the same kills feed it.
+# Run this one on client A. Its partner is paired-kill-credit-watcher.txt, which Devkit starts on
+# client B the moment this one starts, and neither proves anything alone. The pair lives in
+# Utangard's scenarios because two of the three mods it checks are checked here: Utangard's kill
+# tally (the Fighting bar of a foothold) and Utangard's boss credit. The third is Vandi's
+# boss-kill record, and Vaettir's blood feed rides along because the same kills feed it.
 #
 # WHAT IT IS ABOUT. In Valheim 1.0 a creature with m_deathAnimation does not die only on the
 # machine that has it. CheckDeath starts its death animation, and the animation's Die event
@@ -36,22 +36,32 @@
 #
 # HOW TO RUN IT
 #
-#   1. sync-all so both clients and the dev server are the SAME BUILD. Core's gate compares the
-#      compiler's build id, not the version number.
-#   2. Start both clients and join the dev server, 127.0.0.1:2466. play2.ps1 mirrors this
-#      profile into own-profile-2; client B needs a character of its own, because Valheim will
-#      not load one that is already in play.
-#   3. Take A to this world's Eikthyr altar, the Eikthyrnir location in the Meadows. Keep B more
-#      than two hundred metres away until A has stood there for ten seconds. The altar spawns
-#      Eikthyr on the machine that has the altar, and the dev server gives it to the first
-#      client that has it in range, so A must get there first. `location` would bring an altar
-#      along, as vandi-summoner-gets-the-credit does, but only a host may place one and neither
-#      client here is the host.
-#   4. Stand A fifteen to twenty metres from the altar, FACING it, with flat open ground between.
-#      Bring B to stand two or three metres to A's side, facing the same way. Nothing built
-#      within eight metres of A: this file takes down every piece in that radius.
-#   5. Press Run on THIS one first. It clears the signals, reads its numbers and waits for B.
-#   6. Press Run on paired-kill-credit-watcher.txt on the other client.
+#   Run own-profile\pair.ps1. When it says READY, press Run on this file in the window titled
+#   "Valheim A": F6 > Scenarios > Two players > paired-kill-credit-killer > Run. Nothing else.
+#
+# Either window will do, in fact: the one pressed runs this file and the other runs the watcher.
+# The rest of this header calls the killer's window A.
+#
+# What used to be done by hand is now the first part of the two files, and this version of them
+# (2026-09-30) has not been run yet:
+#   - This side goes to fresh Meadows ground first, `biome Meadows fresh`: land this character's
+#     own map has never uncovered, so nothing is built there and nobody is standing near it.
+#   - It brings its own altar. `location Eikthyrnir` is placed by the server's Devkit on a
+#     dedicated server, twenty metres ahead. The altar spawns Eikthyr on the machine that has the
+#     altar, and the server gives a new object to the first client in its list that has it in
+#     range, so the watcher must not be in range when it lands. It is not: the watcher waits
+#     wherever it is until this side sets rig_kc_ready, and fresh ground is a long way from
+#     anywhere either character has stood. The ten seconds after the altar lands are the
+#     server's ownership pass, which runs every two seconds, several times over.
+#   - Then the watcher comes over by itself with `partner`, three metres to this character's
+#     left and facing the same way, and turns to the pole.
+#
+# The altar lands twenty metres ahead unless its zone moves it: a location of radius 10 is kept
+# within 22 m of its zone's centre, so near a zone's edge it can land nearer, to one side, or in
+# a bad case behind. The step's note says how far it moved; 3.6 and 3.8 m in the runs seen so far.
+# The boss is killed once he has had five seconds to close on this character, the only one not
+# in ghost mode, which should bring him to the spot the watcher is looking at wherever the altar
+# went.
 #
 # A is mortal for the greydwarf half, because Utangard refuses the credit of a character in god
 # mode, ghost mode or debug flight. The sapling calls greydwarfs as soon as it is planted, so
@@ -82,6 +92,9 @@
 #     because the watcher's machine claimed it to write its copy, or the Vandi record at +3 or
 #     more. When both machines write the same count at the same moment those read correctly
 #     anyway, which is why they are not the proof.
+#   - `printed nearest=here` failing at an Eikthyr, with the greydwarfs fine: the altar went to
+#     the watcher's machine, so the boss was spawned and owned there. Not a mod failure; it
+#     means the watcher was in range of the altar before this side had it. Run the pair again.
 #
 # WHAT IT CANNOT SEE
 #   - Whether the watcher gets to run a death at all is a race, and the pair can only report it.
@@ -111,14 +124,17 @@
 #     catch-up clock it starts; vandi_summon_defeated_eikthyr naming this character; the world
 #     key defeated_eikthyr. On the dev world that reads as the group having killed Eikthyr.
 #   - The sapling and the marker pole are taken down, the greydwarfs the sapling called are sent
-#     away, and loose drops within 30 m are swept.
-#   - This character in god mode. Devkit empties the pack at the end and hands back its kit.
+#     away, and loose drops within 30 m are swept. The altar is taken down by the server's Devkit
+#     when the run ends.
+#   - Both characters on Meadows ground this character had never uncovered, somewhere new each
+#     run. This character in god mode. Devkit empties the pack at the end and hands back its kit.
 
 # ---------------------------------------------------------------- before anything
 
 # Every signal first. A run abandoned halfway leaves its keys set, and a `waitfor` on a key
 # that is already set returns at once, so the pair would run out of step and report whatever
-# that produced.
+# that produced. The watcher clears the three it waits for as well, since it now starts in the
+# same second as this file.
 unkey rig_kc_ready
 unkey rig_kc_watching
 unkey rig_kc_grey
@@ -130,11 +146,27 @@ clear
 god
 ghost off
 fly off
+
+# Away from everything, for three reasons. The altar needs the watcher out of its range when it
+# lands (see the header). A location wants the world's own ground under it, and this file has no
+# stage: a location levels its pad with the game's older terrain system, so on staged ground the
+# stage's change is added on top of the pad and the altar stands buried or in the air. And ground
+# nobody has walked has nothing on it an earlier run left.
+biome Meadows fresh
 banish all 60
 
 # Anything an abandoned run left standing. A sapling keeps calling greydwarfs for as long as it
 # stands, and an old one within reach would take the feed instead of the new one.
 wipe 8
+
+# ---------------------------------------------------------------- the altar
+
+# Twenty metres ahead, placed by the server's Devkit, and this step holds until every part of it
+# has reached this client. Then ten seconds for the server to make this machine its owner: its
+# ownership pass runs every two seconds and gives an object nobody here owns to the first client
+# in range, which on fresh ground with the watcher still away is this one.
+location Eikthyrnir
+wait 10
 
 # ---------------------------------------------------------------- the numbers before
 
@@ -168,6 +200,7 @@ note vandi_before defeated_eikthyr=(\d+)
 place wood_pole2 6
 wait 1
 
+# The watcher comes over now, by `partner`, and says so.
 key rig_kc_ready
 waitfor rig_kc_watching 300
 
@@ -263,25 +296,34 @@ banish all 60
 # ---------------------------------------------------------------- two Eikthyrs
 
 # In god mode. Neither Utangard's boss credit nor Vandi asks about god mode at a boss kill, and
-# a mortal character at the altar for nine seconds with Eikthyr on it might not reach the end of
-# the file.
+# a mortal character at the altar with Eikthyr on it might not reach the end of the file.
 #
 # The offering goes through the altar the way the hotbar does it, so Vandi records who made it
-# and stamps the boss when the altar's machine spawns it. Five seconds is the altar's own delay;
-# nine leaves room for the stamp.
+# and stamps the boss when the altar's machine spawns it. `appears` then holds until he is there,
+# however long this altar takes. This file used to wait nine seconds, on the belief that the
+# delay was five, and it is not: vandi-summoner-gets-the-credit and
+# utangard-altar-in-a-locked-biome both found nobody eight and nine seconds after an offering on
+# 2026-09-28. 80 m rather than its 60 because the zone can move this altar off the spot asked for.
+#
+# Then five seconds before anything else. The watcher can only run a death for a creature its own
+# machine has built, and the boss reaches it on the server's next sync and is built in the frames
+# after; and five seconds is time for him to close on this character, where the watcher is
+# looking.
 give TrophyDeer:2
 offer TrophyDeer
-wait 9
+appears Eikthyr 30 80
+wait 5
 console utangard deaths Eikthyr
 printed nearest=here yes
-kill Eikthyr
+kill Eikthyr 80
 
 give TrophyDeer:2
 offer TrophyDeer
-wait 9
+appears Eikthyr 30 80
+wait 5
 console utangard deaths Eikthyr
 printed nearest=here yes
-kill Eikthyr
+kill Eikthyr 80
 
 key rig_kc_boss
 waitfor rig_kc_b_done 120

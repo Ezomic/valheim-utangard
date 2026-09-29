@@ -1,15 +1,23 @@
 #! partner paired-kill-credit-killer
 # Kill credit, TWO CLIENTS: the side that only watches. LHM-36.
 #
-# Run this one on client B. Its partner is paired-kill-credit-killer.txt on client A, which
-# spawns and kills everything. Read that file's header for why the pair exists and how to set it
-# up; this one is the short half. It lives in Utangard's scenarios with its partner, because two
-# of the three mods it checks are Utangard's.
+# Nothing to press here. Devkit runs this on client B the moment paired-kill-credit-killer.txt
+# starts on client A, and A's file spawns and kills everything. Read that file's header for why
+# the pair exists and how it is run (own-profile\pair.ps1, then one Run on A); this one is the
+# short half. It lives in Utangard's scenarios with its partner, because two of the three mods it
+# checks are Utangard's.
 #
 # This character never hits anything, never spawns anything and owns nothing that dies. God
 # mode and ghost mode are on, so nothing turns on it and it cannot become an attacker by
 # accident. So every kill credit this machine runs for A's creatures is one it had no business
 # running, and every number here except the two `up` lines must stay where it was.
+#
+# WHERE IT STANDS. It stays wherever this character is until A sets rig_kc_ready, and only then
+# comes over with `partner`, three metres to A's left and facing A's way, and turns to the pole
+# A put between itself and the altar. Not before: A has just placed an Eikthyr altar, and the
+# server gives a new object to the first client in its list that has it in range. Standing beside
+# A at that moment could make this machine the altar's, and then Eikthyr would be spawned here,
+# owned here, and every number below would be about the wrong machine.
 #
 # What it proves from this side:
 #   - This machine really did run a death it did not own: at least one greydwarf and at least one
@@ -28,7 +36,8 @@
 #     copy of the death animation reached its Die event, every time, and nothing below was
 #     tested. Run the pair again. See WHAT IT CANNOT SEE in the killer's header.
 #   - `went gown` or `went eown` rising: this machine had one of the creatures A killed, so for
-#     that one the roles were swapped. For Eikthyr that means B reached the altar before A.
+#     that one the roles were swapped. For Eikthyr that means this machine was given the altar,
+#     by being in range of it before A had it.
 #   - Vaettir's BloodFeed without its owner check: fedhere rises by one for every greydwarf death
 #     this machine ran near the sapling.
 #   - Utangard's KillCredit without it: bosscredit rises by one for every Eikthyr death run here.
@@ -44,10 +53,17 @@
 #     A sends every wild creature within 60 m away before each greydwarf, and the sapling's
 #     callers are sent away with them.
 #
-# WHAT IT LEAVES BEHIND: this character in god mode and ghost mode. Devkit empties the pack at
-# the end and hands back its kit.
-#
-# Press Run on this once A's file is running. It waits for A.
+# WHAT IT LEAVES BEHIND: this character beside A on A's fresh ground, in god mode and ghost mode.
+# Devkit empties the pack at the end and hands back its kit.
+
+# The three signals this side waits for. It starts in the same second as A's file, and a
+# `waitfor` on a key an abandoned run left set would return before A's own clearing got here.
+# A key removed from a client is only gone here once the server's answer comes back, which is
+# what the wait is for. A sets none of them for many seconds yet, so this cannot clear a live one.
+unkey rig_kc_ready
+unkey rig_kc_grey
+unkey rig_kc_boss
+wait 2
 
 god
 ghost
@@ -72,6 +88,10 @@ console vaettir sapling
 note fedhere fedhere=(\d+)
 
 waitfor rig_kc_ready 300
+
+# Beside A now that A has the altar: three metres to A's left, clear of the sapling A plants two
+# metres to its right, and facing the way A faces.
+partner -3
 
 # Look where the killing happens: the pole stands between A and the altar. A copy of a creature
 # nobody is looking at may not be animated at all, and then it never reaches its Die event.
