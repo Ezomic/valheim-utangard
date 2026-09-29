@@ -29,6 +29,12 @@ wait 1
 
 biome DeepNorth
 wait 3
+
+# The ground here cleared and levelled before the altar goes on it. Devkit's own stage ran before
+# the first step, back where the run started. `location` spawns the altar at the height of your
+# feet, so on the Deep North's slopes it could stand buried or in the air, and a tree or rock
+# there would be inside it.
+stage
 location Eikthyrnir
 wait 3
 banish Eikthyr 80

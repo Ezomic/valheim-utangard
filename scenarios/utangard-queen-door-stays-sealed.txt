@@ -36,6 +36,13 @@ wait 1
 
 biome DeepNorth
 wait 3
+
+# The ground here cleared and levelled before the entrance goes on it, as in
+# utangard-altar-in-a-locked-biome. Devkit's own stage ran before the first step, back where the
+# run started, and `location` spawns at the height of your feet. This one lands on its zone's
+# centre, which can be past the 34 metres a stage reaches, so the far side of it may still stand
+# on the world's own ground.
+stage
 location Mistlands_DvergrBossEntrance1 30
 wait 3
 give DvergrKey:1

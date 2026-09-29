@@ -42,6 +42,10 @@
 clear
 biome Meadows 20
 wait 3
+
+# The ground the wolves are spawned on, cleared and levelled. Devkit's own stage ran before the
+# first step, back where the run started.
+stage
 banish all 60
 
 # Nothing that makes a kill a cheat. Each of these is one of the things the game checks before it

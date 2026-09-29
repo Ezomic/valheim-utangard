@@ -81,6 +81,10 @@ tally JotunWarrior 0
 # Shut, with no foothold: refused, and the meat stays.
 biome DeepNorth 20
 wait 3
+
+# The ground the warrior below is spawned on, cleared and levelled. Devkit's own stage ran before
+# the first step, back where the run started. The Ashlands half spawns nothing, so it has none.
+stage
 banish all 60
 hungry
 give CookedMeat:3
