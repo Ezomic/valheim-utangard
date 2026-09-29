@@ -97,7 +97,7 @@ namespace Utangard
         /// <summary>The rect the compendium's text is shown in, which the panel covers. See Host.</summary>
         private static RectTransform _host;
 
-        /// <summary>The body's minimum height, which Fit keeps at the host's so the page fills it.</summary>
+        /// <summary>The panel's minimum height, which Fit keeps at the host's so the page fills it.</summary>
         private static LayoutElement _floor;
 
         /// <summary>What Fit last fitted to, so an unchanged compendium costs no layout.</summary>
@@ -541,8 +541,11 @@ namespace Utangard
             var rootRect = (RectTransform)root.transform;
             rootRect.SetParent(host, false);
 
-            // Laid out by nobody but itself, whatever the host turns out to carry.
-            root.AddComponent<LayoutElement>().ignoreLayout = true;
+            // Laid out by nobody but itself, whatever the host turns out to carry. Its minimum
+            // height is the page's floor, which Fit keeps at the host's: see Fit. ignoreLayout
+            // only keeps it out of a layout group above; the root's own fitter still reads it.
+            _floor = root.AddComponent<LayoutElement>();
+            _floor.ignoreLayout = true;
 
             _root = root;
             _dialog = dialog;
@@ -581,7 +584,14 @@ namespace Utangard
             root.AddComponent<CompendiumPanelTicker>();
 
             RectTransform body = Child("Body", rootRect);
-            _floor = body.gameObject.AddComponent<LayoutElement>();
+
+            // Exactly as tall as what it holds, with the floor's spare height left under it. The
+            // strip and the pair of boxes each report a flexible height of 1, because each row
+            // stretches its cells to one height, and a column hands its spare height to whatever
+            // is flexible. Without this zero the frame would pass that height into the body and
+            // the body would share it out between those two rows: biome buttons and boxes a
+            // hundred or more units taller than their text on a page with little to say.
+            body.gameObject.AddComponent<LayoutElement>().flexibleHeight = 0f;
             VerticalLayoutGroup column = body.gameObject.AddComponent<VerticalLayoutGroup>();
             column.padding = new RectOffset(22, 22, 18, 18);
             Stack(column, false);
@@ -648,8 +658,11 @@ namespace Utangard
         /// its top, and at least as tall as it.
         ///
         /// <b>The height is the panel's own.</b> A ContentSizeFitter on the root makes it as tall
-        /// as what it holds, and this only sets the floor under that, on the body's LayoutElement,
-        /// so the dark page still fills the text area when there is less to say. It used to be
+        /// as what it holds, and this only sets the floor under that, on the root's own
+        /// LayoutElement, so the dark page still fills the text area when there is less to say.
+        /// The floor is on the root and not the body so that the body is never taller than its
+        /// content: a body stretched to the floor shares the spare height out to the strip and
+        /// the boxes (see Build), which is the same fault the other way up. It used to be
         /// the other way round, the panel stretched to its host and the columns inside fitted to
         /// that, and a column squeezed shorter than its content hands each child its MINIMUM
         /// height, which for a TextMeshPro label is 0 (TMP_Text never sets m_minHeight). So when
@@ -689,8 +702,7 @@ namespace Utangard
             rect.anchoredPosition = Vector2.zero;
             rect.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, size.x * drawn);
 
-            // Less the 1-unit edge above and below, which the root's own column pads.
-            _floor.minHeight = Mathf.Max(0f, size.y * drawn - 2f);
+            _floor.minHeight = Mathf.Max(0f, size.y * drawn);
         }
 
         /// <summary>
