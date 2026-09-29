@@ -1,3 +1,4 @@
+#! partner paired-kill-credit-watcher
 # Kill credit, TWO CLIENTS: the side that owns the creatures and kills them. LHM-36.
 #
 # Run this one on client A. Its partner is paired-kill-credit-watcher.txt on client B, and

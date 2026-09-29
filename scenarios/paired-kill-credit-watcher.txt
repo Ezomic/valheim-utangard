@@ -1,3 +1,4 @@
+#! partner paired-kill-credit-killer
 # Kill credit, TWO CLIENTS: the side that only watches. LHM-36.
 #
 # Run this one on client B. Its partner is paired-kill-credit-killer.txt on client A, which
