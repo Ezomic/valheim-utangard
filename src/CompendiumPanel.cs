@@ -103,6 +103,13 @@ namespace Utangard
         /// <summary>What Fit last fitted to, so an unchanged compendium costs no layout.</summary>
         private static float _fitScale = -1f;
         private static Vector2 _fitSize;
+        private static float _fitPixels = -1f;
+
+        /// <summary>How many screen pixels one of the panel's units covers, measured by Fit. See Edge.</summary>
+        private static float _pixelsPerUnit = 1f;
+
+        /// <summary>The panel's face and each box's, which sit inside a 1 px edge that Fit redraws. See Edge.</summary>
+        private static readonly List<RectTransform> Rims = new List<RectTransform>();
 
         /// <summary>A compendium the panel already failed in. It keeps the text page from then on.</summary>
         private static TextsDialog _failedFor;
@@ -507,12 +514,43 @@ namespace Utangard
             if (!Mathf.Approximately(fill.anchorMax.x, amount)) fill.anchorMax = new Vector2(amount, 1f);
         }
 
-        /// <summary>The selected cell's edge is 2 px and the rest 1, as in the mockup.</summary>
+        /// <summary>
+        /// The selected cell's edge is 2 px and the rest 1, as in the mockup. Kept by what it came
+        /// to in units, so the Draw after a Fit that changed the pixel size redraws it.
+        /// </summary>
         private static void SetEdgeWidth(Cell cell, float width)
         {
-            if (Mathf.Approximately(cell.EdgeWidth, width)) return;
-            cell.EdgeWidth = width;
-            Inset(cell.Face, width);
+            float edge = Edge(width);
+            if (Mathf.Approximately(cell.EdgeWidth, edge)) return;
+            cell.EdgeWidth = edge;
+            Inset(cell.Face, edge);
+        }
+
+        /// <summary>
+        /// An edge the mockup draws this many pixels wide, in panel units: a whole number of screen
+        /// pixels, never less than one.
+        ///
+        /// It used to be the width in units, and a unit is a pixel only at a canvas scale of 1.
+        /// Robbin's screenshot of 2026-09-29 has 0.934 screen pixels to a unit, and the GPU fills a
+        /// pixel only when the pixel's centre is inside the shape, so a 1-unit line that lands
+        /// between two centres is not drawn at all. That is what took the right edge off Meadows,
+        /// Deep North and the Discovery box while every other edge showed: the centre rule at
+        /// 0.934 a unit, from the panel's position in that screenshot, misses exactly those three
+        /// and no others. Nothing was clipped; the panel's own right edge is in the shot. A width of
+        /// N whole pixels covers exactly N centres wherever it lands, so every edge draws, and all
+        /// at one width, where a 1-unit line at 1.33 a unit (1440p) would come out 1 or 2 px.
+        /// </summary>
+        private static float Edge(float width)
+        {
+            float pixels = Mathf.Max(1f, Mathf.Round(width * _pixelsPerUnit));
+            return pixels / _pixelsPerUnit;
+        }
+
+        /// <summary>A face inside a 1 px edge, which Fit redraws whenever the pixel size changes.</summary>
+        private static void Rim(RectTransform face)
+        {
+            Rims.Add(face);
+            Inset(face, Edge(1f));
         }
 
         // ---------------------------------------------------------------- building -------
@@ -557,7 +595,7 @@ namespace Utangard
             Paint(rootRect, PanelEdge, true);
             RectTransform face = Child("Face", rootRect);
             face.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
-            Inset(face, 1f);
+            Rim(face);
             Paint(face, PanelFace, false);
 
             // As tall as what it holds, and never squeezed: see Fit. The body below is the one
@@ -640,7 +678,8 @@ namespace Utangard
             // Every number here is one nothing but the running game can answer, and each is the
             // first thing to read if the panel looks wrong: the area it covers and the rects it
             // climbed past to find one the text does not size (see Host), the scale that area
-            // sits at (below 1 the panel is being drawn back up), the size the compendium's own
+            // sits at (below 1 the panel is being drawn back up), how many screen pixels a unit
+            // covers (which the edges are rounded to, see Edge), the size the compendium's own
             // text uses, and whether the biome buttons found vanilla's sounds.
             var inv = System.Globalization.CultureInfo.InvariantCulture;
             Rect area = host.rect;
@@ -648,6 +687,7 @@ namespace Utangard
                 + (passed.Length > 0 ? " (past " + passed + ", sized by what is in it)" : "") + ", "
                 + Mathf.RoundToInt(area.width) + " x " + Mathf.RoundToInt(area.height)
                 + " at scale " + _fitScale.ToString("0.###", inv)
+                + ", " + _pixelsPerUnit.ToString("0.###", inv) + " screen pixels to a unit"
                 + ", the compendium's own text at size " + donor.fontSize.ToString("0.#", inv)
                 + ", one line of text at " + _naturalPerEm.ToString("0.00", inv) + " em, "
                 + sounded + " of " + Cells.Count + " biome buttons with vanilla's click sound.");
@@ -679,6 +719,10 @@ namespace Utangard
         /// then comes out at the mockup's pixel sizes at 1080p, which is the floor this page
         /// promises. A compendium scaled up is left alone: its text is only bigger, and bigger is
         /// readable.
+        ///
+        /// It also measures how many screen pixels one of the panel's units covers, and redraws
+        /// the edges to whole pixels of it: see Edge. A window resized changes that without
+        /// changing the host's size in units, so it is checked here too.
         /// </summary>
         private static void Fit()
         {
@@ -686,10 +730,13 @@ namespace Utangard
 
             float scale = HostScale(_host);
             Vector2 size = _host.rect.size;
-            if (Mathf.Approximately(scale, _fitScale) && size == _fitSize) return;
+            float pixels = PixelsPerUnit(_host);
+            if (Mathf.Approximately(scale, _fitScale) && size == _fitSize
+                && Mathf.Approximately(pixels, _fitPixels)) return;
 
             _fitScale = scale;
             _fitSize = size;
+            _fitPixels = pixels;
 
             float drawn = scale >= 0.99f ? 1f : scale;
             float grow = 1f / drawn;
@@ -703,6 +750,29 @@ namespace Utangard
             rect.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, size.x * drawn);
 
             _floor.minHeight = Mathf.Max(0f, size.y * drawn);
+
+            // The panel sits straight under the host at the scale set above. The cells follow in
+            // the Draw that always comes after a Fit.
+            _pixelsPerUnit = pixels * grow;
+            foreach (RectTransform rim in Rims) Inset(rim, Edge(1f));
+        }
+
+        /// <summary>
+        /// How many screen pixels one of this rect's units covers: the root canvas's scale
+        /// factor, which GuiScaler sets and which is pixels per canvas unit, times whatever the
+        /// rect's parents add to it. A reading that cannot be right counts as 1.
+        /// </summary>
+        private static float PixelsPerUnit(RectTransform rect)
+        {
+            Canvas canvas = rect.GetComponentInParent<Canvas>();
+            if (canvas == null) return 1f;
+
+            Canvas top = canvas.rootCanvas;
+            float canvasScale = top.transform.lossyScale.x;
+            if (canvasScale <= 0f || top.scaleFactor <= 0f) return 1f;
+
+            float perUnit = top.scaleFactor * rect.lossyScale.x / canvasScale;
+            return perUnit > 0.1f && perUnit < 20f ? perUnit : 1f;
         }
 
         /// <summary>
@@ -827,7 +897,7 @@ namespace Utangard
 
             RectTransform face = Child("Face", rect);
             face.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
-            Inset(face, 1f);
+            Rim(face);
             Paint(face, PanelFace, false);
 
             RectTransform head = Child("Head", rect);
@@ -1111,6 +1181,8 @@ namespace Utangard
             _host = null;
             _floor = null;
             _fitScale = -1f;
+            _fitPixels = -1f;
+            Rims.Clear();
             _proto = null;
             _title = null;
             _waiting = null;
