@@ -67,7 +67,7 @@ namespace Utangard
             _registered = true;
 
             new Terminal.ConsoleCommand("utangard",
-                "utangard foothold | biomes | creatures | deaths <creature> - your foothold in each locked biome, the raw numbers behind it, and which machine ran a creature's death",
+                "utangard foothold | biomes | creatures | deaths [<creature> [since <notowner>]] - your foothold in each locked biome, the raw numbers behind it, and which machine ran a creature's death",
                 OnCommand, isCheat: false);
 
             RegisterTest();
@@ -162,6 +162,7 @@ namespace Utangard
             term.AddString("utangard biomes - per biome: its creatures, the kills of each Utangard counted for you in this world (only creatures a points line pays for), and how much of it you have explored");
             term.AddString("utangard creatures - every creature in the foothold tables, checked against the game");
             term.AddString("utangard deaths <creature> - whether it dies through its animation, how many this machine saw die this session and whether it had them, and who has the nearest live one");
+            term.AddString("utangard deaths - every creature that dies through its animation; utangard deaths <creature> since <notowner> - whether this machine ran one it did not own since notowner stood there");
         }
 
         // ------------------------------------------------------------------ deaths ------
@@ -257,10 +258,18 @@ namespace Utangard
         ///   bosscredit  how many times Utangard's boss credit ran here for one, past its owner check;
         ///   nearest     who has the nearest live one, the one Devkit's `kill` would hit, so a
         ///               scenario can check that it owns what it is about to kill;
-        ///   kills       your kills of it in Utangard's own tally for this world.
+        ///   kills       your kills of it in Utangard's own tally for this world;
+        ///   nonowner    only with `since <n>`: how many deaths of it this machine ran without
+        ///               having the creature since notowner stood at n, in words.
         ///
         /// Read-only. The counts are kept in memory from the start of the process, so a scenario
         /// reads them before and after rather than for a number of its own.
+        ///
+        /// With no creature it lists every creature that dies through its animation. The paired
+        /// scenarios were written around Greydwarf and Eikthyr on the belief that both did, and
+        /// their first run on 2026-09-30 printed deathanim=no for each: neither can ever be run by
+        /// a machine that does not have it, so that run could not test a single owner check. The
+        /// list is what a pair that can test them has to be built from, instead of another guess.
         /// </summary>
         private static void DeathsReport(Terminal term, Terminal.ConsoleEventArgs args)
         {
@@ -274,7 +283,8 @@ namespace Utangard
 
             if (args.Length < 3)
             {
-                Say(term, "utangard deaths <creature> - a prefab name: Greydwarf, Eikthyr...");
+                Say(term, DeathAnimations(scene));
+                Say(term, "utangard deaths <creature> [since <notowner>] - one of them by prefab name: Greydwarf, Eikthyr...");
                 return;
             }
 
@@ -314,6 +324,61 @@ namespace Utangard
 
             Say(term, head + NearestAlive(name, player));
             Say(term, head + KillsOf(creature));
+
+            int since;
+            if (args.Length > 4 && string.Equals(args[3], "since", StringComparison.OrdinalIgnoreCase)
+                && int.TryParse(args[4], NumberStyles.Integer, CultureInfo.InvariantCulture, out since))
+                Say(term, head + NonOwnerSince(seen != null ? seen.NotOwner : 0, since, creature.m_deathAnimation));
+        }
+
+        /// <summary>
+        /// Whether this machine ran a death of it that it did not own since notowner stood at
+        /// <paramref name="since"/>, said in words.
+        ///
+        /// For the paired kill-credit scenarios, which note notowner at their start and hand it
+        /// back here at their end. Whether the owner checks were exercised at all is the one thing
+        /// a passing run cannot say by itself, and a scenario has no way to subtract two numbers
+        /// and print a sentence about the answer.
+        /// </summary>
+        private static string NonOwnerSince(int now, int since, bool deathAnimation)
+        {
+            var ran = now - since;
+            var from = " since notowner=" + since.ToString(CultureInfo.InvariantCulture);
+
+            if (ran < 0)
+                return "nonowner=unknown" + from + "   (notowner is " + now + " now, below that, so the number given was not read in this session)";
+
+            if (ran > 0)
+                return "nonowner=" + ran + from + "   (this machine ran " + ran
+                       + " death(s) of it that it did not own, so the owner checks on this machine were exercised)";
+
+            return "nonowner=0" + from + "   (this machine ran no death of it that it did not own, so the owner checks on this machine were NOT exercised"
+                   + (deathAnimation ? ")" : ", and none can: it dies straight from CheckDeath, so only the machine that has it reaches OnDeath)");
+        }
+
+        /// <summary>
+        /// Every creature in this world's prefab list that dies through its animation, which makes
+        /// them the only ones whose death a machine that does not have them can run at all.
+        /// </summary>
+        private static string DeathAnimations(ZNetScene scene)
+        {
+            var names = new List<string>();
+
+            if (scene.m_prefabs != null)
+            {
+                foreach (var prefab in scene.m_prefabs)
+                {
+                    Character character;
+                    if (prefab == null || !prefab.TryGetComponent(out character) || character is Player) continue;
+                    if (character.m_deathAnimation) names.Add(prefab.name);
+                }
+            }
+
+            names.Sort(StringComparer.OrdinalIgnoreCase);
+
+            return "utangard deaths: deathanim=" + names.Count
+                   + "   (creatures that die through their animation, so a machine that does not have one can still run its death"
+                   + (names.Count == 0 ? "; there are none in this world)" : "): " + string.Join(", ", names.ToArray()));
         }
 
         /// <summary>The nearest live one within DeathsReach, and which machine has it.</summary>

@@ -1,54 +1,53 @@
 #! partner paired-kill-credit-killer
-# Kill credit, TWO CLIENTS: the side that only watches. LHM-36.
+# Kill credit, TWO CLIENTS: the side that stands by. LHM-36.
 #
 # Nothing to press here. Devkit runs this on client B the moment paired-kill-credit-killer.txt
-# starts on client A, and A's file spawns and kills everything. Read that file's header for why
-# the pair exists and how it is run (own-profile\pair.ps1, then one Run on A); this one is the
-# short half. It lives in Utangard's scenarios with its partner, because two of the three mods it
-# checks are Utangard's.
+# starts on client A, and A's file spawns, summons and kills everything. Read that file's header
+# for why the pair exists, what the first run showed and how it is run (own-profile\pair.ps1, then
+# one Run on A); this one is the short half. It lives in Utangard's scenarios with its partner,
+# because two of the three mods it checks are Utangard's.
 #
-# This character never hits anything, never spawns anything and owns nothing that dies. God
-# mode and ghost mode are on, so nothing turns on it and it cannot become an attacker by
-# accident. So every kill credit this machine runs for A's creatures is one it had no business
-# running, and every number here except the two `up` lines must stay where it was.
+# This character never hits anything, never spawns anything and summons nothing. God mode and
+# ghost mode are on, so nothing turns on it and it cannot become an attacker by accident. What this
+# machine may still have is a boss: the machine that has A's altar spawns the boss, and on the first
+# run, 2026-09-30, that was this one, for both Eikthyrs. So nothing here assumes which machine the
+# server gives the bosses to. The greydwarfs are different: A spawns them, so they are A's, and A
+# checks that before each kill.
 #
 # WHERE IT STANDS. It stays wherever this character is until A sets rig_kc_ready, and only then
-# comes over with `partner`, three metres to A's left and facing A's way, and turns to the pole
-# A put between itself and the altar. Not before: A has just placed an Eikthyr altar, and the
-# server gives a new object to the first client in its list that has it in range. Standing beside
-# A at that moment could make this machine the altar's, and then Eikthyr would be spawned here,
-# owned here, and every number below would be about the wrong machine.
+# comes over with `partner`, three metres to A's left and facing A's way, and turns to the pole A
+# put between itself and the altar. Standing and looking there is what a creature with a death
+# animation would need for this machine to run its death as well; Greydwarf and Eikthyr have none,
+# so for them it changes nothing (see WHAT IT CANNOT SEE).
 #
-# What it proves from this side:
-#   - This machine really did run a death it did not own: at least one greydwarf and at least one
-#     Eikthyr reached OnDeath here with the creature belonging to A's machine. That is the road
-#     the 2026-09-27 fixes close, and the two `up` lines are the only proof this run was on it.
-#   - Having run them, it fed no sapling (Vaettir), ran no boss credit (Utangard), and wrote no
-#     boss-kill record (Vandi's log line, which Vandi writes wherever it records one).
-#   - This character's own Utangard tally and Vandi record did not move. Neither could have from
-#     a broken build either: the tally credits the players who hit the creature and the record
-#     credits whoever summoned the boss, and this character did neither. They are here because a
-#     watcher's numbers not moving is a claim the pair makes, not because they test the fixes.
+# What it proves from this side, whichever machine had the bosses:
+#   - Utangard's boss credit ran here once for every death this machine ran as the owner and for
+#     no other: bosscredit equals asowner, for Greydwarf and for Eikthyr, before the run and after.
+#     On the first run that meant two Eikthyr deaths owned here and two credits run here.
+#   - It ran none of A's greydwarf deaths (they were A's), fed no sapling, and counted no kill in
+#     this character's own tally: it hit nothing.
+#   - Vandi's record for this character did not move, whoever had the bosses: Vandi credits the
+#     summoner, and this character summoned nothing. On the first run this machine had both bosses
+#     and wrote the credit, to A's id, and this record stayed where it was.
+#   - One line per creature says whether this machine ran a death it did not own during the run:
+#     `nonowner=` from `utangard deaths <creature> since <notowner>`. With these two creatures it
+#     reads 0, and says the owner checks were NOT exercised.
 #
 # WHAT A BROKEN BUILD READS, on this side
-#   - `went gnot ... up` or `went enot ... up` failing with "went from N to N": this machine never
-#     ran one of those deaths. Not a mod failure. A's removal of the body got here before this
-#     copy of the death animation reached its Die event, every time, and nothing below was
-#     tested. Run the pair again. See WHAT IT CANNOT SEE in the killer's header.
-#   - `went gown` or `went eown` rising: this machine had one of the creatures A killed, so for
-#     that one the roles were swapped. For Eikthyr that means this machine was given the altar,
-#     by being in range of it before A had it.
-#   - Vaettir's BloodFeed without its owner check: fedhere rises by one for every greydwarf death
-#     this machine ran near the sapling.
-#   - Utangard's KillCredit without it: bosscredit rises by one for every Eikthyr death run here.
-#   - Vandi's Summon.Died without it: the `logged` line finds "defeated_eikthyr credited to player
-#     <A's id>". It is written for every Eikthyr death run here, however the count came out.
-#   - Utangard's kill tally without its owner check does nothing visible here. It sends A's
-#     machine a kill message, and A's tally reads more than +5.
+#   - Utangard's KillCredit asking about the owner in its postfix, which credits nobody: when this
+#     machine had a boss, `went erule bosscredit=(\d+) same` reads "went from 2 to 0" or the like.
+#   - Any credit on a machine that does not have the creature: bosscredit above asowner here, so
+#     `went ... same` reads "went from N to" a larger number, or fedhere rising. That needs this
+#     machine to run a death it did not own, which these creatures never give it.
+#   - A Vandi that credits the player at the machine that ran the death instead of the summoner:
+#     when this machine had the boss, `went vandi ... same` reads +2 here and A's reads +0.
+#   - `went gown ... same` rising: this machine had a greydwarf A spawned. Not a mod failure; A's
+#     `printed nearest=here` should have failed first. Run the pair again.
 #
 # WHAT IT CANNOT SEE
-#   - Whether it will get to run a death at all, which is the race the killer's header describes.
-#   - A's side of anything. A's counts are A's to check.
+#   - A's side of anything. A's counts are A's to check, and the totals over both machines (Vandi's
+#     record for A, A's tally, the sapling's own count) are read there.
+#   - A machine crediting a creature it does not have, for the reason in the killer's header.
 #   - Deaths it ran that were not A's kills. Nothing else should die within reach during a run:
 #     A sends every wild creature within 60 m away before each greydwarf, and the sapling's
 #     callers are sent away with them.
@@ -70,15 +69,19 @@ ghost
 
 # The numbers before, all of them this machine's own. Nothing here is absolute: the counts run
 # from the start of the process and the records from whenever this character first played here.
+# The exception is the rule, which holds at any moment: noted as asowner, then compared with
+# bosscredit from the same line, so `went` reads "went from asowner to bosscredit".
 console utangard deaths Greydwarf
-note gown asowner=(\d+)
 note gnot notowner=(\d+)
+note gown asowner=(\d+)
 note gkills kills=(\d+)
+note grule asowner=(\d+)
+went grule bosscredit=(\d+) same
 
 console utangard deaths Eikthyr
-note eown asowner=(\d+)
 note enot notowner=(\d+)
-note ecredit bosscredit=(\d+)
+note erule asowner=(\d+)
+went erule bosscredit=(\d+) same
 
 console vandi
 note vandi defeated_eikthyr=(\d+)
@@ -89,8 +92,8 @@ note fedhere fedhere=(\d+)
 
 waitfor rig_kc_ready 300
 
-# Beside A now that A has the altar: three metres to A's left, clear of the sapling A plants two
-# metres to its right, and facing the way A faces.
+# Beside A now: three metres to A's left, clear of the sapling A plants two metres to its right,
+# and facing the way A faces.
 partner -3
 
 # Look where the killing happens: the pole stands between A and the altar. A copy of a creature
@@ -104,18 +107,21 @@ key rig_kc_watching
 
 waitfor rig_kc_grey 300
 
-# A's last kill ended when the body was gone on A. Any death this machine runs for it runs
+# A's last kill ended when the body was gone on A. Anything this machine does about it happens
 # before A's removal of that body reaches here, and the removal was sent before the signal, so
 # this is slack rather than a guess.
 wait 3
 
-console utangard deaths Greydwarf
+# The last line says whether this machine ran a greydwarf death it did not own during the run.
+console utangard deaths Greydwarf since $gnot
 
-# The one that makes the rest mean something.
-went gnot notowner=(\d+) up
-
+# A's greydwarfs, run on A: none here as owner, and no kill for a character that hit nothing.
 went gown asowner=(\d+) same
 went gkills kills=(\d+) same
+
+# The rule, whatever this machine ran.
+note grule asowner=(\d+)
+went grule bosscredit=(\d+) same
 
 console vaettir sapling
 went fedhere fedhere=(\d+) same
@@ -127,15 +133,16 @@ key rig_kc_b_grey
 waitfor rig_kc_boss 300
 wait 3
 
-console utangard deaths Eikthyr
-went enot notowner=(\d+) up
+# Whether this machine ran an Eikthyr death it did not own during the run, in words.
+console utangard deaths Eikthyr since $enot
 
-went eown asowner=(\d+) same
-went ecredit bosscredit=(\d+) same
+# The rule on this machine, whether it had both bosses, one or neither. A checks the same on its
+# side, so between them every death that ran as an owner got one credit.
+note erule asowner=(\d+)
+went erule bosscredit=(\d+) same
 
+# This character summoned nothing, so Vandi's record for it stays, whichever machine had him.
 console vandi
 went vandi defeated_eikthyr=(\d+) same
-
-logged defeated_eikthyr credited to player no
 
 key rig_kc_b_done

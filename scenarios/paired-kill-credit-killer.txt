@@ -1,38 +1,67 @@
 #! partner paired-kill-credit-watcher
-# Kill credit, TWO CLIENTS: the side that owns the creatures and kills them. LHM-36.
+# Kill credit, TWO CLIENTS: the side that summons and kills. LHM-36.
 #
 # Run this one on client A. Its partner is paired-kill-credit-watcher.txt, which Devkit starts on
-# client B the moment this one starts, and neither proves anything alone. The pair lives in
-# Utangard's scenarios because two of the three mods it checks are checked here: Utangard's kill
-# tally (the Fighting bar of a foothold) and Utangard's boss credit. The third is Vandi's
-# boss-kill record, and Vaettir's blood feed rides along because the same kills feed it.
+# client B the moment this one starts, and neither proves anything alone: the verdict is both logs.
+# The pair lives in Utangard's scenarios because two of the three mods it checks are checked here:
+# Utangard's kill tally (the Fighting bar of a foothold) and Utangard's boss credit. The third is
+# Vandi's boss-kill record, and Vaettir's blood feed rides along because the same kills feed it.
 #
-# WHAT IT IS ABOUT. In Valheim 1.0 a creature with m_deathAnimation does not die only on the
-# machine that has it. CheckDeath starts its death animation, and the animation's Die event
-# calls Character.OnDeath on EVERY client animating it. OnDeath's own IsOwner return sends the
-# others home, but a Harmony postfix still runs after that return. Vandi (Summon.Died), Utangard
-# (KillCredit) and Vaettir (BloodFeed) credited kills in postfixes without asking who had the
-# creature, and were given owner checks on 2026-09-27; Utangard's kill tally was written with
-# one. Those three checks were asked in the postfix, where they refuse the owner as well, so on
-# 2026-09-28 each moved to reading ownership in a prefix and handing it to the postfix. None of
-# it can be tested alone, because a single machine has everything it can see.
+# WHAT IT IS ABOUT. Vandi (Summon.Died), Utangard (KillCredit) and Vaettir (BloodFeed) credit a kill
+# from a Harmony postfix on Character.OnDeath, and Utangard's kill tally from a prefix. A kill must
+# be credited once, by the machine that has the creature, to the right players: the summoner for
+# Vandi, everyone at the kill for the boss credit, the players who hit it for the tally. The owner
+# checks of 2026-09-27 asked in the postfix, where the owner has already destroyed the creature's
+# view, so they refused the owner too and credited nobody; on 2026-09-28 each moved to a prefix.
+# That fault is the one this pair catches, on whichever machine has the creature.
 #
-# WHAT THE PAIR PROVES, when both files pass:
-#   1. Both creatures can take that road at all. Greydwarf and Eikthyr each say deathanim=yes.
-#      Nobody has checked which creatures have a death animation; this is where it is checked.
-#   2. This client had every creature it killed. The greydwarfs are its own spawns, and before
-#      each kill `utangard deaths` says the nearest live one, which is the one `kill` hits,
-#      belongs to this machine.
-#   3. Five greydwarfs: this machine ran all five deaths as their owner, and Utangard's tally for
-#      this character rose by exactly five. The sapling beside them took exactly five, this
-#      machine fed all five, and the sapling is still this machine's.
-#   4. Two Eikthyrs, both summoned here: this machine ran both deaths as their owner, ran
-#      Utangard's boss credit exactly twice, and Vandi's record for this character rose by
-#      exactly two, with Vandi's own log line saying it credited them.
-#   5. On the watcher, which never hits anything: it ran at least one greydwarf death and at
-#      least one Eikthyr death that it did not own, and nothing moved on its side for them.
-#      Point 5 is what makes 3 and 4 mean anything. Without it a watcher that saw nothing die
-#      would pass every check in its file.
+# The other fault the pair was written for, a machine that does NOT have the creature crediting it
+# as well, needs that machine to run OnDeath at all. Only a creature with m_deathAnimation does
+# that: its death animation's Die event calls OnDeath on every machine animating it. Greydwarf and
+# Eikthyr have none. The first run printed deathanim=no for both, on both clients, and the readout
+# reads the prefab's own m_deathAnimation, the bool CheckDeath branches on, so the readout is right
+# and the old `printed deathanim=yes` checks were a belief nobody had tested. For these two only the
+# owner ever reaches OnDeath, however close the other machine stands. See WHAT IT CANNOT SEE.
+#
+# WHAT THE FIRST RUN SHOWED, 2026-09-30, on the dev server:
+#   - Greydwarfs: this side spawned all five and had all five. This machine ran all five deaths as
+#     owner, Utangard's tally rose by 5, the sapling took 5, all five fed from here.
+#   - Eikthyr: both were spawned and owned on the watcher's machine. The machine that has the altar
+#     spawns the boss (OfferingBowl.RPC_SpawnBoss returns on any other), so the server had given the
+#     altar to the watcher's client, most likely while the two still stood near each other: "fresh"
+#     Meadows ground was 0.1 km from where both began. The watcher's machine ran both deaths as
+#     owner and both boss credits, its Vandi wrote "defeated_eikthyr credited to player 258337194",
+#     this character, the summoner, and this side's Vandi record rose by 2. This machine ran
+#     neither death.
+#   - So each kill was credited exactly once, by its owner, to the summoner. Every failure on both
+#     sides came from two beliefs in the files: that this machine would have the bosses, and that
+#     both creatures die through their animation (this side's two deathanim=yes lines, and the
+#     watcher's `notowner ... up` lines, which no build could have passed).
+#   - Neither machine ran a death it did not own: notowner stayed 0 on both.
+#
+# WHAT THE PAIR PROVES, when both files pass, whichever machine the server gives the bosses to:
+#   1. On each machine, Utangard's boss credit ran once for every death that machine ran as the
+#      creature's owner, and for no other: bosscredit equals asowner, for Greydwarf and for Eikthyr,
+#      checked at the start and again at the end. KillCredit runs for every creature, not only
+#      bosses, so the greydwarfs exercise it too. Every death has one owner, so over both machines
+#      that is one credit per kill.
+#   2. Vandi's record for the summoner, this character, rose by exactly 2, and the watcher's own
+#      record did not move. The record is a world key written by whichever machine credited, so
+#      this is the total over both machines, and it went to the summoner and not to the owner.
+#   3. Utangard's kill tally for this character rose by exactly 5. A kill run on the other machine
+#      reaches this one as a message, so this is the total over both machines too.
+#   4. The sapling's own count rose by exactly 5. It is kept on the sapling, so again the total over
+#      both. This machine fed all five, since it had all five, and the watcher's machine fed none.
+#   5. Each side prints one line per creature saying whether it ran a death it did not own during
+#      this run: `nonowner=` from `utangard deaths <creature> since <notowner>`. With these two
+#      creatures it reads 0 on both sides, and the line says the owner checks were NOT exercised.
+#      A run that passes has then proved points 1 to 4 and nothing about a non-owner.
+#
+# Why each side checks its own numbers instead of adding the two machines' together: a scenario has
+# no arithmetic, and a number the other machine publishes in a key can only be compared for
+# equality with one of this machine's own. So a total over both machines is read where the game
+# already keeps one (a world key, the sapling, a tally fed by messages), and the rule that makes it
+# one credit per death is checked on each machine against its own counts.
 #
 # HOW TO RUN IT
 #
@@ -42,83 +71,70 @@
 # Either window will do, in fact: the one pressed runs this file and the other runs the watcher.
 # The rest of this header calls the killer's window A.
 #
-# What used to be done by hand is now the first part of the two files, and this version of them
-# (2026-09-30) has not been run yet:
 #   - This side goes to fresh Meadows ground first, `biome Meadows fresh`: land this character's
-#     own map has never uncovered, so nothing is built there and nobody is standing near it.
+#     own map has never uncovered, so nothing is built there.
 #   - It brings its own altar. `location Eikthyrnir` is placed by the server's Devkit on a
-#     dedicated server, twenty metres ahead. The altar spawns Eikthyr on the machine that has the
-#     altar, and the server gives a new object to the first client in its list that has it in
-#     range, so the watcher must not be in range when it lands. It is not: the watcher waits
-#     wherever it is until this side sets rig_kc_ready, and fresh ground is a long way from
-#     anywhere either character has stood. The ten seconds after the altar lands are the
-#     server's ownership pass, which runs every two seconds, several times over.
-#   - Then the watcher comes over by itself with `partner`, three metres to this character's
-#     left and facing the same way, and turns to the pole.
+#     dedicated server, twenty metres ahead, and the ten seconds after it are the server's
+#     ownership pass handing the altar to one of the two clients. Which one no longer matters: the
+#     file holds either way.
+#   - Then the watcher comes over by itself with `partner`, three metres to this character's left
+#     and facing the same way, and turns to the pole.
 #
 # The altar lands twenty metres ahead unless its zone moves it: a location of radius 10 is kept
-# within 22 m of its zone's centre, so near a zone's edge it can land nearer, to one side, or in
-# a bad case behind. The step's note says how far it moved; 3.6 and 3.8 m in the runs seen so far.
-# The boss is killed once he has had five seconds to close on this character, the only one not
-# in ghost mode, which should bring him to the spot the watcher is looking at wherever the altar
-# went.
+# within 22 m of its zone's centre, so near a zone's edge it can land nearer, to one side, or in a
+# bad case behind. The step's note says how far it moved; 2.4, 3.6 and 3.8 m in the runs seen so
+# far. The boss is killed once he has had five seconds to close on this character, the only one not
+# in ghost mode, which brings him to the spot the watcher is looking at wherever the altar went.
 #
 # A is mortal for the greydwarf half, because Utangard refuses the credit of a character in god
-# mode, ghost mode or debug flight. The sapling calls greydwarfs as soon as it is planted, so
-# every wild creature within 60 m is sent away before each spawn. God mode goes back on for the
-# bosses, and only once this side has read its tally, not at the last kill. The watcher's machine
-# runs a death after this one does, so anything it sends about the last greydwarf lands here after
-# that kill is over, and a character already back in god mode would refuse it.
+# mode, ghost mode or debug flight. The sapling calls greydwarfs as soon as it is planted, so every
+# wild creature within 60 m is sent away before each spawn. God mode goes back on for the bosses,
+# and only once this side has read its tally, not at the last kill: a kill message from the other
+# machine would land after the kill, and a character already back in god mode would refuse it.
 #
-# The two sides talk through global keys, which the server broadcasts to everybody. The names
-# are deliberately not GlobalKeys members, so they are inert world state.
+# The two sides talk through global keys, which the server broadcasts to everybody. The names are
+# deliberately not GlobalKeys members, so they are inert world state.
 #
 # WHAT A BROKEN BUILD READS, on this side
-#   - A kill tally that counts on a machine that does not have the creature: the watcher's
-#     machine sends this one a kill message for every greydwarf death it ran, so `went gkills`
-#     reads more than +5. That only shows when the watcher ran one, which is point 5, and only
-#     because this character is still mortal when the message lands (see the reading below).
-#   - A tally that refuses the kill here (god mode left on, a cheat mark): gown +5, gkills +0.
-#   - A postfix whose owner check refuses the owner as well. OnDeath ends in ZNetScene.Destroy,
-#     which resets the creature's view before any postfix runs, so a postfix that asks IsValid()
-#     or IsOwner() is told no on the owner too and credits nobody. The checks of 2026-09-27 did
-#     exactly that, found from the game's code on 2026-09-28; Utangard's KillCredit, Vandi's
-#     Summon.Died and Vaettir's BloodFeed now ask in a prefix instead. Neither the fault nor the
-#     fix has been run. One that slips back fails here and reads +0: `went ecredit` for Utangard,
-#     `went vandi` and the `logged` line for Vandi, `went fedhere` and `went fed` for Vaettir.
-#     The kill tally was always a prefix and is not affected.
-#   - The watcher's half of all three postfixes is checked on the watcher, where it is certain.
-#     This side can only sometimes see it: `fed` above +5, `owner=elsewhere` on the sapling
-#     because the watcher's machine claimed it to write its copy, or the Vandi record at +3 or
-#     more. When both machines write the same count at the same moment those read correctly
-#     anyway, which is why they are not the proof.
-#   - `printed nearest=here` failing at an Eikthyr, with the greydwarfs fine: the altar went to
-#     the watcher's machine, so the boss was spawned and owned there. Not a mod failure; it
-#     means the watcher was in range of the altar before this side had it. Run the pair again.
+#   - Utangard's KillCredit asking about the owner in its postfix again, which credits nobody:
+#     `went grule bosscredit=(\d+) same` reads "went from 5 to 0" or the like, asowner risen and
+#     bosscredit not. For the greydwarfs that is always this side. For the bosses it is `erule` on
+#     whichever side had them, so it may be the watcher's log that shows it.
+#   - Vandi's Summon.Died doing the same: `went vandi ... +2` reads +0.
+#   - Vaettir's BloodFeed doing the same: `went fedhere ... +5` and `went fed ... +5` read +0.
+#   - The kill tally refusing the kill here (god mode left on, a cheat mark): gkills +0.
+#   - A Vandi that credits the player at the machine that ran the death instead of the summoner:
+#     shows only when the watcher's machine has the boss, as it did on the first run. Then this
+#     side reads +0 and the watcher's own record rises.
+#   - Any credit on a machine that does not have the creature: bosscredit above asowner on that
+#     machine, so `went ... same` reads "went from N to" a larger number; the tally above +5; the
+#     sapling above +5. None of it can happen with these two creatures (WHAT IT CANNOT SEE).
+#   - `printed nearest=here` failing before a greydwarf kill: not a mod failure. The greydwarf this
+#     side just spawned is not this machine's, so the watcher's `same` lines for greydwarfs are
+#     void as well. Run the pair again.
 #
 # WHAT IT CANNOT SEE
-#   - Whether the watcher gets to run a death at all is a race, and the pair can only report it.
-#     The body goes when this machine's OnDeath destroys it, and that removal is sent at once.
-#     The watcher only starts its death animation when the dead flag reaches it with the
-#     creature's ZDO, and ZDOs go out every 50 ms or so. So the removal often arrives first and
-#     the watcher never reaches OnDeath. That is why there are five greydwarfs and two bosses,
-#     and why the watcher asks only for at least one of each. If it gets none, that run tested
-#     nothing about a machine that does not have the creature: run the pair again.
-#   - Utangard's boss credit is a key written only when it is missing, so "written once" is
-#     checked by which machine RAN the credit (bosscredit), not by the key. A character that
-#     already had the Eikthyr credit gets nothing new written, and that is fine for this file.
-#   - The sapling's count and the Vandi record cannot tell one write from two on this side (see
-#     above). The watcher's own counts can.
-#   - Creatures without a death animation. For those only the machine that has them reaches
-#     OnDeath at all, and utangard-foothold-kills covers the tally for them on one machine.
-#   - Latency. Two clients on one machine against a local server change the odds of the race in
-#     point 5, not the rule.
+#   - A machine crediting a creature it does not have. That needs a creature with a death
+#     animation, and neither of these has one. `utangard deaths` with no creature, near the start
+#     below, lists every creature in this world that has one; a third section that spawns one of
+#     those here and kills it with the watcher looking on is what would exercise the refusal by
+#     design, and the watcher's `nonowner=` line would then read above 0. No rip, log or note on
+#     this machine names such a creature yet, and guessing names is how the first version of this
+#     pair went wrong. The list and the `since` line need Utangard built on or after 2026-09-30;
+#     an older build prints its usage line for the one and nothing for the other.
+#   - Utangard's boss credit is a key written only when it is missing, so what it wrote is not
+#     checked, only that it ran (bosscredit).
+#   - A double landing on one count. Two machines writing count+1 at the same moment leave one
+#     increment, so a Vandi record or a sapling can read right after two credits. That too needs a
+#     machine running a death it does not own.
+#   - Which machine the server will give the altar to. The per-kill `utangard deaths Eikthyr`
+#     readings say which one it was (nearest=here or nearest=elsewhere), without asserting it.
+#   - Latency. Two clients on one machine against a local server.
 #
 # WHAT IT LEAVES BEHIND
 #   - Utangard's greydwarf count for this character in this world and Vandi's Eikthyr record are
-#     put back to what they were when the run began. A Vandi record that did not exist comes
-#     back as a key holding 0, which Vandi reads the same as none. If `console vandi` failed at
-#     the start there was nothing to put back, and the put-back writes a value Vandi reads as 0.
+#     put back to what they were when the run began. A Vandi record that did not exist comes back
+#     as a key holding 0, which Vandi reads the same as none.
 #   - The game's own kill record on this character: five more greydwarfs and two more Eikthyrs.
 #   - In this world: Utangard's Eikthyr credit for both characters if they lacked it, and the
 #     catch-up clock it starts; vandi_summon_defeated_eikthyr naming this character; the world
@@ -133,8 +149,8 @@
 
 # Every signal first. A run abandoned halfway leaves its keys set, and a `waitfor` on a key
 # that is already set returns at once, so the pair would run out of step and report whatever
-# that produced. The watcher clears the three it waits for as well, since it now starts in the
-# same second as this file.
+# that produced. The watcher clears the three it waits for as well, since it starts in the same
+# second as this file.
 unkey rig_kc_ready
 unkey rig_kc_watching
 unkey rig_kc_grey
@@ -147,8 +163,7 @@ god
 ghost off
 fly off
 
-# Away from everything, for three reasons. The altar needs the watcher out of its range when it
-# lands (see the header). A location wants the world's own ground under it, and this file has no
+# Away from everything. A location wants the world's own ground under it, and this file has no
 # stage: a location levels its pad with the game's older terrain system, so on staged ground the
 # stage's change is added on top of the pad and the altar stands buried or in the air. And ground
 # nobody has walked has nothing on it an earlier run left.
@@ -162,36 +177,43 @@ wipe 8
 # ---------------------------------------------------------------- the altar
 
 # Twenty metres ahead, placed by the server's Devkit, and this step holds until every part of it
-# has reached this client. Then ten seconds for the server to make this machine its owner: its
-# ownership pass runs every two seconds and gives an object nobody here owns to the first client
-# in range, which on fresh ground with the watcher still away is this one.
+# has reached this client. Then ten seconds for the server's ownership pass, which runs every two
+# seconds, to hand the altar to a client: the offering is answered by whichever machine has it.
 location Eikthyrnir
 wait 10
 
 # ---------------------------------------------------------------- the numbers before
 
-# Both creatures must die through their animation, or the watcher can never reach OnDeath for
-# them and every check on its side passes for nothing. If one says no, that half of the pair is
-# void: pick a creature that says yes (for the greydwarf half, one on Vaettir's FeedWeights and
-# a Utangard points line too) and put its name in both files.
+# Every creature in this world that dies through its animation, for the record. Nothing is
+# asserted about it: it is the list a section that exercises the non-owner refusal would pick
+# its creature from (see WHAT IT CANNOT SEE).
+console utangard deaths
+
+# The readout's first line says whether each creature dies through its animation. It is not
+# asserted either: both said no on the first run, which is why nothing below needs a machine to
+# run a death it does not own.
 console utangard deaths Greydwarf
-printed deathanim=yes yes
-note gown asowner=(\d+)
 note gnot notowner=(\d+)
+note gown asowner=(\d+)
 note gkills kills=(\d+)
 note gkills_before kills=(\d+)
 
-# gatekey=yes, or Utangard's boss credit has nothing to write and bosscredit below counts a call
-# that does nothing.
-console utangard deaths Eikthyr
-printed deathanim=yes yes
-printed gatekey=yes yes
-note eown asowner=(\d+)
-note enot notowner=(\d+)
-note ecredit bosscredit=(\d+)
+# The rule, as this session stands before the run: the boss credit ran once for every death this
+# machine ran as the owner, and for nothing else. Noted as asowner, then compared with bosscredit
+# from the same line, so `went` reads "went from asowner to bosscredit" and wants no change.
+note grule asowner=(\d+)
+went grule bosscredit=(\d+) same
 
-# The record Vandi keeps for this character. Read, never assumed: a character that has played
-# this world already has a number here.
+# gatekey=yes, or Utangard's boss credit would have nothing to write for Eikthyr and bosscredit
+# below would count a call that does nothing.
+console utangard deaths Eikthyr
+printed gatekey=yes yes
+note enot notowner=(\d+)
+note erule asowner=(\d+)
+went erule bosscredit=(\d+) same
+
+# The record Vandi keeps for this character, the summoner. Read, never assumed: a character that
+# has played this world already has a number here.
 console vandi
 note vandi defeated_eikthyr=(\d+)
 note vandi_before defeated_eikthyr=(\d+)
@@ -210,20 +232,18 @@ waitfor rig_kc_watching 300
 place grove_ancient_sapling 3 2
 wait 2
 
-# A new sapling, and this machine's own.
 console vaettir sapling
-printed owner=here yes
 note fed fed=(\d+)/
 note fedhere fedhere=(\d+)
 
-# From here until the tally has been read, nothing that makes a kill a cheat. That runs past the
-# last kill on purpose, for the reason given at the reading.
+# From here until the tally has been read, nothing that makes a kill a cheat.
 god off
 
 # Each one: the wildlife sent away, the sapling's callers included, so nothing reaches a mortal
-# character and nothing else is nearer; one spawned four metres ahead; a check that the one
-# `kill` is about to hit belongs to this machine; and the kill. `kill` holds until the body is
-# gone, which is after this machine's OnDeath has run.
+# character and nothing else is nearer; one spawned four metres ahead; a check that the one `kill`
+# is about to hit is this machine's; and the kill. A creature this machine spawned is this
+# machine's, and the check is what makes the watcher's `same` lines for greydwarfs sound. `kill`
+# holds until the body is gone, which is after the owner's OnDeath has run.
 banish all 60
 spawn Greydwarf
 console utangard deaths Greydwarf
@@ -263,32 +283,31 @@ key rig_kc_grey
 # The watcher reads its own numbers and only then answers. Anything its machine did about these
 # deaths, a kill message sent here included, went out before that answer and through the same
 # server, so the readings below cannot come too early for it.
-#
-# Such a message can still land too late for a character in god mode, which is why god mode
-# waits. The watcher's machine only starts its copy of a death animation when this machine's dead
-# flag reaches it, so its OnDeath for the last greydwarf always runs after this one's, and a kill
-# message it sends for that death arrives after `kill` above has returned. Utangard's tally
-# refuses a kill heard by a character in god mode, so `god` at the last kill would refuse exactly
-# that message, and a tally counting on the wrong machine would still read +5 whenever the last
-# greydwarf was the only death the watcher ran.
 waitfor rig_kc_b_grey 120
 banish all 60
 
-# Five deaths run here, all as their owner, and five kills in Utangard's tally. More than five
-# kills is the watcher's machine crediting them as well.
-console utangard deaths Greydwarf
-went gown asowner=(\d+) +5
-went gnot notowner=(\d+) same
+# The last line of this readout says whether this machine ran a greydwarf death it did not own
+# during the run.
+console utangard deaths Greydwarf since $gnot
+
+# Five kills in Utangard's tally for this character, wherever each death ran.
 went gkills kills=(\d+) +5
+
+# All five deaths ran here, as their owner: this machine spawned them and checked each one.
+went gown asowner=(\d+) +5
+
+# The rule again, now over the five: one boss credit per death this machine owned, none for
+# anything else.
+note grule asowner=(\d+)
+went grule bosscredit=(\d+) same
 
 # The tally is read, so nothing that arrives from here on can change what it said.
 god
 
-# Five feeds from this machine, five on the sapling, and the sapling still this machine's.
+# Five on the sapling's own count, the total over both machines, and five fed from here.
 console vaettir sapling
-went fedhere fedhere=(\d+) +5
 went fed fed=(\d+)/ +5
-printed owner=here yes
+went fedhere fedhere=(\d+) +5
 
 wipe 8
 banish all 60
@@ -298,23 +317,19 @@ banish all 60
 # In god mode. Neither Utangard's boss credit nor Vandi asks about god mode at a boss kill, and
 # a mortal character at the altar with Eikthyr on it might not reach the end of the file.
 #
-# The offering goes through the altar the way the hotbar does it, so Vandi records who made it
-# and stamps the boss when the altar's machine spawns it. `appears` then holds until he is there,
-# however long this altar takes. This file used to wait nine seconds, on the belief that the
-# delay was five, and it is not: vandi-summoner-gets-the-credit and
-# utangard-altar-in-a-locked-biome both found nobody eight and nine seconds after an offering on
-# 2026-09-28. 80 m rather than its 60 because the zone can move this altar off the spot asked for.
+# The offering goes through the altar the way the hotbar does it, so Vandi records who made it and
+# stamps the boss when the altar's machine spawns it, whichever machine that is. `appears` then
+# holds until he is there, however long this altar takes; the altar itself said 12 s on the first
+# run. 80 m rather than its 60 because the zone can move this altar off the spot asked for.
 #
-# Then five seconds before anything else. The watcher can only run a death for a creature its own
-# machine has built, and the boss reaches it on the server's next sync and is built in the frames
-# after; and five seconds is time for him to close on this character, where the watcher is
-# looking.
+# Then five seconds for him to close on this character, where the watcher is looking. The readout
+# before each kill says which machine has him (nearest=here or nearest=elsewhere) and is not
+# asserted: the server decides, and the checks below hold either way.
 give TrophyDeer:2
 offer TrophyDeer
 appears Eikthyr 30 80
 wait 5
 console utangard deaths Eikthyr
-printed nearest=here yes
 kill Eikthyr 80
 
 give TrophyDeer:2
@@ -322,23 +337,25 @@ offer TrophyDeer
 appears Eikthyr 30 80
 wait 5
 console utangard deaths Eikthyr
-printed nearest=here yes
 kill Eikthyr 80
 
 key rig_kc_boss
 waitfor rig_kc_b_done 120
 
-# Both deaths run here as their owner, and the boss credit ran here once for each.
-console utangard deaths Eikthyr
-went eown asowner=(\d+) +2
-went enot notowner=(\d+) same
-went ecredit bosscredit=(\d+) +2
+# Whether this machine ran an Eikthyr death it did not own during the run, in words.
+console utangard deaths Eikthyr since $enot
 
-# Vandi's record for this character, two up. And Vandi saying so, which only the machine that
-# recorded a kill writes.
+# The rule on this machine, whether it had both bosses, one or neither: a boss credit for each
+# death it owned and for nothing else. The watcher checks the same on its side, so between them
+# every death that ran as an owner got one credit.
+note erule asowner=(\d+)
+went erule bosscredit=(\d+) same
+
+# Vandi's record for the summoner, two up. It is a world key, written by whichever machine had
+# the boss, so this is both machines' total, and it went to the summoner. On the first run both
+# came from the watcher's machine.
 console vandi
 went vandi defeated_eikthyr=(\d+) +2
-logged defeated_eikthyr credited to player yes
 
 # ---------------------------------------------------------------- put back
 

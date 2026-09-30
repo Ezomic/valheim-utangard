@@ -47,7 +47,9 @@ and the mod uses [semantic versioning](https://semver.org).
 - `utangard deaths <creature>` says whether a creature dies through its animation, how many your
   machine has seen die this session and whether it had them, how often it ran the boss credit for
   one, and whose machine has the nearest live one. It was written for a two-player test of who
-  gets the credit for a kill, and it is not a cheat.
+  gets the credit for a kill, and it is not a cheat. `utangard deaths` on its own lists every
+  creature that dies through its animation, and `since <notowner>` after a creature adds whether
+  your machine ran a death of one it did not own since that count.
 - **A boss will not come to an altar in a biome the group has not earned.** Before, one player
   could carry an egg into the locked Mountains, kill Moder there, and start the Plains deadline
   for everybody while the rest were still on Bonemass. A refused offering uses nothing up. Each
