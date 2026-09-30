@@ -365,8 +365,13 @@ boss, the biome-opened announcement fires on the transition, and the defeat-key 
 all nine rows against the world's own creature prefabs. Running standalone with no Core has been
 confirmed in game.
 
-Footholds are new and have not been run in game yet: neither bar, the kill counting behind
-Fighting, the two unlocks, `utangard foothold`, nor the compendium panel that shows them.
+Footholds have been run through Devkit scenarios in singleplayer, and all four passed on
+2026-09-28 and again on 2026-09-29: Discovery filling from new ground and not from ground already
+uncovered, eating coming back at half a Fighting bar and only in its own biome, only a kill
+Utangard saw counting (a tamed wolf, a kill with devcommands on and one in god mode never do),
+and the compendium panel showing both bars. The panel's layout was adjusted after its last run. The altar refusing a boss
+in a locked biome and the Queen's door staying sealed have scenarios as well, and both passed on
+2026-09-28.
 
 One more thing is untested: attendee credit with more than one player at a boss kill. Solo you own
 the boss and credit yourself either way. The loop is identical for one player or five; what is
