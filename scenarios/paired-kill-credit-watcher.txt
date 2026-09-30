@@ -30,8 +30,10 @@
 #     summoner, and this character summoned nothing. On the first run this machine had both bosses
 #     and wrote the credit, to A's id, and this record stayed where it was.
 #   - One line per creature says whether this machine ran a death it did not own during the run:
-#     `nonowner=` from `utangard deaths <creature> since <notowner>`. With these two creatures it
-#     reads 0, and says the owner checks were NOT exercised.
+#     `nonowner=` from `utangard deaths <creature> since <notowner>`, and `printed nonowner= yes`
+#     fails the step when the line is missing. It speaks for this machine only; A's log carries
+#     A's. With these two creatures it reads 0, and says the refusal of a machine that does not
+#     have the creature was NOT exercised.
 #
 # WHAT A BROKEN BUILD READS, on this side
 #   - Utangard's KillCredit asking about the owner in its postfix, which credits nobody: when this
@@ -114,6 +116,7 @@ wait 3
 
 # The last line says whether this machine ran a greydwarf death it did not own during the run.
 console utangard deaths Greydwarf since $gnot
+printed nonowner= yes
 
 # A's greydwarfs, run on A: none here as owner, and no kill for a character that hit nothing.
 went gown asowner=(\d+) same
@@ -135,6 +138,7 @@ wait 3
 
 # Whether this machine ran an Eikthyr death it did not own during the run, in words.
 console utangard deaths Eikthyr since $enot
+printed nonowner= yes
 
 # The rule on this machine, whether it had both bosses, one or neither. A checks the same on its
 # side, so between them every death that ran as an owner got one credit.

@@ -53,9 +53,12 @@
 #   4. The sapling's own count rose by exactly 5. It is kept on the sapling, so again the total over
 #      both. This machine fed all five, since it had all five, and the watcher's machine fed none.
 #   5. Each side prints one line per creature saying whether it ran a death it did not own during
-#      this run: `nonowner=` from `utangard deaths <creature> since <notowner>`. With these two
-#      creatures it reads 0 on both sides, and the line says the owner checks were NOT exercised.
-#      A run that passes has then proved points 1 to 4 and nothing about a non-owner.
+#      this run: `nonowner=` from `utangard deaths <creature> since <notowner>`, and `printed
+#      nonowner= yes` fails the step when the line is missing, so a run cannot pass without
+#      saying it. Each line speaks for its own machine; the run exercised the refusal if either
+#      side's reads above 0. With these two creatures it reads 0 on both sides, and the line says
+#      the refusal of a machine that does not have the creature was NOT exercised. A run that
+#      passes has then proved points 1 to 4 and nothing about a non-owner.
 #
 # Why each side checks its own numbers instead of adding the two machines' together: a scenario has
 # no arithmetic, and a number the other machine publishes in a key can only be compared for
@@ -121,7 +124,8 @@
 #     design, and the watcher's `nonowner=` line would then read above 0. No rip, log or note on
 #     this machine names such a creature yet, and guessing names is how the first version of this
 #     pair went wrong. The list and the `since` line need Utangard built on or after 2026-09-30;
-#     an older build prints its usage line for the one and nothing for the other.
+#     an older build prints its usage line for the one and nothing for the other, and then the
+#     `printed nonowner= yes` steps fail.
 #   - Utangard's boss credit is a key written only when it is missing, so what it wrote is not
 #     checked, only that it ran (bosscredit).
 #   - A double landing on one count. Two machines writing count+1 at the same moment leave one
@@ -289,6 +293,7 @@ banish all 60
 # The last line of this readout says whether this machine ran a greydwarf death it did not own
 # during the run.
 console utangard deaths Greydwarf since $gnot
+printed nonowner= yes
 
 # Five kills in Utangard's tally for this character, wherever each death ran.
 went gkills kills=(\d+) +5
@@ -344,6 +349,7 @@ waitfor rig_kc_b_done 120
 
 # Whether this machine ran an Eikthyr death it did not own during the run, in words.
 console utangard deaths Eikthyr since $enot
+printed nonowner= yes
 
 # The rule on this machine, whether it had both bosses, one or neither: a boss credit for each
 # death it owned and for nothing else. The watcher checks the same on its side, so between them

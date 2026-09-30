@@ -336,9 +336,13 @@ namespace Utangard
         /// <paramref name="since"/>, said in words.
         ///
         /// For the paired kill-credit scenarios, which note notowner at their start and hand it
-        /// back here at their end. Whether the owner checks were exercised at all is the one thing
-        /// a passing run cannot say by itself, and a scenario has no way to subtract two numbers
-        /// and print a sentence about the answer.
+        /// back here at their end. Whether the refusal of a machine that does not have the creature
+        /// was exercised at all is the one thing a passing run cannot say by itself, and a
+        /// scenario has no way to subtract two numbers and print a sentence about the answer.
+        ///
+        /// It names the refusal, not "the owner checks": every death this machine owned went
+        /// through the owner's side of the same check, so a line saying the checks were not
+        /// exercised would have been false on the machine that had the creature.
         /// </summary>
         private static string NonOwnerSince(int now, int since, bool deathAnimation)
         {
@@ -350,9 +354,9 @@ namespace Utangard
 
             if (ran > 0)
                 return "nonowner=" + ran + from + "   (this machine ran " + ran
-                       + " death(s) of it that it did not own, so the owner checks on this machine were exercised)";
+                       + " death(s) of it that it did not own, so the refusal of a machine that does not have it was exercised here)";
 
-            return "nonowner=0" + from + "   (this machine ran no death of it that it did not own, so the owner checks on this machine were NOT exercised"
+            return "nonowner=0" + from + "   (this machine ran no death of it that it did not own, so the refusal of a machine that does not have it was NOT exercised here"
                    + (deathAnimation ? ")" : ", and none can: it dies straight from CheckDeath, so only the machine that has it reaches OnDeath)");
         }
 
