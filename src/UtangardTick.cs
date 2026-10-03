@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using HarmonyLib;
 using UnityEngine;
@@ -70,6 +71,9 @@ namespace Utangard
         private const float PublishInterval = 5f;
 
         private static float _publishTimer;
+        private static bool _publishBarsNow;
+        private static bool _saidHeartbeat;
+        private static bool _saidBars;
 
         public static void Run(Player player, float dt)
         {
@@ -96,12 +100,25 @@ namespace Utangard
                 if (_publishTimer >= PublishInterval)
                 {
                     _publishTimer = 0f;
-                    Progression.PublishLocal(player);
+
+                    // Each in its own try, so a throw in one cannot skip the other or the drain
+                    // and the messages after them in this postfix. Logged once each.
+                    try
+                    {
+                        Progression.PublishLocal(player);
+                    }
+                    catch (Exception e)
+                    {
+                        if (!_saidHeartbeat)
+                            UtangardPlugin.Log.LogError("Publishing the heartbeat failed: " + e);
+                        _saidHeartbeat = true;
+                    }
 
                     // The bars for the compendium's player tabs (LHM-61). Under the same switch
                     // as the heartbeat, because a tab is listed from that heartbeat: without
-                    // it nobody could read what this wrote.
-                    PlayerBars.Publish(player);
+                    // it nobody could read what this wrote. After the map count's slice below
+                    // has run, see Discovery.Step.
+                    _publishBarsNow = true;
                 }
             }
 
@@ -110,8 +127,25 @@ namespace Utangard
             // The foothold's map count, one time slice per tick until this world's map has been
             // read once, and a handful of flag checks a tick after that. Here rather than in its
             // own Update for the reasons at the top of this class, plus one: it only matters while
-            // there is a local character to have walked anywhere.
+            // there is a local character to have walked anywhere. Before the bars are published,
+            // so a new world's first pass sees its own count starting and not the last world's end.
             Discovery.Step();
+
+            if (_publishBarsNow)
+            {
+                _publishBarsNow = false;
+
+                try
+                {
+                    PlayerBars.Publish(player);
+                }
+                catch (Exception e)
+                {
+                    if (!_saidBars)
+                        UtangardPlugin.Log.LogError("Publishing the foothold bars failed: " + e);
+                    _saidBars = true;
+                }
+            }
 
             bool withered = BiomeGate.IsWithered(player);
 

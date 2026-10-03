@@ -14,12 +14,39 @@ and the mod uses [semantic versioning](https://semver.org).
   boss that opens it, the same way it shows yours, read-only. Online players are marked. A player
   on an older build shows as "no data", never as zero.
 - Each client publishes its character's bars for the locked biomes into one global key,
-  `utangard_f_<character id>`, as whole percents only: no position and no map. It is written only
+  `utangard_f_<character id>`, as percents only: no position and no map. It is written only
   when a bar has moved and at most once in 30 seconds. The README works out what that costs the
   server's key list and the character files.
+- `Foothold.PublishStep`, the step in percent that other players' bars are published in, default
+  5. **5 is my recommendation and Robbin has not chosen it.** It cuts the growth of every
+  client's character file to a fifth of what exact percents cost (the worst case in the README
+  goes from about 4 MB to about 0.8 MB for ten players), and the page then shows other players in
+  steps of 5 while your own numbers stay exact.
 - `utangard players` in the console lists every tab with the numbers it holds.
 - Two scenarios for two clients, `paired-utangard-players-a` and `-b`, that check each client's
   numbers reach the other, update, and show on the other's page without anything being squeezed.
+
+### Fixed
+
+- A second world joined in one session no longer publishes a false 0% Discovery. The previous
+  world's finished count was still read for the first moments of the next, which wrote a 0 and
+  then the real number, two permanent strings per join and a wrong figure on everyone's page.
+  Nothing is published for Discovery while the count runs, your own tab says it is reading your
+  map, and the map count now starts before the first publish.
+- Two machines writing one character id (a copied character file, or someone writing on purpose)
+  no longer keep each other rewriting every 30 seconds. A client answers a world that disagrees
+  with what it wrote at most once in five minutes, and the write time is kept to the nearest ten
+  minutes so a rewrite of the same bars is the same string.
+- A published time that is not a plain number, is before 1970 or is more than a day ahead is read
+  as no data, and "updated N minutes ago" can no longer overflow.
+- A character id of 0 is never listed, a name with a `|` in it matches the online list again, and
+  two characters with one name are no longer both shown online when only one is.
+- The list uses the same per-boss window as the gate, and the page opens on your own tab.
+- The tight list keeps the 3 px selected border clear of the mini bars, and a player who has
+  slid past the ninth tab while being viewed takes the last tab's place so something stays
+  highlighted.
+- A failure in publishing the heartbeat or the bars is logged once and no longer skips the food
+  drain and the messages after it.
 
 ### Changed
 

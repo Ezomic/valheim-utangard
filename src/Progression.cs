@@ -730,7 +730,7 @@ namespace Utangard
         /// survive both. Spaces become underscores; the rest is cosmetic anyway, since it only
         /// ever appears in a "waiting on" line.
         /// </summary>
-        private static string Sanitise(string name)
+        internal static string Sanitise(string name)
         {
             if (string.IsNullOrEmpty(name)) return "unnamed";
             return name.Replace(' ', '_').Replace(ValueSeparator, '_');
