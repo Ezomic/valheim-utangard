@@ -98,10 +98,16 @@ namespace Utangard
             return Seams.MapExplore && Seams.FoodTick && !_gaveUp && ExploredOf() != null;
         }
 
-        /// <summary>True while this world's background count has not finished.</summary>
+        /// <summary>
+        /// True while this world's background count has not finished, and also while the running
+        /// minimap is not the one the count describes. _done is still true from the previous world
+        /// for the first tick of the next one, and Pixels answers 0 for a map that is not the
+        /// counted one, so without the second half a number read in that window is a false 0%.
+        /// </summary>
         internal static bool Counting()
         {
-            return !_done;
+            var map = Minimap.instance;
+            return !_done || map == null || !ReferenceEquals(map, _map);
         }
 
         /// <summary>Pixels of this biome the character uncovered on foot, counted so far.</summary>

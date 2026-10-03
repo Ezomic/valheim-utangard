@@ -766,6 +766,47 @@ namespace Utangard
         }
 
         /// <summary>
+        /// The Fighting bar of the local character in one biome, in the percent every screen shows,
+        /// or -1 when the tally cannot be read. For PlayerBars, which publishes it without paying
+        /// for a whole Standing (names, localisation, a list per biome) nine times a pass.
+        /// </summary>
+        internal static int FightingPercentIn(Heightmap.Biome biome)
+        {
+            try
+            {
+                int fighting;
+                return FightingIn(biome, out fighting) ? Percent(fighting, FullBar()) : -1;
+            }
+            catch (Exception e)
+            {
+                SayFailure(e);
+                return -1;
+            }
+        }
+
+        /// <summary>
+        /// The Discovery bar of the local character in one biome, in whole percent rounded down as
+        /// the panel rounds it, or -1 when the map cannot be read. Standing.DiscoveryPercent
+        /// through the same arithmetic, so a published number and the page's own cannot differ.
+        /// </summary>
+        internal static int DiscoveryPercentIn(Heightmap.Biome biome)
+        {
+            try
+            {
+                if (!Discovery.Available()) return -1;
+
+                int full = Discovery.FullPixels();
+                float percent = full <= 0 ? 100f : Math.Min(100f, Discovery.Pixels(biome) * 100f / full);
+                return (int)Math.Floor(percent);
+            }
+            catch (Exception e)
+            {
+                SayFailure(e);
+                return -1;
+            }
+        }
+
+        /// <summary>
         /// The Fighting bar for one biome, in points, without building the whole Standing. False
         /// when the tally or the table cannot be read, which callers treat as not earned.
         /// </summary>

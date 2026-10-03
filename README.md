@@ -36,10 +36,12 @@ Everything here is a default and everything is configurable.
   stepping back does not work.
 - Two HUD icons, a message on entering and leaving that names who the biome is still waiting on,
   and a message when a biome opens, wherever you are standing.
-- A Utangard page in the compendium (the texts screen, beside Logs and Active Effects). A row of
-  every biome runs across the top, green when open and red when locked. Pick one to see who it is
-  still waiting on and how long until the deadline opens it anyway. For a locked biome it also
-  shows your two foothold bars and the rules of the lock as your server has set them.
+- A Utangard page in the compendium (the texts screen, beside Logs and Active Effects). Every
+  player seen in the last 14 days is listed down the left, you first, with two small bars each.
+  Two rows of biome buttons sit beside it, green when open and red when locked. Pick a biome to
+  see who it is still waiting on and how long until the deadline opens it anyway. For a locked
+  biome it also shows your two foothold bars and the rules of the lock as your server has set
+  them. Pick another player to see their bars and what each has earned back, read-only.
 
 Dungeons take the biome above them, so a Swamp crypt withers you exactly like the Swamp.
 
@@ -121,11 +123,74 @@ outside. That is why Discovery asks for a whole square kilometre: at half of tha
 of coastline did it, and now it takes about ten.
 
 The Utangard page in the compendium shows both bars for whichever biome you pick, and it opens
-on the first biome your group has not earned. Click another biome in the row to see it, or use
-left and right on the d-pad with a controller. A refused meal tells you how far your Fighting bar
+on the first biome your group has not earned. Click another biome to see it, or use left and
+right on the d-pad with a controller. A refused meal tells you how far your Fighting bar
 has got. `utangard foothold` in the console (F5) shows both bars for every biome, how many of
 each creature Utangard has counted for you, and what each kind has added. What each creature is
 worth is in the config, one line per biome, under **Foothold**.
+
+### Seeing the others
+
+The list down the left of the page has everyone seen playing in the last 14 days (`Gate.RosterDays`,
+or the longest per-boss window in `RosterDaysPerBoss`, the same rule the group gate counts a
+character by), with you first and then whoever is online. Each tab
+shows the average of that player's Fighting and Discovery over the biomes that are still locked, as
+two small bars. Click one and the page shows that player's two bars in the biome you have
+selected, what each has earned back, and whether they have the boss that opens it. It reads like
+your own page and changes nothing.
+
+- **Percentages only.** What leaves your machine is two whole percents per locked biome. No
+  position, no map, no kill list.
+- A player on a build from before this one, or whose game could not read a bar, shows as unknown,
+  not as zero. A tab with no data says "Older build, no data".
+- Numbers are a little behind. Your client writes them when a bar has moved, and at most once in
+  30 seconds, so a friend's tab can lag by about that long and then catches up. Another player's
+  numbers are in steps of 5 percent (`Foothold.PublishStep`) and their age is to the nearest ten
+  minutes, while your own tab and page are exact. The step is a recommendation, not a choice
+  Robbin has made: see the cost below.
+- Your own tab says it is reading your map for the few seconds the map count runs after you join,
+  and nothing is published for Discovery until it is done, so a joining player never shows a false
+  0%.
+- A player who has not been seen for the roster window drops off the list by themselves. With more
+  than seven players the tabs close up to fit, and past nine the rest are counted in the caption.
+- It needs the group gate (`Gate.GateOnGroup`) and footholds on. Without them there is nothing to
+  list or nothing published, and the page looks as it did before. A controller cannot choose a
+  player yet, only a biome.
+- `utangard players` in the console prints every tab as one line with the numbers it holds.
+
+How it is published, and what it costs. Each client writes one global key for its own character,
+`utangard_f_<character id>`, holding one slot per biome: Fighting and Discovery as three-digit
+percents, `---` for a biome that is open and `???` for a bar that could not be read, after a
+version and the write time in unix minutes, to the nearest ten. Character ids run to 19 digits, so
+one "key value" string is up to about 96 bytes (30 for the key, 65 for the value). Every global key
+the server accepts is sent on to all players as part of the whole key list, and `GlobalKeyAdd` on
+every client also saves each distinct "key value" it receives into three of the character's
+`m_knownWorldKeys` dictionaries, for good and for every writer, not only for the local character.
+So the budget is the size of the list and the number of distinct strings, times three. Worst case
+means every one of the 7 locked biomes' two bars passing through each of its steps with every step
+written on its own:
+
+| | Packed key, steps of 1 | Packed key, steps of 5 (default) | One key per biome and bar |
+| --- | --- | --- | --- |
+| Keys per character | 1 | 1 | 14 |
+| Bytes per string | about 96 | about 96 | about 48 |
+| Ten players, added to every broadcast | about 1 KB | about 1 KB | about 7 KB |
+| Distinct strings per character, worst case | 1,400 | 280 | 1,400 |
+| One client's character file, per character | about 400 KB | about 80 KB | about 200 KB |
+| One client's character file, ten players | about 4 MB | about 0.8 MB | about 2 MB |
+
+The packed key was chosen for the broadcast, which is paid by everyone on every write. The worst
+case is a limit and not a forecast: the 30 second floor makes every step written on its own very
+unlikely, and a bar never goes back down. A server that keys the Ocean has one more locked biome
+and a fifth more of everything. The step is the lever for the last four rows, and
+**`Foothold.PublishStep` is 5 on my recommendation. Robbin has not chosen it**; 1 is exact percents
+and costs five times as much character file.
+
+A character file that is copied to a second machine, or a client that writes the key on purpose,
+is two writers for one id. Each client remembers what it wrote last and answers a world that
+disagrees at most once in five minutes, so the two cannot keep each other writing every 30
+seconds. Each new string is still permanent in everyone's file, which is another reason the step
+is not 1.
 
 ## Biome table
 
@@ -203,8 +268,10 @@ Persistence:
   player's character.
 - A foothold is read from your own character on your own machine: the kills Utangard counted
   for you in this world, and the map you have explored here. A kill is counted on whichever
-  machine had the creature, which tells each player who hit it. Nothing about a foothold is
-  saved in the world.
+  machine had the creature, which tells each player who hit it. The bars themselves are not
+  saved in the world, but the percentages of the locked biomes are published in one global key
+  per character so the others can see them (see [Seeing the others](#seeing-the-others)). The
+  key stays in the world after a character stops playing, about 90 bytes each.
 
 ## Configuration
 
@@ -269,6 +336,7 @@ appears to do nothing, check the cfg first.
 | `FightingFullPoints` | `150` | Fighting points that make a full bar. Healing needs this bar full, and Discovery too. |
 | `EatAtFightingPercent` | `50` | Where you may eat again, as a percent of a full Fighting bar. Food only; meads and potions stay refused. Above 100 means never. |
 | `DiscoveryFullKm2` | `1` | How much of a biome's map, in km², you have to uncover yourself for a full Discovery bar. `0` means no walking is needed. |
+| `PublishStep` | `5` | The step, in percent, other players' bars are rounded down to before they are published. Cuts the growth of everyone's character file to a fifth at 5. 5 is a recommendation; `1` is exact percents. Your own page is always exact. |
 | `MaxFromOneKindPercent` | `50` | The most one kind of creature can add to a Fighting bar, as a percent of a full bar. |
 | `Points_Meadows` … `Points_Ocean` | see below | What each kill is worth there, as `Prefab:points` pairs. A creature that is not listed is worth nothing in that biome. |
 
