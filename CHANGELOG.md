@@ -3,6 +3,32 @@
 Notable changes to Utangard. Format follows [Keep a Changelog](https://keepachangelog.com),
 and the mod uses [semantic versioning](https://semver.org).
 
+## [Unreleased]
+
+### Added
+
+- **See how far everybody else has got.** The Utangard page in the compendium now has a list of
+  every player seen in the last 14 days down the left, you first, with two small bars each for
+  Fighting and Discovery averaged over the locked biomes. Click a player and the page shows their
+  two bars in the biome you have selected, what each has earned back and whether they have the
+  boss that opens it, the same way it shows yours, read-only. Online players are marked. A player
+  on an older build shows as "no data", never as zero.
+- Each client publishes its character's bars for the locked biomes into one global key,
+  `utangard_f_<character id>`, as whole percents only: no position and no map. It is written only
+  when a bar has moved and at most once in 30 seconds. The README works out what that costs the
+  server's key list and the character files.
+- `utangard players` in the console lists every tab with the numbers it holds.
+- Two scenarios for two clients, `paired-utangard-players-a` and `-b`, that check each client's
+  numbers reach the other, update, and show on the other's page without anything being squeezed.
+
+### Changed
+
+- The page is laid out as mockup B: the biome buttons are in two rows of four, the page says at
+  the top whose progress it is, and under another player's boxes it says how old their numbers
+  are. Your own page keeps the rules line.
+- A thicker border: the panel's own edge is 2 px instead of 1, and the
+  selected player and the selected biome are 3 px instead of 2.
+
 ## [1.4.0] - 2026-09-30
 
 ### Added

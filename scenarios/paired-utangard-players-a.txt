@@ -1,0 +1,125 @@
+#! partner paired-utangard-players-b
+# Utangard player tabs, TWO CLIENTS: side A. LHM-61.
+#
+# Run this on either client. Devkit starts its partner, paired-utangard-players-b.txt, on the
+# other one the moment this starts, and the verdict is both logs. The two halves are the same file
+# with different numbers, so it does not matter which is run first.
+#
+# What it proves. Each client publishes its own character's two bars into the world, and the
+# compendium page shows another player's tab from what the world holds, not from anything local.
+#  1. A bar this side sets shows up on the other client. This side sets 10% Fighting in the
+#     Deep North and waits to read the partner's 40% in `utangard players`, which is built from
+#     the world's keys. The partner's number cannot be this side's own: they differ.
+#  2. A bar that moves is published again. Both sides then change the number (10% to 20% here,
+#     40% to 30% there) and wait for the partner's new one. The client throttles its writes
+#     to one in 30 seconds, so this waits up to two minutes.
+#  3. The page shows it. Choosing the partner's tab (`press Online`, which is the status line of
+#     the only other player online) shows the Deep North with the partner's 30% beside Fighting,
+#     "Viewing another player", the eating threshold, how old the numbers are and "Percentages only",
+#     and nothing reading "No data". Choosing "You, online" brings back this character's own 20%.
+#  4. Switching tabs does not squeeze anything: every label in the new boxes and the tab list is as
+#     tall as its text needs (`tall`, the guard added after 2026-09-29).
+#
+# The first numbers are decoys, on purpose. A previous run leaves each character's last published
+# value in the world, and a wait for it would pass at once on that. So the first number differs
+# from the last, and each side waits for the other's first number before moving to the last.
+#
+# What it cannot see. Discovery is not compared with the partner's own page: the number depends on
+# each character's map, and this file has no way to carry one client's reading to the other. It is
+# checked to be a number (no "?" and no "No data") and the partner's own `utangard foothold` is the
+# figure to hold it to. A player leaving or going stale, and the rows closing up past seven
+# players, need more characters than two. Gamepad has no way to choose a player yet.
+#
+# What it needs. The dev server with two clients (own-profile\pair.ps1), both characters in the same
+# world, default Foothold settings, Presentation.ShowCompendiumPanel on, and the game in English,
+# since the biome names are clicked and read by their English names. Both characters have to be
+# on the group roster, which they are the moment each has spawned once with Utangard 1.5 or later.
+# The Deep North is shut the way utangard-foothold-panel shuts it.
+#
+# What it leaves behind, and none of it can be undone:
+#  - Utangard's count, in this world, of every creature on the Deep North points line: 0 for all
+#    of them except JotunWarrior, which is left at 6. It is kept in the character, one entry per
+#    world, and the old numbers are not kept anywhere. Use throwaway characters.
+#  - Each character's published bars in the world, a global key per character, which stay there.
+#  - Fader's records in this world stay cleared. `key defeated_fader` puts them back.
+
+god
+ghost
+
+unkey defeated_fader
+unkey utangard_open_defeated_fader
+unkey wither_open_defeated_fader
+unkey utangard_first_defeated_fader
+unkey utangard_p_$player_defeated_fader
+wait 1
+
+mod utangardtest kills GoblinDeepNorth 0
+mod utangardtest kills Elaking 0
+mod utangardtest kills ElakingLantern 0
+mod utangardtest kills ElakingMole 0
+mod utangardtest kills DvergerDeepNorth 0
+mod utangardtest kills Moose 0
+mod utangardtest kills ShadowPerson 0
+mod utangardtest kills JotunWitch 0
+mod utangardtest kills JotunWarriorDualWield 0
+mod utangardtest kills Barka 0
+
+# ---------------------------------------------------------------- the first numbers
+
+mod utangardtest kills JotunWarrior 3
+
+# This line is this character's own, live. The partner's is read from the world, and says
+# "(online)" where this one says "(you)".
+console utangard players
+printed DeepNorth fighting 10% yes
+
+# Waiting for the partner's decoy proves the partner published to the world and this client read
+# it back. The partner's character is the only one that can have this number.
+until 120 DeepNorth fighting 40%
+printed (online): data yes
+
+# ---------------------------------------------------------------- the numbers that stay
+
+mod utangardtest kills JotunWarrior 6
+console utangard players
+printed DeepNorth fighting 20% yes
+
+until 120 DeepNorth fighting 30%
+
+# ---------------------------------------------------------------- the page
+
+compendium
+wait 1
+press Online
+wait 1
+press Deep North
+wait 1
+
+panel Viewing another player yes
+panel The Deep North yes
+beside Fighting | 30% yes
+panel Eating at 50% yes
+panel Percentages only yes
+panel Updated yes
+panel is not down for yes
+panel No data no
+panel Discovery yes
+
+tall Viewing another player
+tall The Deep North
+tall Deep North
+tall Fighting
+tall Discovery
+tall Eating at 50%
+tall Online
+tall You, online
+tall Players, last
+
+# Back to this character's own page, which is read here and not from the world.
+press You, online
+wait 1
+panel Your own progress yes
+beside Fighting | 20% yes
+tall Your own progress
+tall Fighting
+close

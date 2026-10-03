@@ -9,9 +9,9 @@ using UnityEngine;
 namespace Utangard
 {
     /// <summary>
-    /// `utangard`, the console command. Four verbs: `foothold`, the local character's two bars
+    /// `utangard`, the console command. Five verbs: `foothold`, the local character's two bars
     /// in every biome as the unlocks read them; `biomes` and `creatures`, the raw material
-    /// the foothold tables were written from; and `deaths`, which machine ran a creature's death
+    /// the foothold tables were written from; `players`, the tabs of the compendium page with the numbers each holds (LHM-61); and `deaths`, which machine ran a creature's death
     /// (see DeathsReport).
     ///
     /// The design Robbin settled on 2026-09-24 is that a character earns back eating and health
@@ -67,7 +67,7 @@ namespace Utangard
             _registered = true;
 
             new Terminal.ConsoleCommand("utangard",
-                "utangard foothold | biomes | creatures | deaths [<creature> [since <notowner>]] - your foothold in each locked biome, the raw numbers behind it, and which machine ran a creature's death",
+                "utangard foothold | biomes | creatures | players | deaths [<creature> [since <notowner>]] - your foothold in each locked biome, the raw numbers behind it, every player tab on the compendium page, and which machine ran a creature's death",
                 OnCommand, isCheat: false);
 
             RegisterTest();
@@ -157,12 +157,33 @@ namespace Utangard
             if (what == "biomes") { Biomes(term); return; }
             if (what == "creatures") { Creatures(term); return; }
             if (what == "deaths") { DeathsReport(term, args); return; }
+            if (what == "players") { PlayersReport(term); return; }
 
             term.AddString("utangard foothold - per biome: your Fighting and Discovery bars, what each kind of creature put in, and what is unlocked");
             term.AddString("utangard biomes - per biome: its creatures, the kills of each Utangard counted for you in this world (only creatures a points line pays for), and how much of it you have explored");
             term.AddString("utangard creatures - every creature in the foothold tables, checked against the game");
             term.AddString("utangard deaths <creature> - whether it dies through its animation, how many this machine saw die this session and whether it had them, and who has the nearest live one");
+            term.AddString("utangard players - every tab on the compendium page: who, whether online, and the bars each has published for the locked biomes");
             term.AddString("utangard deaths - every creature that dies through its animation; utangard deaths <creature> since <notowner> - whether this machine ran one it did not own since notowner stood there");
+        }
+
+        // ----------------------------------------------------------------- players ------
+
+        /// <summary>
+        /// `utangard players`: the compendium's player tabs as lines, with the numbers each shows
+        /// (LHM-61). Read-only. For the paired scenarios, which cannot read a bar off the screen
+        /// without knowing the other character's name, and for asking why a tab says "no data".
+        /// </summary>
+        private static void PlayersReport(Terminal term)
+        {
+            var members = PlayerBars.Members();
+            if (members.Count == 0)
+            {
+                Say(term, "utangard players: no world or no character yet.");
+                return;
+            }
+
+            foreach (var member in members) Say(term, PlayerBars.Describe(member));
         }
 
         // ------------------------------------------------------------------ deaths ------

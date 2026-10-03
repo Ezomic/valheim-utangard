@@ -8,6 +8,11 @@
 # and takes the boxes away. And every text on it has the height its text needs, which the strings
 # alone cannot show: see the `tall` steps.
 #
+# Since LHM-61 the page also opens with this character's own tab selected in the player list down
+# the left, headed "Players, last N days" with the character on top as "You, online", and says
+# "Your own progress" over its own boxes. Choosing another player is the paired scenarios' job,
+# paired-utangard-players-a and -b, since it needs a second client.
+#
 # The Fighting bar is seeded here with `mod utangardtest kills`, 6 Jotun warriors for 30 of 150
 # points, rather than fought. This is a test of what the page draws. utangard-foothold-eating
 # tests how the count fills the bar, and utangard-foothold-kills tests which kills go on it.
@@ -69,6 +74,14 @@ tall Deep North
 tall Fighting
 tall Discovery
 tall Eating at 50%
+
+# The player list and whose page it is. Only this character's own tab can be checked alone.
+panel Players, last yes
+panel You, online yes
+panel Your own progress yes
+tall Players, last
+tall You, online
+tall Your own progress
 
 beside Fighting | 20% yes
 panel Eating at 50% yes
