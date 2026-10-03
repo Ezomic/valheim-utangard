@@ -172,7 +172,7 @@ namespace Utangard
         /// once a day keeps it to one entry per player per day, and clients disagreeing about
         /// the clock by a few hours cannot matter at this resolution.
         /// </summary>
-        private static long Today()
+        internal static long Today()
         {
             return (long)(DateTime.UtcNow - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc))
                 .TotalDays;
@@ -464,7 +464,7 @@ namespace Utangard
             return Now() >= started + (long)(days * 86400f);
         }
 
-        private static long Now()
+        internal static long Now()
         {
             return (long)(DateTime.UtcNow - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc))
                 .TotalSeconds;
@@ -739,6 +739,16 @@ namespace Utangard
         private static string DoneKey(long id, string bossKey)
         {
             return DonePrefix + id + "_" + bossKey.ToLowerInvariant();
+        }
+
+        /// <summary>
+        /// Whether this character has been credited with this boss, for the compendium's tab of
+        /// another player. The same key the gate asks about, so the tab and the gate agree.
+        /// </summary>
+        internal static bool HasDone(long id, string bossKey)
+        {
+            ZoneSystem zone = ZoneSystem.instance;
+            return zone != null && bossKey != null && Has(zone, DoneKey(id, bossKey));
         }
 
         internal struct RosterEntry

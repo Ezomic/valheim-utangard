@@ -361,7 +361,7 @@ namespace Utangard
         /// spelled it. Anyone offline gets a capital at the start of each word, which is a guess,
         /// but "Juan Pointoh" is closer to the truth than "juan_pointoh".
         /// </summary>
-        private static string DisplayName(string stored)
+        internal static string DisplayName(string stored)
         {
             string spaced = stored.Replace('_', ' ');
 

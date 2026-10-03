@@ -97,6 +97,11 @@ namespace Utangard
                 {
                     _publishTimer = 0f;
                     Progression.PublishLocal(player);
+
+                    // The bars for the compendium's player tabs (LHM-61). Under the same switch
+                    // as the heartbeat, because a tab is listed from that heartbeat: without
+                    // it nobody could read what this wrote.
+                    PlayerBars.Publish(player);
                 }
             }
 
