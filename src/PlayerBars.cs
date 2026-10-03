@@ -36,7 +36,19 @@ namespace Utangard
     /// percents, as the ticket asked, would still be a write every few dozen metres of walking on
     /// new ground, each one a broadcast to every player and a new string in every profile. The
     /// floor turns that into at most two a minute per player, and the last number is never lost,
-    /// only late: the next pass after the floor writes it.
+    /// only late: the next pass after the floor writes it. The values are also rounded down to
+    /// UtangardConfig.PublishStep (5 by default, a recommendation Robbin has not chosen), which
+    /// is what cuts the number of distinct strings, and so the profile growth, to a fifth.
+    ///
+    /// <b>Changed means changed by this client, not changed by anyone.</b> The comparison is with
+    /// the world's value, so two live writers for one character id (a copied character file, or a
+    /// hostile client) would each see the other's value as a change and rewrite every 30 seconds
+    /// for ever, each pass adding a string to every client's three dictionaries. So the last
+    /// slots this client wrote are remembered: a world that disagrees with them has been
+    /// overwritten by someone else, and that is answered at most once in ContestedWriteSeconds. A
+    /// missing key is not a dispute and is rewritten at the normal floor. The time in the value is
+    /// rounded to MinutesBucket for the same reason: a rewrite of identical bars inside a bucket
+    /// is the identical string, which the server's own exact-match check then drops.
     ///
     /// <b>Only locked biomes are published.</b> The bars only mean something where the lock is,
     /// and the Fighting tally keeps counting in an open biome, so publishing those would write on
@@ -61,6 +73,15 @@ namespace Utangard
         /// <summary>The fewest real seconds between two writes by one client.</summary>
         internal const float MinWriteSeconds = 30f;
 
+        /// <summary>The fewest between two writes of bars this client already wrote once, see Publish.</summary>
+        internal const float ContestedWriteSeconds = 300f;
+
+        /// <summary>The write time in the value is rounded down to this many minutes.</summary>
+        private const long MinutesBucket = 10L;
+
+        /// <summary>How far ahead of this clock a published time may be before it is not believed.</summary>
+        private const long FutureMinutes = 24L * 60L;
+
         /// <summary>A slot that was not published: the biome was open, or the key is missing.</summary>
         internal const int None = -1;
 
@@ -72,6 +93,10 @@ namespace Utangard
 
         private static float _wroteAt = float.NegativeInfinity;
         private static Player _publisher;
+        private static ZoneSystem _zone;
+
+        /// <summary>The slots string this client last wrote into this world, or null.</summary>
+        private static string _lastSlots;
 
         // ---------------------------------------------------------------- the numbers ---
 
@@ -113,6 +138,7 @@ namespace Utangard
             var bars = new Bars { Fighting = new int[n], Discovery = new int[n] };
 
             ZoneSystem zone = ZoneSystem.instance;
+            bool counting = Discovery.Available() && Discovery.Counting();
             for (int i = 0; i < n; i++)
             {
                 Heightmap.Biome biome = UtangardConfig.GateableBiomes[i];
@@ -124,7 +150,10 @@ namespace Utangard
                 }
 
                 int fighting = Foothold.FightingPercentIn(biome);
-                int discovery = Foothold.DiscoveryPercentIn(biome);
+
+                // A count still running, or one that belongs to another world's map, has no number
+                // yet. Unknown, never the 0 that Discovery.Pixels answers with.
+                int discovery = counting ? -1 : Foothold.DiscoveryPercentIn(biome);
                 bars.Fighting[i] = fighting < 0 ? Unknown : fighting;
                 bars.Discovery[i] = discovery < 0 ? Unknown : discovery;
             }
@@ -149,27 +178,37 @@ namespace Utangard
             long id = player.GetPlayerID();
             if (id == 0L) return;
 
-            if (!ReferenceEquals(_publisher, player))
+            if (!ReferenceEquals(_publisher, player) || !ReferenceEquals(_zone, zone))
             {
                 _publisher = player;
+                _zone = zone;
                 _wroteAt = float.NegativeInfinity;
+                _lastSlots = null;
             }
 
+            string key = KeyPrefix + id;
+            string current;
+            bool held = zone.GetGlobalKey(key, out current);
+
             // The map count of a world runs for a few seconds after it loads, and until it is done
-            // every Discovery number is a floor still rising. Publishing those would be a write
-            // per slice for numbers that are wrong by the time anybody reads them.
-            if (Discovery.Available() && Discovery.Counting()) return;
+            // every Discovery number is a floor still rising, or another world's map read as 0.
+            // Where the world already holds a value for this character it stays as it is until the
+            // count is done. Where it holds none, a value goes in with Discovery as unknown, so a
+            // tab is not left saying "older build" through the count.
+            if (held && Discovery.Available() && Discovery.Counting()) return;
 
             string slots = Pack(Own());
-            string key = KeyPrefix + id;
+            if (held && SlotsOf(current) == slots) return;
 
-            string current;
-            if (zone.GetGlobalKey(key, out current) && SlotsOf(current) == slots) return;
+            bool contested = held && _lastSlots == slots;
+            float floor = contested ? ContestedWriteSeconds : MinWriteSeconds;
+            if (Time.realtimeSinceStartup - _wroteAt < floor) return;
 
-            if (Time.realtimeSinceStartup - _wroteAt < MinWriteSeconds) return;
             _wroteAt = Time.realtimeSinceStartup;
+            _lastSlots = slots;
 
             long minutes = Progression.Now() / 60L;
+            minutes -= minutes % MinutesBucket;
             zone.SetGlobalKey(key + " " + Version + "." + minutes.ToString(CultureInfo.InvariantCulture)
                 + "." + slots);
 
@@ -191,7 +230,11 @@ namespace Utangard
             if (percent == None) return NotPublished;
             if (percent < 0) return Unreadable;
 
-            return Math.Min(100, percent).ToString("000", CultureInfo.InvariantCulture);
+            // Rounded down to the step, but a full bar stays 100: at a step of 30 the top of the
+            // scale would otherwise read 90 for ever.
+            int step = Math.Max(1, Math.Min(100, UtangardConfig.PublishStep.Value));
+            int shown = percent >= 100 ? 100 : percent - percent % step;
+            return shown.ToString("000", CultureInfo.InvariantCulture);
         }
 
         /// <summary>The slots of a stored value, or null when it is not one this build wrote.</summary>
@@ -227,9 +270,13 @@ namespace Utangard
             int second = value.IndexOf('.', first + 1);
             if (second < 0) return null;
 
+            // No sign, no spaces, and a time that is neither before 1970 nor a day past this clock.
+            // Anyone can write any key, and a number out of range is treated as no data rather than
+            // trusted into the "updated N minutes ago" sum.
             long minutes;
-            if (!long.TryParse(value.Substring(first + 1, second - first - 1), NumberStyles.Integer,
+            if (!long.TryParse(value.Substring(first + 1, second - first - 1), NumberStyles.None,
                     CultureInfo.InvariantCulture, out minutes)) return null;
+            if (minutes < 0L || minutes > Progression.Now() / 60L + FutureMinutes) return null;
 
             string slots = value.Substring(second + 1);
             int n = Slots();
@@ -270,6 +317,9 @@ namespace Utangard
             /// <summary>As a person would write it. Never carries markup.</summary>
             public string Name;
 
+            /// <summary>The name as the heartbeat key stores it, for matching the online list.</summary>
+            public string NameKey;
+
             public bool You;
             public bool Online;
 
@@ -284,13 +334,37 @@ namespace Utangard
         }
 
         /// <summary>
+        /// The days a character stays listed: the longest window of any boss the gate waits on,
+        /// since a character the gate still counts for one boss is one the page should show. With
+        /// no gate row at all, RosterDays.
+        /// </summary>
+        internal static long WindowDays()
+        {
+            float most = 0f;
+            bool any = false;
+            foreach (string key in UtangardConfig.AllGateKeys())
+            {
+                any = true;
+                most = Math.Max(most, UtangardConfig.RosterDaysFor(key));
+            }
+
+            return Math.Max(1L, (long)(any ? most : UtangardConfig.RosterDays.Value));
+        }
+
+        /// <summary>
         /// The tabs, in the order they are drawn: you first, then who is online, then the rest by
         /// how recently they were seen, and anyone with no data last.
         ///
-        /// Everyone the heartbeat has seen within RosterDays, which is also who the group gate
-        /// waits for, so a tab is dropped by the same rule that stops a player holding a biome shut.
-        /// Online is read from the server's player list by name, since the heartbeat key carries the
-        /// character's name and nothing public maps a name to an id.
+        /// Everyone the heartbeat has seen within WindowDays, which is the window the group gate
+        /// uses for the boss with the longest one (RosterDaysFor), so a tab is dropped by the same
+        /// rule that stops a player holding a biome shut. Online is read from the server's player
+        /// list by name, since the heartbeat key carries the character's name and nothing public
+        /// maps a name to an id.
+        ///
+        /// Two characters with one name cannot be told apart by that list. Rather than show both
+        /// online when one is, the list's count for the name says how many of them are, and the
+        /// seats go to the ones seen most recently, then to the one whose bars were written last.
+        /// Your own character is taken out of that count first, since it is in the list too.
         /// </summary>
         internal static List<Member> Members()
         {
@@ -299,25 +373,42 @@ namespace Utangard
             Player me = Player.m_localPlayer;
             long myId = me != null ? me.GetPlayerID() : 0L;
 
-            HashSet<string> online = OnlineNames();
+            Dictionary<string, int> online = OnlineNames(me);
             long today = Progression.Today();
-            long window = Math.Max(1L, (long)UtangardConfig.RosterDays.Value);
+            long window = WindowDays();
+            var byName = new Dictionary<string, List<Member>>(StringComparer.Ordinal);
 
             foreach (Progression.RosterEntry entry in Progression.Roster())
             {
-                if (entry.Id == myId) continue;
+                if (entry.Id == myId || entry.Id == 0L) continue;
 
                 long ago = Math.Max(0L, today - entry.LastSeenDay);
                 if (ago > window) continue;
 
-                members.Add(new Member
+                var member = new Member
                 {
                     Id = entry.Id,
                     Name = Plain(GateReport.DisplayName(entry.Name)),
-                    Online = online.Contains(Normal(entry.Name)),
+                    NameKey = Normal(entry.Name),
                     DaysAgo = ago,
                     Bars = Read(entry.Id),
-                });
+                };
+
+                members.Add(member);
+
+                List<Member> same;
+                if (!byName.TryGetValue(member.NameKey, out same))
+                    byName[member.NameKey] = same = new List<Member>();
+                same.Add(member);
+            }
+
+            foreach (KeyValuePair<string, List<Member>> pair in byName)
+            {
+                int seats;
+                if (!online.TryGetValue(pair.Key, out seats) || seats <= 0) continue;
+
+                pair.Value.Sort(MoreRecent);
+                for (int i = 0; i < pair.Value.Count && i < seats; i++) pair.Value[i].Online = true;
             }
 
             members.Sort(Order);
@@ -337,6 +428,14 @@ namespace Utangard
             return members;
         }
 
+        private static int MoreRecent(Member a, Member b)
+        {
+            int days = a.DaysAgo.CompareTo(b.DaysAgo);
+            if (days != 0) return days;
+
+            return (b.Bars != null ? b.Bars.Minutes : 0L).CompareTo(a.Bars != null ? a.Bars.Minutes : 0L);
+        }
+
         private static int Order(Member a, Member b)
         {
             int rank = Rank(a).CompareTo(Rank(b));
@@ -354,23 +453,42 @@ namespace Utangard
             return member.Bars != null ? 1 : 2;
         }
 
-        private static HashSet<string> OnlineNames()
+        /// <summary>How many connected players carry each name, not counting this client's own.</summary>
+        private static Dictionary<string, int> OnlineNames(Player me)
         {
-            var names = new HashSet<string>(StringComparer.Ordinal);
+            var names = new Dictionary<string, int>(StringComparer.Ordinal);
 
             ZNet net = ZNet.instance;
             if (net == null) return names;
 
             foreach (ZNet.PlayerInfo info in net.GetPlayerList())
-                if (!string.IsNullOrEmpty(info.m_name)) names.Add(Normal(info.m_name));
+            {
+                if (string.IsNullOrEmpty(info.m_name)) continue;
+
+                string name = Normal(info.m_name);
+                int count;
+                names.TryGetValue(name, out count);
+                names[name] = count + 1;
+            }
+
+            if (me != null)
+            {
+                string mine = Normal(me.GetPlayerName());
+                int count;
+                if (names.TryGetValue(mine, out count)) names[mine] = count - 1;
+            }
 
             return names;
         }
 
-        /// <summary>A name the way the heartbeat key stores it: lowercase, no spaces.</summary>
+        /// <summary>
+        /// A name the way the heartbeat key stores it. Progression.Sanitise is what writes that
+        /// key, so reusing it is what keeps a name with a space or the separator in it matching
+        /// the online list; the key is lowercased by the game, hence the ToLowerInvariant.
+        /// </summary>
         private static string Normal(string name)
         {
-            return string.IsNullOrEmpty(name) ? "" : name.Replace(' ', '_').ToLowerInvariant();
+            return Progression.Sanitise(name).ToLowerInvariant();
         }
 
         /// <summary>A name with the two characters TextMeshPro would read as markup taken out.</summary>
@@ -384,7 +502,8 @@ namespace Utangard
         /// </summary>
         internal static string Status(Member member)
         {
-            if (member.You) return "You, online";
+            if (member.You)
+                return Discovery.Available() && Discovery.Counting() ? "You, reading your map..." : "You, online";
             if (member.Online) return "Online";
             if (member.DaysAgo <= 0L) return "Seen today";
 

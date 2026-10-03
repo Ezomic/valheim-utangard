@@ -77,6 +77,7 @@ namespace Utangard
         public static ConfigEntry<int> EatAtFightingPercent;
         public static ConfigEntry<float> DiscoveryFullKm2;
         public static ConfigEntry<int> MaxFromOneKindPercent;
+        public static ConfigEntry<int> PublishStep;
 
         /// <summary>One points line per gateable biome, in GateableBiomes order.</summary>
         private static readonly Dictionary<Heightmap.Biome, ConfigEntry<string>> PointsLines =
@@ -423,6 +424,17 @@ namespace Utangard
                 + "there. A percent for the same reason as EatAtFightingPercent.\n"
                 + "A kind is one creature name as the game writes it, which is why the three dvergr "
                 + "mages count as one.");
+
+            PublishStep = config.Bind(SecFoothold, "PublishStep", 5,
+                "The step, in percent, that the bars other players see are rounded down to. At 5 your "
+                + "client publishes 40, 45, 50 and never 47, and only writes when a bar crosses a step. "
+                + "Your own page always shows your exact numbers; only other players' tabs are in "
+                + "steps.\n"
+                + "Every write is a new string in every connected player's character file, for good, and "
+                + "a broadcast of the whole key list. A step of 5 cuts that growth to a fifth of what "
+                + "exact percents cost, and 1 is exact percents. The README works out the sums.\n"
+                + "5 is a recommendation and the default until Robbin has chosen; he has not. Values "
+                + "below 1 count as 1 and above 100 as 100.");
 
             foreach (Heightmap.Biome biome in GateableBiomes)
                 PointsLines[biome] = BindPoints(config, biome);

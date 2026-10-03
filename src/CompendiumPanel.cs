@@ -102,11 +102,19 @@ namespace Utangard
 
         /// <summary>
         /// Past this many tabs the rows close up so all of them fit in the page's 641 units: no
-        /// minimum height, a 4 gap and tighter padding. Seven at full size is 490 of the 550 the
+        /// minimum height, a 3 gap and tighter padding. Seven at full size is 490 of the 550 the
         /// column has under its heading and above its caption, an eighth is not.
+        ///
+        /// The fit, in units. A tab's content is 50.85: a 14 name line and a 13 status line at
+        /// the mockup's 1.55 line height (21.7 and 20.15), the 4 gap, and the 5 high bars. Tight
+        /// padding is 3 above and 4 below, so a tab is 57.85, and nine of them with eight gaps of
+        /// 3 are 520.65 + 24 = 544.65, inside the 550. The 4 below is what keeps the 3 px
+        /// selected border (3.2 units at the 0.934 pixels to a unit of the 2026-09-29 screenshot,
+        /// and under 4 down to 0.75) from being covered by the mini bars, which the old 2 did.
+        /// Nine at the old 4 gap and 2 below were 534.65, so this is 10 more of the 550.
         /// </summary>
         private const int RoomyTabs = 7;
-        private const float TightGap = 4f;
+        private const float TightGap = 3f;
 
         /// <summary>
         /// The mockup's line-height. TextMeshPro sets its lines at the font's own spacing, which
@@ -288,7 +296,11 @@ namespace Utangard
                 // Opens on the frontier every time, because "where is my group stuck" is what
                 // somebody opens this page to ask. A biome clicked last time is not remembered.
                 _selected = Default();
-                _viewing = 0L;
+
+                // Your own tab, not "nobody": Viewed would find it anyway, but a page that opens on
+                // the id it will show is one a refresh cannot move.
+                Player self = Player.m_localPlayer;
+                _viewing = self != null ? self.GetPlayerID() : 0L;
 
                 _root.transform.SetAsLastSibling();
                 _root.SetActive(true);
@@ -560,7 +572,12 @@ namespace Utangard
             int shown = Math.Min(members.Count, Math.Min(PlayerBars.MostTabs, PlayerRows.Count));
             SetTight(shown > RoomyTabs);
 
-            SetText(_playersHeading, "Players, last " + Math.Max(1, (int)UtangardConfig.RosterDays.Value) + " days");
+            SetText(_playersHeading, "Players, last " + PlayerBars.WindowDays() + " days");
+
+            // A player being viewed who has slid past the last tab, because the order moved while
+            // the page was open, takes the last tab's place rather than leaving nothing selected.
+            // The one it displaces is counted in the caption like the rest.
+            int viewedAt = members.IndexOf(viewed);
 
             for (int i = 0; i < PlayerRows.Count; i++)
             {
@@ -568,7 +585,7 @@ namespace Utangard
                 SetActive(row.Go, i < shown);
                 if (i >= shown) continue;
 
-                PlayerBars.Member member = members[i];
+                PlayerBars.Member member = i == shown - 1 && viewedAt >= shown ? viewed : members[i];
                 bool selected = ReferenceEquals(member, viewed);
                 row.Id = member.Id;
 
@@ -642,8 +659,12 @@ namespace Utangard
         {
             if (bars == null) return "Percentages only.";
 
-            long seconds = Math.Max(0L, Progression.Now() - bars.Minutes * 60L);
-            return "Updated " + GateReport.Span(seconds) + " ago. Percentages only.";
+            // Minutes are bounded when they are read, and the subtraction is in minutes, so a value
+            // from a hostile client cannot overflow the sum.
+            long seconds = Math.Max(0L, Progression.Now() / 60L - bars.Minutes) * 60L;
+            int step = Math.Max(1, Math.Min(100, UtangardConfig.PublishStep.Value));
+            return "Updated " + GateReport.Span(seconds) + " ago. "
+                + (step > 1 ? "Percentages in steps of " + step + "." : "Percentages only.");
         }
 
         /// <summary>
@@ -714,7 +735,7 @@ namespace Utangard
 
         private static RectOffset RowPadding(bool tight)
         {
-            return tight ? new RectOffset(12, 12, 3, 2) : new RectOffset(12, 12, 7, 6);
+            return tight ? new RectOffset(12, 12, 3, 4) : new RectOffset(12, 12, 7, 6);
         }
 
         private static void DrawBars(Foothold.Standing s)
