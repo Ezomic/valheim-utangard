@@ -145,9 +145,8 @@ your own page and changes nothing.
   not as zero. A tab with no data says "Older build, no data".
 - Numbers are a little behind. Your client writes them when a bar has moved, and at most once in
   30 seconds, so a friend's tab can lag by about that long and then catches up. Another player's
-  numbers are in steps of 5 percent (`Foothold.PublishStep`) and their age is to the nearest ten
-  minutes, while your own tab and page are exact. The step is a recommendation, not a choice
-  Robbin has made: see the cost below.
+  numbers are exact percents, published in steps of 1 (`Foothold.PublishStep`), and their age is
+  to the nearest ten minutes. See the cost below for what the step costs and how to raise it.
 - Your own tab says it is reading your map for the few seconds the map count runs after you join,
   and nothing is published for Discovery until it is done, so a joining player never shows a false
   0%.
@@ -170,27 +169,36 @@ So the budget is the size of the list and the number of distinct strings, times 
 means every one of the 7 locked biomes' two bars passing through each of its steps with every step
 written on its own:
 
-| | Packed key, steps of 1 | Packed key, steps of 5 (default) | One key per biome and bar |
+| | Packed key, steps of 1 (default) | Packed key, steps of 5 | One key per biome and bar |
 | --- | --- | --- | --- |
 | Keys per character | 1 | 1 | 14 |
-| Bytes per string | about 96 | about 96 | about 48 |
+| Characters per string | 96 | 96 | about 44 |
 | Ten players, added to every broadcast | about 1 KB | about 1 KB | about 7 KB |
 | Distinct strings per character, worst case | 1,400 | 280 | 1,400 |
-| One client's character file, per character | about 400 KB | about 80 KB | about 200 KB |
-| One client's character file, ten players | about 4 MB | about 0.8 MB | about 2 MB |
+| One client's character file, per character | about 424 KB | about 85 KB | about 206 KB |
+| One client's character file, ten players | about 4.2 MB | about 0.85 MB | about 2.1 MB |
+
+Where those come from. The key is `utangard_f_` and a character id of up to 19 digits (30
+characters), then a space and the value: `1.`, the write time in unix minutes (8 digits today), a
+dot, and nine slots of six characters, one per entry of `GateableBiomes` whether it is locked or
+not (54), which is 96 characters. The game saves each string with a one byte length and 4 bytes
+for its counter, 101 bytes, in each of three `m_knownWorldKeys` dictionaries (`ZoneSystem.GlobalKeyAdd`
+and `PlayerProfile.SavePlayerData` were read in the 1.0 assemblies), about 303 bytes a string. The
+default roster locks 7 biomes, each with two bars of 100 steps: 1,400 strings, 424 KB, and 4.2 MB
+for ten players. With the Ocean keyed there are 8 locked biomes: 1,600 strings, about 485 KB and
+4.9 MB for ten. A few dozen extra strings for `???` and the first write of each biome do not move
+those figures. Both are under the 5 MB line, the second only just.
 
 The packed key was chosen for the broadcast, which is paid by everyone on every write. The worst
 case is a limit and not a forecast: the 30 second floor makes every step written on its own very
 unlikely, and a bar never goes back down. A server that keys the Ocean has one more locked biome
-and a fifth more of everything. The step is the lever for the last four rows, and
-**`Foothold.PublishStep` is 5 on my recommendation. Robbin has not chosen it**; 1 is exact percents
-and costs five times as much character file.
+and a seventh more of everything. The step is the lever: **`Foothold.PublishStep` is 1, exact
+percents, which is Robbin's choice of 2026-10-04**, and a step of 5 costs a fifth of the file.
 
 A character file that is copied to a second machine, or a client that writes the key on purpose,
 is two writers for one id. Each client remembers what it wrote last and answers a world that
 disagrees at most once in five minutes, so the two cannot keep each other writing every 30
-seconds. Each new string is still permanent in everyone's file, which is another reason the step
-is not 1.
+seconds. Each new string is still permanent in everyone's file.
 
 ## Biome table
 
@@ -336,7 +344,7 @@ appears to do nothing, check the cfg first.
 | `FightingFullPoints` | `150` | Fighting points that make a full bar. Healing needs this bar full, and Discovery too. |
 | `EatAtFightingPercent` | `50` | Where you may eat again, as a percent of a full Fighting bar. Food only; meads and potions stay refused. Above 100 means never. |
 | `DiscoveryFullKm2` | `1` | How much of a biome's map, in km², you have to uncover yourself for a full Discovery bar. `0` means no walking is needed. |
-| `PublishStep` | `5` | The step, in percent, other players' bars are rounded down to before they are published. Cuts the growth of everyone's character file to a fifth at 5. 5 is a recommendation; `1` is exact percents. Your own page is always exact. |
+| `PublishStep` | `1` | The step, in percent, other players' bars are rounded down to before they are published. `1` is exact percents; 5 cuts the growth of everyone's character file to a fifth. Your own page is always exact. |
 | `MaxFromOneKindPercent` | `50` | The most one kind of creature can add to a Fighting bar, as a percent of a full bar. |
 | `Points_Meadows` … `Points_Ocean` | see below | What each kill is worth there, as `Prefab:points` pairs. A creature that is not listed is worth nothing in that biome. |
 

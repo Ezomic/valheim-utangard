@@ -425,16 +425,21 @@ namespace Utangard
                 + "A kind is one creature name as the game writes it, which is why the three dvergr "
                 + "mages count as one.");
 
-            PublishStep = config.Bind(SecFoothold, "PublishStep", 5,
-                "The step, in percent, that the bars other players see are rounded down to. At 5 your "
-                + "client publishes 40, 45, 50 and never 47, and only writes when a bar crosses a step. "
-                + "Your own page always shows your exact numbers; only other players' tabs are in "
-                + "steps.\n"
+            PublishStep = config.Bind(SecFoothold, "PublishStep", 1,
+                "The step, in percent, that the bars other players see are rounded down to. At 1 other "
+                + "players' tabs show exact percents, which is what Robbin chose. At 5 your client "
+                + "would publish 40, 45, 50 and never 47, and only write when a bar crosses a step. "
+                + "Your own page always shows your exact numbers.\n"
                 + "Every write is a new string in every connected player's character file, for good, and "
-                + "a broadcast of the whole key list. A step of 5 cuts that growth to a fifth of what "
-                + "exact percents cost, and 1 is exact percents. The README works out the sums.\n"
-                + "5 is a recommendation and the default until Robbin has chosen; he has not. Values "
-                + "below 1 count as 1 and above 100 as 100.");
+                + "a broadcast of the whole key list. The worst case at 1, with ten players, every one "
+                + "of 7 locked biomes' two bars passing through all 100 steps with every step written "
+                + "on its own: one string is about 96 characters (key 30, value 65 with the 54 character "
+                + "slots), saved as 101 bytes in each of three dictionaries, about 303 bytes, so 1,400 "
+                + "strings is about 424 KB per character and about 4.2 MB for ten players. With the "
+                + "Ocean keyed too (8 locked biomes) it is about 485 KB and 4.9 MB. The 30 second floor "
+                + "and bars that only rise keep real use far under that. A step of 5 is a fifth of it; "
+                + "raise the step if a character file ever grows too large. The README works out the "
+                + "sums. Values below 1 count as 1 and above 100 as 100.");
 
             foreach (Heightmap.Biome biome in GateableBiomes)
                 PointsLines[biome] = BindPoints(config, biome);
