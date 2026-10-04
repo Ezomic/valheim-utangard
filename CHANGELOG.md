@@ -18,10 +18,9 @@ and the mod uses [semantic versioning](https://semver.org).
   when a bar has moved and at most once in 30 seconds. The README works out what that costs the
   server's key list and the character files.
 - `Foothold.PublishStep`, the step in percent that other players' bars are published in, default
-  5. **5 is my recommendation and Robbin has not chosen it.** It cuts the growth of every
-  client's character file to a fifth of what exact percents cost (the worst case in the README
-  goes from about 4 MB to about 0.8 MB for ten players), and the page then shows other players in
-  steps of 5 while your own numbers stay exact.
+  1: other players' numbers are exact. The worst case in the README, ten players with every step
+  written on its own, is about 4.2 MB of character file per client (about 4.9 MB with the Ocean
+  keyed), and a step of 5 cuts it to a fifth.
 - `utangard players` in the console lists every tab with the numbers it holds.
 - Two scenarios for two clients, `paired-utangard-players-a` and `-b`, that check each client's
   numbers reach the other, update, and show on the other's page without anything being squeezed.

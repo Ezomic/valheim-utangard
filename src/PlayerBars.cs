@@ -37,8 +37,9 @@ namespace Utangard
     /// new ground, each one a broadcast to every player and a new string in every profile. The
     /// floor turns that into at most two a minute per player, and the last number is never lost,
     /// only late: the next pass after the floor writes it. The values are also rounded down to
-    /// UtangardConfig.PublishStep (5 by default, a recommendation Robbin has not chosen), which
-    /// is what cuts the number of distinct strings, and so the profile growth, to a fifth.
+    /// UtangardConfig.PublishStep (1 by default, exact percents, Robbin's choice of 2026-10-04),
+    /// which is the lever on the number of distinct strings and so the profile growth: a step of
+    /// 5 would cut it to a fifth. The worst case at 1 is worked out in UtangardConfig.
     ///
     /// <b>Changed means changed by this client, not changed by anyone.</b> The comparison is with
     /// the world's value, so two live writers for one character id (a copied character file, or a
