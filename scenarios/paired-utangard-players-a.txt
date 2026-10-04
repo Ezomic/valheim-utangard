@@ -10,13 +10,15 @@
 #  1. A bar this side sets shows up on the other client. This side sets 10% Fighting in the
 #     Deep North and waits to read the partner's 40% in `utangard players`, which is built from
 #     the world's keys. The partner's number cannot be this side's own: they differ.
-#  2. A bar that moves is published again. Both sides then change the number (10% to 20% here,
-#     40% to 30% there) and wait for the partner's new one. The client throttles its writes
+#  2. A bar that moves is published again. Both sides then change the number (10% to 23% here,
+#     40% to 26% there) and wait for the partner's new one. The client throttles its writes
 #     to one in 30 seconds, so this waits up to two minutes.
 #  3. The page shows it. Choosing the partner's tab (`press Online`, which is the status line of
-#     the only other player online) shows the Deep North with the partner's 30% beside Fighting,
+#     the only other player online) shows the Deep North with the partner's 26% beside Fighting,
 #     "Viewing another player", the eating threshold, how old the numbers are and "Percentages only",
-#     and nothing reading "No data". Choosing "You, online" brings back this character's own 20%.
+#     and nothing reading "No data". Choosing "You, online" brings back this character's own 23%.
+#     The final numbers (23% and 26%) are not multiples of 5 on purpose: other players are shown
+#     exact (PublishStep 1), and a step of 5 would read 20% and 25% and fail these waits.
 #  4. Switching tabs does not squeeze anything: every label in the new boxes and the tab list is as
 #     tall as its text needs (`tall`, the guard added after 2026-09-29).
 #
@@ -38,7 +40,7 @@
 #
 # What it leaves behind, and none of it can be undone:
 #  - Utangard's count, in this world, of every creature on the Deep North points line: 0 for all
-#    of them except JotunWarrior, which is left at 6. It is kept in the character, one entry per
+#    of them except JotunWarrior, which is left at 7. It is kept in the character, one entry per
 #    world, and the old numbers are not kept anywhere. Use throwaway characters.
 #  - Each character's published bars in the world, a global key per character, which stay there.
 #  - Fader's records in this world stay cleared. `key defeated_fader` puts them back.
@@ -80,11 +82,11 @@ printed (online): data yes
 
 # ---------------------------------------------------------------- the numbers that stay
 
-mod utangardtest kills JotunWarrior 6
+mod utangardtest kills JotunWarrior 7
 console utangard players
-printed DeepNorth fighting 20% yes
+printed DeepNorth fighting 23% yes
 
-until 120 DeepNorth fighting 30%
+until 120 DeepNorth fighting 26%
 
 # ---------------------------------------------------------------- the page
 
@@ -97,7 +99,7 @@ wait 1
 
 panel Viewing another player yes
 panel The Deep North yes
-beside Fighting | 30% yes
+beside Fighting | 26% yes
 panel Eating at 50% yes
 panel Percentages only yes
 panel Updated yes
@@ -119,7 +121,7 @@ tall Players, last
 press You, online
 wait 1
 panel Your own progress yes
-beside Fighting | 20% yes
+beside Fighting | 23% yes
 tall Your own progress
 tall Fighting
 close
