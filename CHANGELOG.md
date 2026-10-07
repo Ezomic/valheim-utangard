@@ -3,7 +3,9 @@
 Notable changes to Utangard. Format follows [Keep a Changelog](https://keepachangelog.com),
 and the mod uses [semantic versioning](https://semver.org).
 
-## [Unreleased]
+## [1.5.0] - 2026-10-08
+
+Built, not yet played: the two-client scenarios have not been run on this build.
 
 ### Added
 

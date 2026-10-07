@@ -7,7 +7,7 @@ schemaVersion = "0.0.1"
 [package]
 namespace = "Ezomic"
 name = "Utangard"
-versionNumber = "1.4.0"
+versionNumber = "1.5.0"
 description = "Biomes nobody in your group has earned starve you: food burns away, buffs are refused, and the land leaves you sapped."
 websiteUrl = "https://github.com/Ezomic/valheim-utangard"
 containsNsfwContent = false
@@ -35,3 +35,6 @@ target = "CHANGELOG.md"
 [publish]
 repository = "https://thunderstore.io"
 communities = [ "valheim" ]
+
+[publish.categories]
+valheim = [ "mods", "ai-generated" ]
